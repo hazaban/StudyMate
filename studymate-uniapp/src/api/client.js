@@ -285,27 +285,33 @@ export function getExportUrl(type, format, params) {
 export async function downloadExport(type, format, params) {
   const url = buildExportUrl(type, format, params)
   const token = getToken()
-  // #ifdef H5
-  // For H5: use window.open to trigger download
   const fullUrl = `${BASE_URL}${url}`
-  // Create a temporary link element to download with auth header
-  const response = await fetch(fullUrl, {
-    headers: { Authorization: `Bearer ${token}` }
-  })
-  if (!response.ok) throw new Error('导出失败')
-  const blob = await response.blob()
-  const downloadUrl = window.URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = downloadUrl
-  const ext = format === 'excel' ? 'xlsx' : format
-  a.download = `${type === 'cards' ? 'knowledge_cards' : 'mistakes'}.${ext}`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  window.URL.revokeObjectURL(downloadUrl)
+  // #ifdef H5
+  try {
+    const response = await fetch(fullUrl, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Export failed:', response.status, errorText)
+      throw new Error(`导出失败 (${response.status})`)
+    }
+    const blob = await response.blob()
+    const downloadUrl = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = downloadUrl
+    const ext = format === 'excel' ? 'xlsx' : format
+    a.download = `${type === 'cards' ? 'knowledge_cards' : 'mistakes'}.${ext}`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(downloadUrl)
+  } catch (e) {
+    console.error('Export error:', e)
+    throw e
+  }
   // #endif
   // #ifndef H5
-  // For non-H5: use uni.downloadFile
   return new Promise((resolve, reject) => {
     uni.downloadFile({
       url: `${window.location.origin}${BASE_URL}${url}`,

@@ -55,73 +55,28 @@
     <!-- Time Settings (+/- buttons) -->
     <view class="settings-section">
       <view class="section-title">时间设置</view>
-
-      <!-- Pomodoro Mode -->
-      <template v-if="pomodoroMode === 'pomodoro'">
-        <view class="time-setting">
-          <text class="setting-label">专注时长</text>
-          <view class="setting-buttons">
-            <view class="setting-btn" @click="adjustFocusTime(-5)">-</view>
-            <view class="input-wrapper">
-              <input class="setting-input" type="number" v-model="focusTimeInput" @blur="onFocusTimeBlur" />
-            </view>
-            <text class="setting-unit">分钟</text>
-            <view class="setting-btn" @click="adjustFocusTime(5)">+</view>
+      <view class="time-setting">
+        <text class="setting-label">专注时长</text>
+        <view class="setting-buttons">
+          <view class="setting-btn" @click="adjustFocusTime(-5)">-</view>
+          <view class="input-wrapper">
+            <input class="setting-input" type="number" v-model="focusTimeInput" @blur="onFocusTimeBlur" />
           </view>
+          <text class="setting-unit">分钟</text>
+          <view class="setting-btn" @click="adjustFocusTime(5)">+</view>
         </view>
-        <view class="time-setting">
-          <text class="setting-label">短休息</text>
-          <view class="setting-buttons">
-            <view class="setting-btn" @click="adjustBreakTime(-1)">-</view>
-            <view class="input-wrapper">
-              <input class="setting-input" type="number" v-model="breakTimeInput" @blur="onBreakTimeBlur" />
-            </view>
-            <text class="setting-unit">分钟</text>
-            <view class="setting-btn" @click="adjustBreakTime(1)">+</view>
+      </view>
+      <view class="time-setting">
+        <text class="setting-label">休息时长</text>
+        <view class="setting-buttons">
+          <view class="setting-btn" @click="adjustBreakTime(-1)">-</view>
+          <view class="input-wrapper">
+            <input class="setting-input" type="number" v-model="breakTimeInput" @blur="onBreakTimeBlur" />
           </view>
+          <text class="setting-unit">分钟</text>
+          <view class="setting-btn" @click="adjustBreakTime(1)">+</view>
         </view>
-        <view class="time-setting">
-          <text class="setting-label">长休息</text>
-          <view class="setting-buttons">
-            <view class="setting-btn" @click="adjustLongBreak(-5)">-</view>
-            <view class="input-wrapper">
-              <input class="setting-input" type="number" v-model="longBreakInput" @blur="onLongBreakBlur" />
-            </view>
-            <text class="setting-unit">分钟</text>
-            <view class="setting-btn" @click="adjustLongBreak(5)">+</view>
-          </view>
-        </view>
-      </template>
-
-      <!-- Free Focus Mode -->
-      <template v-else>
-        <view class="time-setting">
-          <text class="setting-label">专注时长</text>
-          <view class="setting-buttons">
-            <view class="setting-btn" @click="adjustFreeFocus(-5)">-</view>
-            <view class="input-wrapper">
-              <input class="setting-input" type="number" v-model="freeFocusInput" @blur="onFreeFocusBlur" />
-            </view>
-            <text class="setting-unit">分钟</text>
-            <view class="setting-btn" @click="adjustFreeFocus(5)">+</view>
-          </view>
-        </view>
-        <view class="time-setting">
-          <text class="setting-label">休息时长</text>
-          <view class="setting-buttons">
-            <view class="setting-btn" @click="adjustFreeBreak(-1)">-</view>
-            <view class="input-wrapper">
-              <input class="setting-input" type="number" v-model="freeBreakInput" @blur="onFreeBreakBlur" />
-            </view>
-            <text class="setting-unit">分钟</text>
-            <view class="setting-btn" @click="adjustFreeBreak(1)">+</view>
-          </view>
-        </view>
-        <view class="free-task-row">
-          <text class="setting-label">任务名称（选填）</text>
-          <input class="free-task-input" v-model="freeTaskName" placeholder="如：复习数据结构" />
-        </view>
-      </template>
+      </view>
     </view>
 
     <!-- Stats -->
@@ -206,20 +161,11 @@ const planStore = usePlanStore()
 // Mode
 const pomodoroMode = ref('pomodoro') // 'pomodoro' | 'focus'
 
-// Time settings - pomodoro mode
+// Time settings - shared between modes
 const focusTime = ref(25)
 const breakTime = ref(5)
-const longBreakTime = ref(15)
 const focusTimeInput = ref('25')
 const breakTimeInput = ref('5')
-const longBreakInput = ref('15')
-
-// Time settings - free focus mode
-const freeFocusTime = ref(25)
-const freeFocusInput = ref('25')
-const freeBreakTime = ref(0)
-const freeBreakInput = ref('0')
-const freeTaskName = ref('')
 
 // Timer state
 const isRunning = ref(false)
@@ -244,17 +190,9 @@ const manualTaskName = ref('')
 const today = computed(() => new Date().toISOString().split('T')[0])
 const todayTasks = computed(() => taskStore.todayTasks || [])
 
-const currentFocusSeconds = computed(() => {
-  return (pomodoroMode.value === 'focus' ? freeFocusTime.value : focusTime.value) * 60
-})
+const currentFocusSeconds = computed(() => focusTime.value * 60)
 
-const currentBreakSeconds = computed(() => {
-  if (pomodoroMode.value === 'focus') {
-    return freeBreakTime.value * 60
-  }
-  const useLong = completedPomodoros.value > 0 && completedPomodoros.value % 4 === 0
-  return (useLong ? longBreakTime.value : breakTime.value) * 60
-})
+const currentBreakSeconds = computed(() => breakTime.value * 60)
 
 const currentTotalSeconds = computed(() => {
   return isBreak.value ? currentBreakSeconds.value : currentFocusSeconds.value
@@ -278,7 +216,7 @@ const statusLabel = computed(() => {
 
 const displayTaskName = computed(() => {
   if (pomodoroMode.value === 'focus') {
-    return freeTaskName.value.trim()
+    return '自由专注'
   }
   return currentTaskName.value
 })
@@ -297,14 +235,11 @@ const circleStyle = computed(() => {
 // Sync inputs with refs
 watch(focusTime, (val) => { focusTimeInput.value = String(val) })
 watch(breakTime, (val) => { breakTimeInput.value = String(val) })
-watch(longBreakTime, (val) => { longBreakInput.value = String(val) })
-watch(freeFocusTime, (val) => { freeFocusInput.value = String(val) })
-watch(freeBreakTime, (val) => { freeBreakInput.value = String(val) })
 
 // Persist settings on change
-watch([focusTime, breakTime, longBreakTime, freeFocusTime, freeBreakTime, pomodoroMode], saveSettings)
+watch([focusTime, breakTime, pomodoroMode], saveSettings)
 
-// +/- adjust handlers (main-branch style)
+// +/- adjust handlers
 function adjustFocusTime(delta) {
   const newTime = focusTime.value + delta
   if (newTime >= 5 && newTime <= 60) {
@@ -319,36 +254,6 @@ function adjustBreakTime(delta) {
   const newTime = breakTime.value + delta
   if (newTime >= 1 && newTime <= 30) {
     breakTime.value = newTime
-    if (!isRunning.value && isBreak.value) {
-      timeRemaining.value = newTime * 60
-    }
-  }
-}
-
-function adjustLongBreak(delta) {
-  const newTime = longBreakTime.value + delta
-  if (newTime >= 5 && newTime <= 30) {
-    longBreakTime.value = newTime
-    if (!isRunning.value && isBreak.value) {
-      timeRemaining.value = newTime * 60
-    }
-  }
-}
-
-function adjustFreeFocus(delta) {
-  const newTime = freeFocusTime.value + delta
-  if (newTime >= 5 && newTime <= 120) {
-    freeFocusTime.value = newTime
-    if (!isRunning.value && !isBreak.value) {
-      timeRemaining.value = newTime * 60
-    }
-  }
-}
-
-function adjustFreeBreak(delta) {
-  const newTime = freeBreakTime.value + delta
-  if (newTime >= 0 && newTime <= 30) {
-    freeBreakTime.value = newTime
     if (!isRunning.value && isBreak.value) {
       timeRemaining.value = newTime * 60
     }
@@ -373,39 +278,6 @@ function onBreakTimeBlur() {
   val = Math.max(1, Math.min(30, val))
   breakTime.value = val
   breakTimeInput.value = String(val)
-  if (!isRunning.value && isBreak.value) {
-    timeRemaining.value = val * 60
-  }
-}
-
-function onLongBreakBlur() {
-  let val = parseInt(longBreakInput.value)
-  if (isNaN(val)) val = longBreakTime.value
-  val = Math.max(5, Math.min(30, val))
-  longBreakTime.value = val
-  longBreakInput.value = String(val)
-  if (!isRunning.value && isBreak.value) {
-    timeRemaining.value = val * 60
-  }
-}
-
-function onFreeFocusBlur() {
-  let val = parseInt(freeFocusInput.value)
-  if (isNaN(val)) val = freeFocusTime.value
-  val = Math.max(5, Math.min(120, val))
-  freeFocusTime.value = val
-  freeFocusInput.value = String(val)
-  if (!isRunning.value && !isBreak.value) {
-    timeRemaining.value = val * 60
-  }
-}
-
-function onFreeBreakBlur() {
-  let val = parseInt(freeBreakInput.value)
-  if (isNaN(val)) val = freeBreakTime.value
-  val = Math.max(0, Math.min(30, val))
-  freeBreakTime.value = val
-  freeBreakInput.value = String(val)
   if (!isRunning.value && isBreak.value) {
     timeRemaining.value = val * 60
   }
@@ -463,7 +335,7 @@ async function completeSession() {
     totalMinutes.value += sessionDuration
 
     const taskName = pomodoroMode.value === 'focus'
-      ? (freeTaskName.value.trim() || '自由专注')
+      ? '自由专注'
       : (currentTaskName.value || '番茄钟专注')
 
     const now = new Date()
@@ -494,7 +366,7 @@ async function completeSession() {
       try {
         let subject = ''
         if (pomodoroMode.value === 'focus') {
-          subject = freeTaskName.value.trim()
+          subject = '自由专注'
         } else {
           const task = taskStore.todayTasks.find(t => t.id === currentTaskId.value)
           if (task) {
@@ -587,10 +459,7 @@ function saveSettings() {
   uni.setStorageSync('studymate_pomodoro_settings', JSON.stringify({
     pomodoroMode: pomodoroMode.value,
     focusTime: focusTime.value,
-    breakTime: breakTime.value,
-    longBreakTime: longBreakTime.value,
-    freeFocusTime: freeFocusTime.value,
-    freeBreakTime: freeBreakTime.value
+    breakTime: breakTime.value
   }))
 }
 
@@ -606,9 +475,6 @@ onMounted(() => {
       const s = JSON.parse(saved)
       if (s.focusTime) focusTime.value = s.focusTime
       if (s.breakTime) breakTime.value = s.breakTime
-      if (s.longBreakTime) longBreakTime.value = s.longBreakTime
-      if (s.freeFocusTime) freeFocusTime.value = s.freeFocusTime
-      if (s.freeBreakTime !== undefined) freeBreakTime.value = s.freeBreakTime
       if (s.pomodoroMode) pomodoroMode.value = s.pomodoroMode
     } catch (e) { /* silent */ }
   }
@@ -616,9 +482,6 @@ onMounted(() => {
   // Sync input fields
   focusTimeInput.value = String(focusTime.value)
   breakTimeInput.value = String(breakTime.value)
-  longBreakInput.value = String(longBreakTime.value)
-  freeFocusInput.value = String(freeFocusTime.value)
-  freeBreakInput.value = String(freeBreakTime.value)
 
   // Receive URL params (jump from task-board)
   const pages = getCurrentPages()
@@ -835,20 +698,6 @@ onUnmounted(() => {
     text-align: center;
     font-size: 16px;
     font-weight: 700;
-    color: $ink;
-  }
-}
-
-.free-task-row {
-  padding: 10px 0;
-  .setting-label { display: block; font-size: 14px; color: $ink; font-weight: 500; margin-bottom: 8px; }
-  .free-task-input {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid $rule;
-    border-radius: 10px;
-    background: $bg;
-    font-size: 14px;
     color: $ink;
   }
 }

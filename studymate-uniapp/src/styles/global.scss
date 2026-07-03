@@ -1,13 +1,19 @@
 @import './variables.scss';
 @import './mixins.scss';
 
-/* Dark mode - uses CSS filter to invert all colors */
+/* Dark mode */
 .dark-mode {
-  filter: invert(0.88) hue-rotate(180deg);
+  --bg: #1a1a2e;
+  --bg2: #16213e;
+  --ink: #e8e8e8;
+  --muted: #8b9a9f;
+  --rule: #2d3a4a;
+  --soft: #1e2a3a;
+  background: var(--bg);
+  color: var(--ink);
   
-  /* Re-invert images and media to keep original colors */
   img, video, canvas, .emoji, .no-dark {
-    filter: invert(1) hue-rotate(180deg);
+    filter: none;
   }
 }
 
