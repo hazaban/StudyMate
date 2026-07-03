@@ -76,19 +76,70 @@
       </view>
       <view class="task-list">
         <view class="task-item" v-for="task in previewTasks" :key="task.id">
-          <view class="task-checkbox" :class="{ checked: task.status === 'completed' }">
+          <view class="task-checkbox" :class="{ checked: task.status === 'completed' }" @click="toggleTaskComplete(task)">
             <text v-if="task.status === 'completed'">✓</text>
           </view>
-          <view class="task-content">
+          <view class="task-content" @click="editTask(task)">
             <text class="task-title">{{ task.content }}</text>
             <view class="task-meta">
               <text class="task-subject">{{ task.subject }}</text>
               <text class="task-duration">{{ task.duration }}分钟</text>
+              <text class="task-actual" v-if="task.actual_duration">实际{{ task.actual_duration }}分钟</text>
             </view>
+          </view>
+          <view class="task-actions">
+            <view class="task-action-btn" @click="startPomodoroFromTask(task)">🍅</view>
+            <view class="task-action-btn" @click="editTask(task)">✎</view>
           </view>
           <view class="task-type" :class="task.type">
             {{ taskTypeText(task.type) }}
           </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- Task Edit Modal -->
+    <view class="modal-overlay" v-if="showTaskForm" @click="showTaskForm = false">
+      <view class="modal-content" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">编辑任务</text>
+          <view class="modal-close" @click="showTaskForm = false">✕</view>
+        </view>
+        <scroll-view scroll-y class="modal-body">
+          <view class="form-group">
+            <text class="form-label">科目</text>
+            <view class="subject-grid">
+              <view class="subject-tag" :class="{ active: editingForm.subject === s }" v-for="s in subjectOptions" :key="s" @click="editingForm.subject = s">{{ s }}</view>
+            </view>
+          </view>
+          <view class="form-group">
+            <text class="form-label">章节</text>
+            <input class="modal-input" v-model="editingForm.chapter" placeholder="如：第3章 二叉树" />
+          </view>
+          <view class="form-group">
+            <text class="form-label">任务内容</text>
+            <textarea class="modal-textarea" v-model="editingForm.content" placeholder="今天要完成的内容..." />
+          </view>
+          <view class="form-group">
+            <text class="form-label">类型</text>
+            <view class="type-row">
+              <view class="type-tag" :class="{ active: editingForm.type === 'new_study' }" @click="editingForm.type = 'new_study'">新学</view>
+              <view class="type-tag" :class="{ active: editingForm.type === 'review' }" @click="editingForm.type = 'review'">复习</view>
+              <view class="type-tag" :class="{ active: editingForm.type === 'mistake' }" @click="editingForm.type = 'mistake'">错题</view>
+            </view>
+          </view>
+          <view class="form-group">
+            <text class="form-label">预计时间（分钟）</text>
+            <input class="modal-input" type="number" v-model="editingForm.duration" />
+          </view>
+          <view class="form-group" v-if="editingForm.actual_duration !== undefined">
+            <text class="form-label">实际用时（分钟，系统自动记录）</text>
+            <input class="modal-input" type="number" v-model="editingForm.actual_duration" disabled />
+          </view>
+        </scroll-view>
+        <view class="modal-footer">
+          <view class="cancel-btn" @click="showTaskForm = false">取消</view>
+          <view class="submit-btn" @click="saveTask">保存</view>
         </view>
       </view>
     </view>
@@ -104,6 +155,7 @@ import { usePlanStore } from '@/stores/plan'
 import { useTaskStore } from '@/stores/task'
 import { useFarmStore } from '@/stores/farm'
 import { dateUtil } from '@/utils/date'
+import * as api from '@/api/client'
 
 const userStore = useUserStore()
 const planStore = usePlanStore()
@@ -113,6 +165,10 @@ const farmStore = useFarmStore()
 const currentDate = ref('')
 const daysRemaining = ref(0)
 const progressPercent = ref(0)
+
+const showTaskForm = ref(false)
+const editingForm = ref({})
+const subjectOptions = ref(JSON.parse(uni.getStorageSync('studymate_subjects') || JSON.stringify(['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络'])))
 
 const previewTasks = computed(() => {
   return taskStore.todayTasks.slice(0, 3)
@@ -127,8 +183,69 @@ function taskTypeText(type) {
   return map[type] || type
 }
 
+function editTask(task) {
+  editingForm.value = {
+    id: task.id,
+    subject: task.subject,
+    chapter: task.chapter || '',
+    content: task.content,
+    type: task.type,
+    duration: task.duration,
+    actual_duration: task.actual_duration
+  }
+  showTaskForm.value = true
+}
+
+async function saveTask() {
+  if (!editingForm.value.content || !editingForm.value.subject) {
+    uni.showToast({ title: '请填写科目和内容', icon: 'none' })
+    return
+  }
+  try {
+    await api.updateTask(editingForm.value.id, {
+      subject: editingForm.value.subject,
+      chapter: editingForm.value.chapter,
+      content: editingForm.value.content,
+      type: editingForm.value.type,
+      duration: parseInt(editingForm.value.duration) || 25
+    })
+    showTaskForm.value = false
+    uni.showToast({ title: '保存成功', icon: 'success' })
+    const today = dateUtil.today()
+    if (planStore.currentPlan) {
+      await taskStore.getTasksByDate(planStore.currentPlan.id, today)
+    }
+  } catch (e) {
+    uni.showToast({ title: '保存失败', icon: 'none' })
+  }
+}
+
+async function toggleTaskComplete(task) {
+  try {
+    if (task.status === 'completed') {
+      await api.updateTask(task.id, { status: 'pending' })
+    } else {
+      await api.completeTask(task.id)
+    }
+    const today = dateUtil.today()
+    if (planStore.currentPlan) {
+      await taskStore.getTasksByDate(planStore.currentPlan.id, today)
+      if (taskStore.totalCount > 0) {
+        progressPercent.value = Math.round((taskStore.completedCount / taskStore.totalCount) * 100)
+      }
+    }
+  } catch (e) {
+    uni.showToast({ title: '操作失败', icon: 'none' })
+  }
+}
+
+function startPomodoroFromTask(task) {
+  const taskContent = `${task.subject}${task.chapter ? ' - ' + task.chapter : ''}: ${task.content}`
+  uni.navigateTo({ url: `/pages/daily/pomodoro?taskContent=${encodeURIComponent(taskContent)}&taskId=${task.id}` })
+}
+
 function goToProfile() {
-  uni.navigateTo({ url: '/pages/profile/profile' })
+  uni.switchTab({ url: '/pages/profile/profile' })
 }
 
 function goToPlan() {
@@ -153,19 +270,19 @@ function startPomodoro() {
 
 onMounted(async () => {
   currentDate.value = `${dateUtil.format(new Date(), 'YYYY年MM月DD日')} ${dateUtil.getWeekDay(new Date())}`
-  
+
   await userStore.getUserInfo()
-  
+
   if (userStore.isLoggedIn && userStore.user) {
     await planStore.getPlansByUserId()
-    
+
     if (planStore.currentPlan) {
       const today = dateUtil.today()
       await taskStore.getTasksByDate(planStore.currentPlan.id, today)
       await farmStore.getPlantsByPlanId(planStore.currentPlan.id)
-      
+
       daysRemaining.value = dateUtil.getDaysBetween(today, planStore.currentPlan.exam_date)
-      
+
       if (taskStore.totalCount > 0) {
         progressPercent.value = Math.round((taskStore.completedCount / taskStore.totalCount) * 100)
       }
@@ -463,23 +580,39 @@ onMounted(async () => {
 
 .task-content {
   flex: 1;
-  
+
   .task-title {
     display: block;
     font-size: 15px;
     color: $ink;
     margin-bottom: 4px;
   }
-  
+
   .task-meta {
     display: flex;
     gap: 8px;
-    
-    .task-subject, .task-duration {
+
+    .task-subject, .task-duration, .task-actual {
       font-size: 12px;
       color: $muted;
     }
   }
+}
+
+.task-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.task-action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: $soft;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
 }
 
 .task-type {
@@ -506,4 +639,48 @@ onMounted(async () => {
 .bottom-space {
   height: 100px;
 }
+
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 999;
+  display: flex;
+  align-items: flex-end;
+}
+.modal-content {
+  width: 100%;
+  max-height: 85vh;
+  background: #fff;
+  border-radius: 24px 24px 0 0;
+  display: flex;
+  flex-direction: column;
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #f0f0f0;
+  .modal-title { font-size: 18px; font-weight: 600; color: #1a1a2e; }
+  .modal-close { font-size: 20px; color: #999; padding: 4px 8px; }
+}
+.modal-body { padding: 20px; max-height: 60vh; }
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 14px; font-weight: 600; color: #1a1a2e; margin-bottom: 8px; }
+.modal-input {
+  width: 100%; padding: 10px 14px; border: 1px solid #e8ece9; border-radius: 10px;
+  font-size: 14px; color: #1a1a2e; background: #fafafa;
+}
+.modal-textarea {
+  width: 100%; min-height: 80px; padding: 10px 14px; border: 1px solid #e8ece9;
+  border-radius: 10px; font-size: 14px; color: #1a1a2e; background: #fafafa;
+}
+.subject-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.subject-tag { padding: 6px 14px; border-radius: 16px; font-size: 13px; color: #65746d; background: #f5f7f5; &.active { background: #2f7d4f; color: #fff; } }
+.type-row { display: flex; gap: 8px; }
+.type-tag { flex: 1; text-align: center; padding: 10px; border-radius: 10px; font-size: 14px; color: #65746d; background: #f5f7f5; &.active { background: #2f7d4f; color: #fff; } }
+.modal-footer { display: flex; gap: 12px; padding: 20px; border-top: 1px solid #f0f0f0; }
+.cancel-btn { flex: 1; text-align: center; padding: 14px; border-radius: 12px; background: #f5f7f5; font-size: 16px; color: #65746d; }
+.submit-btn { flex: 1; text-align: center; padding: 14px; border-radius: 12px; background: #2f7d4f; font-size: 16px; color: #fff; font-weight: 500; }
 </style>
