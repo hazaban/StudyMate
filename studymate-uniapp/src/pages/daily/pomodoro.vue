@@ -38,7 +38,10 @@
           <text class="setting-label">专注时长</text>
           <view class="setting-buttons">
             <view class="setting-btn" @click="adjustFocusTime(-5)">-</view>
-            <text class="setting-value">{{ focusTime }}</text>
+            <view class="input-wrapper">
+              <input class="setting-input" type="number" v-model="focusTimeInput" @blur="onFocusTimeBlur" @confirm="onFocusTimeBlur" />
+            </view>
+            <text class="setting-unit">分钟</text>
             <view class="setting-btn" @click="adjustFocusTime(5)">+</view>
           </view>
         </view>
@@ -46,7 +49,10 @@
           <text class="setting-label">休息时长</text>
           <view class="setting-buttons">
             <view class="setting-btn" @click="adjustBreakTime(-1)">-</view>
-            <text class="setting-value">{{ breakTime }}</text>
+            <view class="input-wrapper">
+              <input class="setting-input" type="number" v-model="breakTimeInput" @blur="onBreakTimeBlur" @confirm="onBreakTimeBlur" />
+            </view>
+            <text class="setting-unit">分钟</text>
             <view class="setting-btn" @click="adjustBreakTime(1)">+</view>
           </view>
         </view>
@@ -95,13 +101,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { dateUtil } from '@/utils/date'
 
 const taskContent = ref('')
 const pomodoroMode = ref('pomodoro')
 const focusTime = ref(25)
 const breakTime = ref(5)
+const focusTimeInput = ref('25')
+const breakTimeInput = ref('5')
 const isRunning = ref(false)
 const isPaused = ref(false)
 const isBreak = ref(false)
@@ -111,6 +119,29 @@ const totalMinutes = ref(0)
 const todayHistory = ref([])
 
 let timer = null
+
+// Sync input fields when focusTime/breakTime change (e.g. via +/- buttons)
+watch(focusTime, (val) => { focusTimeInput.value = String(val) })
+watch(breakTime, (val) => { breakTimeInput.value = String(val) })
+
+function onFocusTimeBlur() {
+  let val = parseInt(focusTimeInput.value, 10)
+  if (isNaN(val) || val < 5) val = 5
+  if (val > 60) val = 60
+  focusTimeInput.value = String(val)
+  focusTime.value = val
+  if (!isRunning.value) {
+    timeRemaining.value = val * 60
+  }
+}
+
+function onBreakTimeBlur() {
+  let val = parseInt(breakTimeInput.value, 10)
+  if (isNaN(val) || val < 1) val = 1
+  if (val > 30) val = 30
+  breakTimeInput.value = String(val)
+  breakTime.value = val
+}
 
 const formattedTime = computed(() => {
   const minutes = Math.floor(timeRemaining.value / 60)
@@ -135,7 +166,7 @@ function adjustFocusTime(delta) {
   const newTime = focusTime.value + delta
   if (newTime >= 5 && newTime <= 60) {
     focusTime.value = newTime
-    if (!isRunning && !isBreak.value) {
+    if (!isRunning.value) {
       timeRemaining.value = newTime * 60
     }
   }
@@ -431,6 +462,32 @@ onUnmounted(() => {
     font-weight: 700;
     color: $ink;
     min-width: 40px;
+  }
+  
+  .input-wrapper {
+    border: 1.5px solid $rule;
+    border-radius: 10px;
+    padding: 4px 8px;
+    background: #fafafa;
+    transition: border-color 0.2s;
+    &:focus-within { border-color: $accent; }
+  }
+  
+  .setting-input {
+    width: 56px;
+    height: 36px;
+    font-size: 22px;
+    font-weight: 700;
+    color: $ink;
+    text-align: center;
+    border: none;
+    outline: none;
+    background: transparent;
+  }
+  
+  .setting-unit {
+    font-size: 13px;
+    color: $muted;
   }
 }
 

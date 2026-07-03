@@ -160,8 +160,8 @@ onMounted(async () => {
     planCount.value = planResult.data?.length || 0
     
     if (planStore.currentPlan) {
-      const cardResult = await cardStore.getCardsByPlanId(planStore.currentPlan.id)
-      cardCount.value = cardResult.data?.length || 0
+      await cardStore.getCardsByPlanId(planStore.currentPlan.id)
+      cardCount.value = cardStore.cards.length
     }
     
     totalDays.value = Math.floor(Math.random() * 30) + 1

@@ -63,6 +63,7 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
 import { useFarmStore } from '@/stores/farm'
 import { usePlanStore } from '@/stores/plan'
 import { useUserStore } from '@/stores/user'
