@@ -103,6 +103,7 @@
           <view class="task-meta">
             <text class="task-subject">{{ task.subject }}</text>
             <text class="task-chapter" v-if="task.chapter">{{ task.chapter }}</text>
+            <text class="task-repeat-tag" v-if="task.repeat_type && task.repeat_type !== 'none'">{{ getRepeatLabel(task.repeat_type) }}</text>
             <text class="task-duration">预计: {{ task.duration }}分钟</text>
             <text class="task-actual" v-if="task.actual_duration > 0">实际: {{ task.actual_duration }}分钟</text>
           </view>
@@ -179,6 +180,16 @@
                 <view class="type-item" :class="{ active: form.type === 'review' }" @click="form.type = 'review'">复习</view>
                 <view class="type-item" :class="{ active: form.type === 'mistake' }" @click="form.type = 'mistake'">错题</view>
               </view>
+            </view>
+          </view>
+
+          <view class="form-group">
+            <text class="form-label">循环方式</text>
+            <view class="type-row repeat-row">
+              <view class="type-item" :class="{ active: form.repeat_type === 'none' }" @click="form.repeat_type = 'none'">不循环</view>
+              <view class="type-item" :class="{ active: form.repeat_type === 'daily' }" @click="form.repeat_type = 'daily'">每天</view>
+              <view class="type-item" :class="{ active: form.repeat_type === 'weekday' }" @click="form.repeat_type = 'weekday'">工作日</view>
+              <view class="type-item" :class="{ active: form.repeat_type === 'holiday' }" @click="form.repeat_type = 'holiday'">节假日</view>
             </view>
           </view>
 
@@ -317,7 +328,8 @@ const defaultForm = {
   content: '',
   duration: 25,
   actual_duration: 0,
-  type: 'new_study'
+  type: 'new_study',
+  repeat_type: 'none'
 }
 
 const form = ref({ ...defaultForm })
@@ -372,11 +384,16 @@ const getTypeClass = (type) => {
   return map[type] || ''
 }
 
+const getRepeatLabel = (type) => {
+  const map = { daily: '每天', weekday: '工作日', holiday: '节假日' }
+  return map[type] || ''
+}
+
 async function toggleTask(task) {
   if (task.status === 'completed') {
-    await taskStore.updateTask(task.id, { status: 'pending' })
+    await taskStore.uncompleteTask(task.id, selectedDate.value)
   } else {
-    await taskStore.completeTask(task.id)
+    await taskStore.completeTask(task.id, selectedDate.value)
     // Auto-link to farm: fertilize the crop
     if (planStore.currentPlan) {
       try {
@@ -403,7 +420,8 @@ function editTask(task) {
     content: task.content,
     duration: task.duration,
     actual_duration: task.actual_duration || 0,
-    type: task.type
+    type: task.type,
+    repeat_type: task.repeat_type || 'none'
   }
   showAddForm.value = false
 }
@@ -436,7 +454,8 @@ async function submitForm() {
         subject: form.value.subject,
         chapter: form.value.chapter,
         content: form.value.content,
-        duration: parseInt(form.value.duration) || 25
+        duration: parseInt(form.value.duration) || 25,
+        repeat_type: form.value.repeat_type
       })
       // 新增任务后标记该日期有任务
       taskDates.value.add(selectedDate.value)
@@ -749,6 +768,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .task-meta { display: flex; gap: 8px; flex-wrap: wrap; }
 .task-subject { font-size: 12px; color: #2f7d4f; background: #e8f5e9; padding: 2px 8px; border-radius: 8px; }
 .task-chapter { font-size: 12px; color: #6b4ce6; background: #f3f0ff; padding: 2px 8px; border-radius: 8px; }
+.task-repeat-tag { font-size: 12px; color: #e65100; background: #fff3e0; padding: 2px 8px; border-radius: 8px; font-weight: 500; }
 .task-duration, .task-actual { font-size: 12px; color: #999; }
 .task-pomodoro { flex-shrink: 0; .pomodoro-icon { font-size: 24px; } }
 

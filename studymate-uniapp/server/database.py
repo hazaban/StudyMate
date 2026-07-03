@@ -83,6 +83,8 @@ class DailyTask(Base):
     status = Column(String(20), default="pending")   # pending / doing / completed
     completed_at = Column(DateTime(timezone=True), default=None)
     proof_image_url = Column(Text, default="")
+    repeat_type = Column(String(20), default="none")  # none / daily / weekday / holiday
+    completed_dates = Column(JSON, default=list)       # 循环任务的完成日期列表
     created_at = Column(DateTime(timezone=True), default=utcnow)
 
     plan = relationship("StudyPlan", back_populates="tasks")
