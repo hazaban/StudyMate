@@ -27,25 +27,26 @@ Base.metadata.create_all(bind=engine)
 db = SessionLocal()
 
 # ── Clean existing test data ──
-test_user = db.query(User).filter(User.email == "test@studymate.com").first()
-if test_user:
-    db.delete(test_user)
-    db.commit()
-    print("Cleaned existing test user")
+for email in ["test@studymate.com", "test@example.com"]:
+    u = db.query(User).filter(User.email == email).first()
+    if u:
+        db.delete(u)
+        db.commit()
+        print(f"Cleaned existing test user: {email}")
 
 # ── 1. Create test user ──
 user_id = uuid4()
-hashed = bcrypt.hashpw("123456".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+hashed = bcrypt.hashpw("test123456".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 user = User(
     id=user_id,
-    email="test@studymate.com",
+    email="test@example.com",
     nickname="测试学员",
     hashed_password=hashed,
     avatar_url=""
 )
 db.add(user)
 db.flush()
-print(f"Created user: test@studymate.com / 123456")
+print(f"Created user: test@example.com / test123456")
 
 # ── 2. Create study plan ──
 plan_id = uuid4()
@@ -138,8 +139,8 @@ db.commit()
 db.close()
 
 print("\n=== Seed data created successfully! ===")
-print("   Login:    test@studymate.com")
-print("   Password: 123456")
+print("   Login:    test@example.com")
+print("   Password: test123456")
 print("   Plan:     kaoyan 408 review plan")
 print(f"   Tasks:    {len(tasks)} tasks for today")
 print(f"   Cards:    {len(cards)} cards ({cards_due_today} due today)")

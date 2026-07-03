@@ -340,8 +340,56 @@ function goBack() {
 }
 
 onMounted(() => {
-  // Force reactivity on storage changes
+  // 如果没有番茄钟记录，生成模拟种子数据用于展示统计效果
+  const existing = uni.getStorageSync('studymate_pomodoro_records')
+  if (!existing || existing === '[]') {
+    generateSeedRecords()
+  }
 })
+
+// 生成模拟番茄钟记录数据（30天）
+function generateSeedRecords() {
+  const subjects = [
+    { name: '数据结构', chapters: ['二叉树遍历', '哈希表', '排序算法', '图论', 'BST操作'] },
+    { name: '操作系统', chapters: ['进程管理', '内存管理', 'PV操作', '死锁', '文件系统'] },
+    { name: '计算机网络', chapters: ['TCP/IP', 'OSI模型', '子网划分', 'HTTP协议'] },
+    { name: '英语', chapters: ['词汇Unit5', '阅读理解', '长难句分析', '写作练习'] },
+    { name: '政治', chapters: ['马原', '毛中特', '史纲', '时政'] }
+  ]
+  const records = []
+  const today = new Date()
+
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today)
+    d.setDate(d.getDate() - i)
+    const dateStr = d.toISOString().split('T')[0]
+    const weekday = d.getDay()
+
+    // 周末学习时间多一些，工作日少一些
+    const sessionsPerDay = weekday === 0 || weekday === 6
+      ? Math.floor(Math.random() * 4) + 3  // 3-6次
+      : Math.floor(Math.random() * 3) + 2  // 2-4次
+
+    for (let j = 0; j < sessionsPerDay; j++) {
+      const subj = subjects[Math.floor(Math.random() * subjects.length)]
+      const chapter = subj.chapters[Math.floor(Math.random() * subj.chapters.length)]
+      const duration = [25, 25, 25, 50, 50][Math.floor(Math.random() * 5)]
+      const hour = 8 + j * 2 + Math.floor(Math.random() * 2)
+      const minute = Math.floor(Math.random() * 60)
+      const ts = `${hour}:${String(minute).padStart(2, '0')}`
+
+      records.push({
+        type: 'focus',
+        taskName: `${subj.name} - ${chapter}`,
+        time: ts,
+        duration,
+        date: dateStr
+      })
+    }
+  }
+
+  uni.setStorageSync('studymate_pomodoro_records', JSON.stringify(records))
+}
 </script>
 
 <style lang="scss" scoped>
