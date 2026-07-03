@@ -109,25 +109,10 @@ function toggleReminder(e) {
 }
 
 function applyDarkMode() {
-  const app = document.querySelector('page') || document.documentElement
   if (isDarkMode.value) {
-    app?.classList.add('dark-mode')
-    document.documentElement.style.setProperty('--bg', '#1a1a2e')
-    document.documentElement.style.setProperty('--bg2', '#252540')
-    document.documentElement.style.setProperty('--ink', '#e0e0e0')
-    document.documentElement.style.setProperty('--muted', '#a0a0a0')
-    document.documentElement.style.setProperty('--rule', '#333')
-    document.documentElement.style.setProperty('--soft', '#2a2a40')
-    document.documentElement.style.setProperty('--accent', '#3d9a62')
+    document.documentElement.classList.add('dark-mode')
   } else {
-    app?.classList.remove('dark-mode')
-    document.documentElement.style.setProperty('--bg', '#f5f7f5')
-    document.documentElement.style.setProperty('--bg2', '#ffffff')
-    document.documentElement.style.setProperty('--ink', '#1a1a2e')
-    document.documentElement.style.setProperty('--muted', '#65746d')
-    document.documentElement.style.setProperty('--rule', '#e8ece9')
-    document.documentElement.style.setProperty('--soft', '#f0f4f0')
-    document.documentElement.style.setProperty('--accent', '#2f7d4f')
+    document.documentElement.classList.remove('dark-mode')
   }
 }
 

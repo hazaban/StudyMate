@@ -1,25 +1,14 @@
 @import './variables.scss';
 @import './mixins.scss';
 
-/* CSS Variables for dark mode theming */
-:root {
-  --bg: #f5f7f5;
-  --bg2: #ffffff;
-  --ink: #1a1a2e;
-  --muted: #65746d;
-  --rule: #e8ece9;
-  --soft: #f0f4f0;
-  --accent: #2f7d4f;
-}
-
+/* Dark mode - uses CSS filter to invert all colors */
 .dark-mode {
-  --bg: #1a1a2e;
-  --bg2: #252540;
-  --ink: #e0e0e0;
-  --muted: #a0a0a0;
-  --rule: #333;
-  --soft: #2a2a40;
-  --accent: #3d9a62;
+  filter: invert(0.88) hue-rotate(180deg);
+  
+  /* Re-invert images and media to keep original colors */
+  img, video, canvas, .emoji, .no-dark {
+    filter: invert(1) hue-rotate(180deg);
+  }
 }
 
 * {

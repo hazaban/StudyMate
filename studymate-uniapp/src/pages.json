@@ -113,13 +113,19 @@
       },
       {
         "pagePath": "pages/review/flash-cards",
-        "text": "复习",
+        "text": "卡片",
         "iconPath": "static/icons/card.png",
         "selectedIconPath": "static/icons/card-active.png"
       },
       {
+        "pagePath": "pages/review/mistake-book",
+        "text": "错题",
+        "iconPath": "static/icons/mistake.png",
+        "selectedIconPath": "static/icons/mistake-active.png"
+      },
+      {
         "pagePath": "pages/profile/profile",
-        "text": "我的",
+        "text": "设置",
         "iconPath": "static/icons/profile.png",
         "selectedIconPath": "static/icons/profile-active.png"
       }
