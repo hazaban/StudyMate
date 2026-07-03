@@ -3,11 +3,23 @@
     <view class="header">
       <view class="header-content">
         <view class="welcome">
-          <text class="greeting">早安，{{ userStore.user?.user_metadata?.nickname || '学习者' }}！</text>
+          <text class="greeting">早安，{{ userStore.user?.nickname || '学习者' }}！</text>
           <text class="date">{{ currentDate }}</text>
         </view>
-        <view class="avatar" @click="goToProfile">
-          <text class="avatar-text">{{ userStore.user?.user_metadata?.nickname?.charAt(0) || '学' }}</text>
+        <view class="header-right">
+          <view class="notification-btn" @click="goToProfile">
+            <text class="notif-icon">🔔</text>
+          </view>
+          <view class="avatar" @click="goToProfile">
+            <text class="avatar-text">{{ userStore.user?.nickname?.charAt(0) || '学' }}</text>
+          </view>
+        </view>
+      </view>
+      <view class="motivation-card">
+        <text class="motivation-text">"让知识进脑子，而不是走过场"</text>
+        <view class="streak-badge">
+          <text class="streak-icon">🔥</text>
+          <text class="streak-days">连续学习 3 天</text>
         </view>
       </view>
     </view>
@@ -145,7 +157,7 @@ onMounted(async () => {
   await userStore.getUserInfo()
   
   if (userStore.isLoggedIn && userStore.user) {
-    await planStore.getPlansByUserId(userStore.user.id)
+    await planStore.getPlansByUserId()
     
     if (planStore.currentPlan) {
       const today = dateUtil.today()
@@ -164,25 +176,30 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .header {
-  padding: 60px 0 20px;
+  padding: 60px 0 24px;
   background: linear-gradient(135deg, $accent 0%, lighten($accent, 10%) 100%);
-  border-radius: 0 0 30px 30px;
-  margin-bottom: 20px;
+  border-radius: 0 0 32px 32px;
+  margin-bottom: 24px;
+  margin-left: -20px;
+  margin-right: -20px;
+  padding-left: 20px;
+  padding-right: 20px;
 }
 
 .header-content {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  margin-bottom: 20px;
 }
 
 .welcome {
   .greeting {
     display: block;
-    font-size: 24px;
+    font-size: 26px;
     font-weight: 700;
     color: #fff;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
   }
   
   .date {
@@ -191,42 +208,112 @@ onMounted(async () => {
   }
 }
 
-.avatar {
-  width: 48px;
-  height: 48px;
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.notification-btn {
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
   
+  .notif-icon {
+    font-size: 18px;
+  }
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  
   .avatar-text {
     font-size: 20px;
-    font-weight: 600;
+    font-weight: 700;
     color: #fff;
+  }
+}
+
+.motivation-card {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  
+  .motivation-text {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.9);
+    font-style: italic;
+  }
+  
+  .streak-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 6px 12px;
+    border-radius: 20px;
+    
+    .streak-icon {
+      font-size: 14px;
+    }
+    
+    .streak-days {
+      font-size: 12px;
+      color: #fff;
+      font-weight: 500;
+      white-space: nowrap;
+    }
   }
 }
 
 .stats-section {
   display: flex;
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .stat-card {
   flex: 1;
   background: $bg2;
   border-radius: 16px;
-  padding: 16px;
+  padding: 16px 14px;
   text-align: center;
   border: 1px solid $rule;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s;
+  
+  &:active {
+    transform: scale(0.97);
+  }
+  
+  .stat-icon {
+    font-size: 24px;
+    display: block;
+    margin-bottom: 4px;
+  }
   
   .stat-value {
     display: block;
-    font-size: 28px;
+    font-size: 22px;
     font-weight: 700;
-    color: $accent;
-    margin-bottom: 4px;
+    color: $ink;
+    margin-bottom: 2px;
   }
   
   .stat-label {
@@ -254,15 +341,17 @@ onMounted(async () => {
 }
 
 .plan-card {
-  background: $bg2;
-  border-radius: 16px;
+  background: linear-gradient(135deg, #f0f7f4 0%, $bg2 100%);
+  border-radius: 18px;
   padding: 20px;
   border: 1px solid $rule;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  margin-bottom: 20px;
   
   .plan-name {
     display: block;
     font-size: 20px;
-    font-weight: 600;
+    font-weight: 700;
     color: $ink;
     margin-bottom: 4px;
   }
@@ -271,7 +360,7 @@ onMounted(async () => {
     display: block;
     font-size: 14px;
     color: $muted;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
   }
   
   .progress-bar {
@@ -283,9 +372,9 @@ onMounted(async () => {
     
     .progress-fill {
       height: 100%;
-      background: $accent;
+      background: linear-gradient(90deg, $accent, lighten($accent, 8%));
       border-radius: 4px;
-      transition: width 0.3s;
+      transition: width 0.6s ease;
     }
   }
   
@@ -311,6 +400,13 @@ onMounted(async () => {
   align-items: center;
   gap: 8px;
   border: 1px solid $rule;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  transition: transform 0.2s, box-shadow 0.2s;
+  
+  &:active {
+    transform: scale(0.96);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  }
   
   .action-icon {
     font-size: 32px;
@@ -338,9 +434,15 @@ onMounted(async () => {
   align-items: center;
   gap: 12px;
   background: $bg2;
-  border-radius: 12px;
-  padding: 14px;
+  border-radius: 14px;
+  padding: 14px 16px;
   border: 1px solid $rule;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s;
+  
+  &:active {
+    transform: scale(0.99);
+  }
 }
 
 .task-checkbox {

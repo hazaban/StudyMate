@@ -108,20 +108,20 @@
       {
         "pagePath": "pages/daily/task-board",
         "text": "任务",
-        "iconPath": "static/icons/home.png",
-        "selectedIconPath": "static/icons/home-active.png"
+        "iconPath": "static/icons/task.png",
+        "selectedIconPath": "static/icons/task-active.png"
       },
       {
         "pagePath": "pages/farm/farm",
         "text": "农场",
-        "iconPath": "static/icons/home.png",
-        "selectedIconPath": "static/icons/home-active.png"
+        "iconPath": "static/icons/farm.png",
+        "selectedIconPath": "static/icons/farm-active.png"
       },
       {
         "pagePath": "pages/review/flash-cards",
         "text": "复习",
-        "iconPath": "static/icons/home.png",
-        "selectedIconPath": "static/icons/home-active.png"
+        "iconPath": "static/icons/card.png",
+        "selectedIconPath": "static/icons/card-active.png"
       }
     ]
   }

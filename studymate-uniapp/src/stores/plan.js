@@ -1,136 +1,79 @@
+/** Plan store - connects to FastAPI backend */
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { supabase } from '@/api/supabase'
-import { ai } from '@/api/ai'
+import * as api from '@/api/client'
 
-export const usePlanStore = defineStore('plan', () => {
-  const currentPlan = ref(null)
-  const plans = ref([])
-  const loading = ref(false)
+export const usePlanStore = defineStore('plan', {
+  state: () => ({
+    currentPlan: null,
+    plans: [],
+    targetScores: {},
+    dailyStudyTime: 0,
+    weakPoints: []
+  }),
 
-  const planSubjects = computed(() => {
-    if (!currentPlan.value) return []
-    return Object.keys(currentPlan.value.target_scores || {})
-  })
+  getters: {
+    hasPlan: (state) => state.currentPlan !== null
+  },
 
-  async function createPlan(data) {
-    loading.value = true
-    try {
-      const { data: plan, error } = await supabase
-        .from('study_plans')
-        .insert([data])
-        .select()
-        .single()
-      if (error) throw error
-      currentPlan.value = plan
-      plans.value.unshift(plan)
-      return { success: true, data: plan }
-    } catch (error) {
-      return { success: false, error: error.message }
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function updatePlan(id, data) {
-    loading.value = true
-    try {
-      const { data: plan, error } = await supabase
-        .from('study_plans')
-        .update(data)
-        .eq('id', id)
-        .select()
-        .single()
-      if (error) throw error
-      currentPlan.value = plan
-      const index = plans.value.findIndex(p => p.id === id)
-      if (index !== -1) plans.value[index] = plan
-      return { success: true, data: plan }
-    } catch (error) {
-      return { success: false, error: error.message }
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function deletePlan(id) {
-    loading.value = true
-    try {
-      const { error } = await supabase
-        .from('study_plans')
-        .delete()
-        .eq('id', id)
-      if (error) throw error
-      plans.value = plans.value.filter(p => p.id !== id)
-      if (currentPlan.value?.id === id) {
-        currentPlan.value = plans.value[0] || null
+  actions: {
+    async createPlan(data) {
+      try {
+        const plan = await api.createPlan(data)
+        this.plans.unshift(plan)
+        this.currentPlan = plan
+        return { success: true, plan }
+      } catch (error) {
+        return { success: false, error: error.message }
       }
-      return { success: true }
-    } catch (error) {
-      return { success: false, error: error.message }
-    } finally {
-      loading.value = false
-    }
-  }
+    },
 
-  async function getPlanById(id) {
-    loading.value = true
-    try {
-      const { data: plan, error } = await supabase
-        .from('study_plans')
-        .select()
-        .eq('id', id)
-        .single()
-      if (error) throw error
-      currentPlan.value = plan
-      return { success: true, data: plan }
-    } catch (error) {
-      return { success: false, error: error.message }
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function getPlansByUserId(userId) {
-    loading.value = true
-    try {
-      const { data, error } = await supabase
-        .from('study_plans')
-        .select()
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-      if (error) throw error
-      plans.value = data
-      if (!currentPlan.value && data.length > 0) {
-        currentPlan.value = data[0]
+    async updatePlan(id, data) {
+      try {
+        const plan = await api.updatePlan(id, data)
+        const idx = this.plans.findIndex(p => p.id === id)
+        if (idx !== -1) this.plans[idx] = plan
+        if (this.currentPlan?.id === id) this.currentPlan = plan
+        return { success: true, plan }
+      } catch (error) {
+        return { success: false, error: error.message }
       }
-      return { success: true, data }
-    } catch (error) {
-      return { success: false, error: error.message }
-    } finally {
-      loading.value = false
-    }
-  }
+    },
 
-  async function generatePlanByAI(params) {
-    try {
-      const result = await ai.generateStudyPlan(params)
-      return result
-    } catch (error) {
-      return { success: false, error: error.message }
-    }
-  }
+    async deletePlan(id) {
+      try {
+        await api.deletePlan(id)
+        this.plans = this.plans.filter(p => p.id !== id)
+        if (this.currentPlan?.id === id) this.currentPlan = null
+        return { success: true }
+      } catch (error) {
+        return { success: false, error: error.message }
+      }
+    },
 
-  return {
-    currentPlan,
-    plans,
-    loading,
-    planSubjects,
-    createPlan,
-    updatePlan,
-    deletePlan,
-    getPlanById,
-    getPlansByUserId,
-    generatePlanByAI
+    async getPlansByUserId() {
+      try {
+        const plans = await api.getPlans()
+        this.plans = plans
+        if (plans.length > 0) {
+          this.currentPlan = plans[0]
+          this.targetScores = plans[0].target_scores || {}
+          this.dailyStudyTime = plans[0].daily_study_time || 0
+          this.weakPoints = plans[0].weak_points || []
+        }
+        return { success: true }
+      } catch (error) {
+        return { success: false, error: error.message }
+      }
+    },
+
+    async generatePlanByAI(params) {
+      try {
+        const result = await api.aiGeneratePlan(params)
+        return result.plan || result
+      } catch (error) {
+        console.error('AI plan generation failed:', error)
+        return null
+      }
+    }
   }
 })

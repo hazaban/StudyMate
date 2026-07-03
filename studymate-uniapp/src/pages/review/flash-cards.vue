@@ -1,118 +1,110 @@
 <template>
   <view class="page">
     <view class="header">
-      <text class="page-title">复习卡片</text>
-      <view class="card-count">
-        <text class="count-value">{{ cardStore.pendingCards.length }}</text>
-        <text class="count-label">待复习</text>
+      <view class="header-top">
+        <text class="title">抗遗忘卡片</text>
+        <text class="date">{{ formattedDate }}</text>
+      </view>
+      <view class="stats-row">
+        <view class="stat-item">
+          <text class="stat-num">{{ pendingCards.length }}</text>
+          <text class="stat-label">待复习</text>
+        </view>
+        <view class="stat-item">
+          <text class="stat-num">{{ cardStore.cards.length }}</text>
+          <text class="stat-label">总卡片</text>
+        </view>
+        <view class="stat-item">
+          <text class="stat-num">{{ masteredCount }}</text>
+          <text class="stat-label">已掌握</text>
+        </view>
       </view>
     </view>
 
-    <view class="mode-tabs">
-      <view class="mode-tab" :class="{ active: reviewMode === 'review' }" @click="reviewMode = 'review'">
-        <text class="tab-icon">📖</text>
-        <text class="tab-text">复习模式</text>
+    <!-- Review Mode -->
+    <view class="review-card" v-if="reviewMode && currentCard">
+      <view class="card-face">
+        <view class="card-subject">{{ currentCard.subject }}</view>
+        <view class="card-question">
+          <text class="question-label">Q</text>
+          <text class="question-text">{{ currentCard.question }}</text>
+        </view>
+        <view class="card-answer" v-if="showAnswer">
+          <view class="answer-divider"></view>
+          <view class="answer-content">
+            <text class="answer-label">A</text>
+            <text class="answer-text">{{ currentCard.answer }}</text>
+          </view>
+        </view>
       </view>
-      <view class="mode-tab" :class="{ active: reviewMode === 'browse' }" @click="reviewMode = 'browse'">
-        <text class="tab-icon">📋</text>
-        <text class="tab-text">浏览模式</text>
+      
+      <view class="review-actions" v-if="showAnswer">
+        <text class="actions-title">掌握程度如何？</text>
+        <view class="action-buttons">
+          <view class="action-btn fail" @click="markMastery('unmastered')">
+            <text class="btn-icon">😣</text>
+            <text class="btn-text">未掌握</text>
+          </view>
+          <view class="action-btn ok" @click="markMastery('familiar')">
+            <text class="btn-icon">🤔</text>
+            <text class="btn-text">较熟悉</text>
+          </view>
+          <view class="action-btn great" @click="markMastery('mastered')">
+            <text class="btn-icon">😎</text>
+            <text class="btn-text">已掌握</text>
+          </view>
+        </view>
+      </view>
+      
+      <view class="show-answer-btn" v-else @click="showAnswer = true">
+        <text>点击查看答案</text>
       </view>
     </view>
 
-    <view class="review-mode" v-if="reviewMode === 'review'">
-      <view class="progress-info">
-        <text class="progress-text">{{ currentIndex + 1 }} / {{ cardStore.pendingCards.length }}</text>
-        <view class="progress-bar">
-          <view class="progress-fill" :style="{ width: progressPercent + '%' }"></view>
+    <!-- Card List -->
+    <view class="card-list" v-if="!reviewMode">
+      <view class="section-header">
+        <text class="section-title">今日待复习</text>
+        <view class="start-review-btn" v-if="pendingCards.length > 0" @click="startReview">
+          <text>开始复习</text>
         </view>
       </view>
 
-      <view class="card-container" v-if="currentCard">
-        <view class="flash-card" :class="{ flipped: isFlipped }" @click="flipCard">
-          <view class="card-front">
-            <text class="card-subject">{{ currentCard.subject }}</text>
-            <text class="card-question">{{ currentCard.question }}</text>
-            <text class="card-hint">点击查看答案</text>
-          </view>
-          <view class="card-back">
-            <text class="card-subject">{{ currentCard.subject }}</text>
-            <text class="card-answer">{{ currentCard.answer }}</text>
-            <text class="card-hint">点击选择掌握程度</text>
-          </view>
-        </view>
-
-        <view class="mastery-buttons" v-if="isFlipped">
-          <view class="mastery-btn unmastered" @click="markMastery('unmastered')">
-            <text class="mastery-icon">😅</text>
-            <text class="mastery-text">未掌握</text>
-            <text class="mastery-days">1天后复习</text>
-          </view>
-          <view class="mastery-btn familiar" @click="markMastery('familiar')">
-            <text class="mastery-icon">🤔</text>
-            <text class="mastery-text">较熟悉</text>
-            <text class="mastery-days">3天后复习</text>
-          </view>
-          <view class="mastery-btn mastered" @click="markMastery('mastered')">
-            <text class="mastery-icon">😎</text>
-            <text class="mastery-text">已掌握</text>
-            <text class="mastery-days">7天后复习</text>
-          </view>
-        </view>
-      </view>
-
-      <view class="empty-state" v-else>
+      <view class="empty" v-if="pendingCards.length === 0">
         <text class="empty-icon">🎉</text>
-        <text class="empty-text">今日复习完成！</text>
-        <text class="empty-hint">所有卡片都已复习完毕</text>
-      </view>
-    </view>
-
-    <view class="browse-mode" v-if="reviewMode === 'browse'">
-      <view class="filter-row">
-        <scroll-view scroll-x class="filter-scroll">
-          <view class="filter-list">
-            <view class="filter-item" :class="{ active: activeFilter === 'all' }" @click="activeFilter = 'all'">
-              全部
-            </view>
-            <view class="filter-item" :class="{ active: activeFilter === subject }" v-for="subject in subjects" :key="subject" @click="activeFilter = subject">
-              {{ subject }}
-            </view>
-          </view>
-        </scroll-view>
+        <text class="empty-text">今天没有需要复习的卡片</text>
+        <text class="empty-hint">完成学习后，AI 会自动生成复习卡片</text>
       </view>
 
-      <view class="card-list">
-        <view class="browse-card" v-for="card in filteredCards" :key="card.id">
-          <view class="card-header">
-            <text class="card-subject">{{ card.subject }}</text>
-            <view class="mastery-badge" :class="card.mastery_level">
-              {{ masteryText(card.mastery_level) }}
-            </view>
-          </view>
-          <text class="card-question">{{ card.question }}</text>
-          <text class="card-answer">{{ card.answer }}</text>
-          <view class="card-footer">
-            <text class="review-count">已复习 {{ card.review_count }} 次</text>
-            <text class="next-review">下次复习：{{ card.next_review_date }}</text>
-          </view>
-          <view class="card-actions">
-            <view class="action-btn" @click="editCard(card)">编辑</view>
-            <view class="action-btn delete" @click="deleteCard(card)">删除</view>
-          </view>
+      <view class="card-item" v-for="card in pendingCards" :key="card.id">
+        <view class="card-item-left">
+          <text class="card-item-subject">{{ card.subject }}</text>
+          <text class="card-item-question">{{ card.question }}</text>
         </view>
-
-        <view class="empty-state" v-if="filteredCards.length === 0">
-          <text class="empty-icon">📚</text>
-          <text class="empty-text">暂无卡片</text>
-          <text class="empty-hint">点击下方按钮添加卡片</text>
+        <view class="card-item-right">
+          <view class="mastery-badge" :class="getMasteryClass(card.mastery_level)">
+            {{ getMasteryLabel(card.mastery_level) }}
+          </view>
+          <text class="review-count">第{{ card.review_count }}次</text>
         </view>
       </view>
-    </view>
 
-    <view class="fab-area">
-      <view class="fab" @click="addCard">
-        <text class="fab-icon">+</text>
-        <text class="fab-text">添加卡片</text>
+      <view class="section-header mt-24">
+        <text class="section-title">全部卡片</text>
+        <text class="section-count">{{ cardStore.cards.length }}张</text>
+      </view>
+
+      <view class="card-item" v-for="card in cardStore.cards" :key="card.id" :class="{ 'not-today': card.next_review_date > today }">
+        <view class="card-item-left">
+          <text class="card-item-subject">{{ card.subject }}</text>
+          <text class="card-item-question">{{ card.question }}</text>
+        </view>
+        <view class="card-item-right">
+          <view class="mastery-badge" :class="getMasteryClass(card.mastery_level)">
+            {{ getMasteryLabel(card.mastery_level) }}
+          </view>
+          <text class="review-date" v-if="card.next_review_date > today">{{ formatDate(card.next_review_date) }}</text>
+        </view>
       </view>
     </view>
 
@@ -121,7 +113,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useCardStore } from '@/stores/card'
 import { usePlanStore } from '@/stores/plan'
 import { useUserStore } from '@/stores/user'
@@ -130,145 +122,69 @@ const cardStore = useCardStore()
 const planStore = usePlanStore()
 const userStore = useUserStore()
 
-const reviewMode = ref('review')
-const activeFilter = ref('all')
-const isFlipped = ref(false)
-const currentIndex = ref(0)
+const reviewMode = ref(false)
+const showAnswer = ref(false)
+const currentCardIndex = ref(0)
+const today = new Date().toISOString().split('T')[0]
+
+const formattedDate = computed(() => {
+  const d = new Date()
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`
+})
+
+const pendingCards = computed(() => {
+  return cardStore.cards.filter(c => c.next_review_date <= today)
+})
 
 const currentCard = computed(() => {
-  return cardStore.pendingCards[currentIndex.value] || null
+  return pendingCards.value[currentCardIndex.value] || null
 })
 
-const progressPercent = computed(() => {
-  if (cardStore.pendingCards.length === 0) return 100
-  return Math.round((currentIndex.value / cardStore.pendingCards.length) * 100)
+const masteredCount = computed(() => {
+  return cardStore.cards.filter(c => c.mastery_level === 'mastered').length
 })
 
-const subjects = computed(() => {
-  return [...new Set(cardStore.cards.map(c => c.subject))]
-})
-
-const filteredCards = computed(() => {
-  let cards = cardStore.cards
-  if (activeFilter.value !== 'all') {
-    cards = cards.filter(c => c.subject === activeFilter.value)
-  }
-  return cards
-})
-
-function masteryText(level) {
-  const map = {
-    unmastered: '未掌握',
-    familiar: '较熟悉',
-    mastered: '已掌握'
-  }
+const getMasteryLabel = (level) => {
+  const map = { unmastered: '未掌握', familiar: '较熟悉', mastered: '已掌握' }
   return map[level] || level
 }
 
-function flipCard() {
-  isFlipped.value = !isFlipped.value
+const getMasteryClass = (level) => {
+  const map = { unmastered: 'badge-red', familiar: 'badge-orange', mastered: 'badge-green' }
+  return map[level] || ''
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr)
+  return `${d.getMonth() + 1}/${d.getDate()}`
+}
+
+function startReview() {
+  currentCardIndex.value = 0
+  showAnswer.value = false
+  reviewMode.value = true
 }
 
 async function markMastery(level) {
   if (!currentCard.value) return
-
-  const result = await cardStore.markMastery(currentCard.value.id, level)
+  await cardStore.markMastery(currentCard.value.id, level)
+  showAnswer.value = false
   
-  if (result.success) {
-    uni.showToast({ title: '已更新掌握程度', icon: 'success' })
-    isFlipped.value = false
-    
-    if (currentIndex.value < cardStore.pendingCards.length - 1) {
-      currentIndex.value++
-    } else {
-      currentIndex.value = 0
-      await loadCards()
-    }
-  }
-}
-
-function editCard(card) {
-  uni.showModal({
-    title: '编辑卡片',
-    editable: true,
-    placeholderText: '请输入卡片内容',
-    success: async (res) => {
-      if (res.confirm && res.content) {
-        await cardStore.updateCard(card.id, { content: res.content })
-      }
-    }
-  })
-}
-
-async function deleteCard(card) {
-  uni.showModal({
-    title: '删除卡片',
-    content: '确定要删除这张卡片吗？',
-    success: async (res) => {
-      if (res.confirm) {
-        await cardStore.deleteCard(card.id)
-        uni.showToast({ title: '删除成功', icon: 'success' })
-      }
-    }
-  })
-}
-
-async function addCard() {
-  if (!planStore.currentPlan) {
-    uni.showToast({ title: '请先设置学习计划', icon: 'none' })
-    return
-  }
-
-  uni.showModal({
-    title: '添加卡片',
-    editable: true,
-    placeholderText: '请输入学习内容，AI将自动生成问答卡片',
-    success: async (res) => {
-      if (res.confirm && res.content) {
-        uni.showLoading({ title: 'AI生成卡片中...' })
-        
-        try {
-          const result = await cardStore.generateCardsByAI(res.content)
-          
-          if (result.cards && result.cards.length > 0) {
-            for (const card of result.cards) {
-              await cardStore.createCard({
-                plan_id: planStore.currentPlan.id,
-                question: card.question,
-                answer: card.answer,
-                subject: card.subject,
-                mastery_level: 'unmastered',
-                next_review_date: new Date().toISOString().split('T')[0]
-              })
-            }
-            uni.showToast({ title: `生成了${result.cards.length}张卡片`, icon: 'success' })
-          } else {
-            uni.showToast({ title: '生成失败', icon: 'none' })
-          }
-        } catch (error) {
-          uni.showToast({ title: '生成失败', icon: 'none' })
-          console.error(error)
-        } finally {
-          uni.hideLoading()
-        }
-      }
-    }
-  })
-}
-
-async function loadCards() {
-  if (planStore.currentPlan) {
-    await cardStore.getCardsByPlanId(planStore.currentPlan.id)
-    currentIndex.value = 0
+  if (currentCardIndex.value < pendingCards.value.length - 1) {
+    currentCardIndex.value++
+  } else {
+    reviewMode.value = false
+    uni.showToast({ title: '🎉 复习完成！', icon: 'none' })
   }
 }
 
 onMounted(async () => {
   await userStore.getUserInfo()
-  
-  if (userStore.isLoggedIn && userStore.user) {
-    await planStore.getPlansByUserId(userStore.user.id)
-    await loadCards()
+  if (userStore.isLoggedIn) {
+    await planStore.getPlansByUserId()
+    if (planStore.currentPlan) {
+      await cardStore.getCardsByPlanId(planStore.currentPlan.id)
+    }
   }
 })
 </script>
@@ -276,414 +192,291 @@ onMounted(async () => {
 <style lang="scss" scoped>
 .header {
   padding: 60px 0 20px;
-  background: linear-gradient(135deg, #5c6bc0 0%, #3949ab 100%);
-  border-radius: 0 0 30px 30px;
-  margin-bottom: 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
+  background: linear-gradient(135deg, #6b4ce6 0%, #8b6ef5 100%);
+  border-radius: 0 0 32px 32px;
+  margin-bottom: 24px;
+  margin-left: -20px;
+  margin-right: -20px;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.header-top {
+  margin-bottom: 16px;
   
-  .page-title {
-    font-size: 28px;
+  .title {
+    display: block;
+    font-size: 26px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  .date {
+    font-size: 14px;
+    color: rgba(255,255,255,0.8);
+  }
+}
+
+.stats-row {
+  display: flex;
+  align-items: center;
+  background: rgba(255,255,255,0.12);
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+.stat-item {
+  flex: 1;
+  text-align: center;
+  
+  .stat-num {
+    display: block;
+    font-size: 22px;
     font-weight: 700;
     color: #fff;
   }
-  
-  .card-count {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: rgba(255, 255, 255, 0.2);
-    padding: 6px 12px;
-    border-radius: 20px;
-    
-    .count-value {
-      font-size: 18px;
-      font-weight: 700;
-      color: #fff;
-    }
-    
-    .count-label {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.8);
-    }
+  .stat-label {
+    font-size: 12px;
+    color: rgba(255,255,255,0.7);
+    margin-top: 2px;
   }
 }
 
-.mode-tabs {
-  display: flex;
-  background: $bg2;
+/* Review Card */
+.review-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  margin-bottom: 20px;
+}
+
+.card-face {
+  min-height: 200px;
+}
+
+.card-subject {
+  font-size: 13px;
+  color: #6b4ce6;
+  background: #f3f0ff;
+  padding: 4px 12px;
   border-radius: 12px;
-  padding: 4px;
-  margin-bottom: 20px;
-  border: 1px solid $rule;
+  display: inline-block;
+  margin-bottom: 16px;
 }
 
-.mode-tab {
-  flex: 1;
+.card-question {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px;
-  border-radius: 8px;
-  transition: all 0.2s;
-  
-  &.active {
-    background: #5c6bc0;
-    
-    .tab-icon, .tab-text {
-      color: #fff;
-    }
-  }
-  
-  .tab-icon {
-    font-size: 16px;
-  }
-  
-  .tab-text {
-    font-size: 14px;
-    color: $muted;
-  }
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
-.progress-info {
-  margin-bottom: 20px;
-  
-  .progress-text {
-    display: block;
-    text-align: center;
-    font-size: 14px;
-    color: $muted;
-    margin-bottom: 8px;
-  }
-  
-  .progress-bar {
-    height: 6px;
-    background: $soft;
-    border-radius: 3px;
-    overflow: hidden;
-    
-    .progress-fill {
-      height: 100%;
-      background: #5c6bc0;
-      border-radius: 3px;
-    }
-  }
+.question-label {
+  font-size: 32px;
+  font-weight: 800;
+  color: #6b4ce6;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
-.card-container {
-  margin-bottom: 20px;
+.question-text {
+  font-size: 18px;
+  color: #1a1a2e;
+  line-height: 1.6;
+  font-weight: 500;
 }
 
-.flash-card {
-  width: 100%;
-  height: 300px;
-  perspective: 1000px;
-  
-  &.flipped {
-    .card-front {
-      transform: rotateY(180deg);
-    }
-    
-    .card-back {
-      transform: rotateY(0);
-    }
-  }
-  
-  > div {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    backface-visibility: hidden;
-    border-radius: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    transition: transform 0.6s;
-  }
+.answer-divider {
+  height: 1px;
+  background: #e8ece9;
+  margin-bottom: 16px;
 }
 
-.card-front {
-  background: linear-gradient(135deg, #5c6bc0 0%, #3949ab 100%);
-  color: #fff;
-  
-  .card-subject {
-    font-size: 12px;
-    padding: 4px 12px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 20px;
-    margin-bottom: 16px;
-  }
-  
-  .card-question {
-    font-size: 20px;
-    font-weight: 600;
-    text-align: center;
-    line-height: 1.6;
-    margin-bottom: 20px;
-  }
-  
-  .card-hint {
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.6);
-  }
-}
-
-.card-back {
-  background: $bg2;
-  border: 2px solid #5c6bc0;
-  transform: rotateY(180deg);
-  
-  .card-subject {
-    font-size: 12px;
-    padding: 4px 12px;
-    background: #e3e8f7;
-    border-radius: 20px;
-    color: #5c6bc0;
-    margin-bottom: 16px;
-  }
-  
-  .card-answer {
-    font-size: 18px;
-    color: $ink;
-    text-align: center;
-    line-height: 1.6;
-    margin-bottom: 20px;
-  }
-  
-  .card-hint {
-    font-size: 12px;
-    color: $muted;
-  }
-}
-
-.mastery-buttons {
+.answer-content {
   display: flex;
   gap: 12px;
 }
 
-.mastery-btn {
-  flex: 1;
-  background: $bg2;
-  border-radius: 12px;
-  padding: 16px 12px;
+.answer-label {
+  font-size: 32px;
+  font-weight: 800;
+  color: #2f7d4f;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.answer-text {
+  font-size: 16px;
+  color: #1a1a2e;
+  line-height: 1.7;
+}
+
+.show-answer-btn {
   text-align: center;
-  border: 1px solid $rule;
+  padding: 16px;
+  background: #f3f0ff;
+  border-radius: 14px;
+  margin-top: 20px;
+  transition: all 0.2s;
   
-  &.unmastered {
-    border-color: #ef5350;
-    background: #ffebee;
-    
-    .mastery-text { color: #c62828; }
+  &:active {
+    transform: scale(0.98);
+    background: #e8e0ff;
   }
   
-  &.familiar {
-    border-color: #ffb74d;
-    background: #fff3e0;
-    
-    .mastery-text { color: #e65100; }
-  }
-  
-  &.mastered {
-    border-color: #66bb6a;
-    background: #e8f5e9;
-    
-    .mastery-text { color: #2e7d32; }
-  }
-  
-  .mastery-icon {
-    display: block;
-    font-size: 24px;
-    margin-bottom: 8px;
-  }
-  
-  .mastery-text {
-    display: block;
-    font-size: 14px;
+  text {
+    font-size: 16px;
+    color: #6b4ce6;
     font-weight: 600;
-    margin-bottom: 4px;
-  }
-  
-  .mastery-days {
-    font-size: 11px;
-    color: $muted;
   }
 }
 
-.empty-state {
+.review-actions {
+  margin-top: 20px;
+  
+  .actions-title {
+    display: block;
+    text-align: center;
+    font-size: 14px;
+    color: #999;
+    margin-bottom: 14px;
+  }
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.action-btn {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 60px 20px;
+  gap: 6px;
+  padding: 14px 8px;
+  border-radius: 14px;
+  transition: all 0.2s;
   
-  .empty-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-  }
+  &:active { transform: scale(0.96); }
   
-  .empty-text {
-    font-size: 18px;
-    color: $ink;
-    margin-bottom: 8px;
-  }
+  &.fail { background: #fff0f0; }
+  &.ok { background: #fff8f0; }
+  &.great { background: #f0fff4; }
   
-  .empty-hint {
-    font-size: 14px;
-    color: $muted;
-  }
+  .btn-icon { font-size: 24px; }
+  .btn-text { font-size: 13px; font-weight: 500; }
 }
 
-.filter-scroll {
-  white-space: nowrap;
-}
-
-.filter-list {
-  display: inline-flex;
-  gap: 8px;
-}
-
-.filter-item {
-  display: inline-block;
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 13px;
-  background: $bg2;
-  color: $muted;
-  border: 1px solid $rule;
-  
-  &.active {
-    background: #5c6bc0;
-    color: #fff;
-    border-color: #5c6bc0;
-  }
-}
-
-.card-list {
-  padding-bottom: 20px;
-}
-
-.browse-card {
-  background: $bg2;
-  border-radius: 16px;
-  padding: 18px;
-  margin-bottom: 12px;
-  border: 1px solid $rule;
-}
-
-.card-header {
+/* Card List */
+.section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.section-count {
+  font-size: 13px;
+  color: #999;
+}
+
+.start-review-btn {
+  background: #6b4ce6;
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
   
-  .card-subject {
-    font-size: 12px;
-    padding: 4px 12px;
-    background: $soft;
-    border-radius: 20px;
-    color: $accent;
+  &:active { transform: scale(0.96); }
+}
+
+.card-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  border: 1px solid #e8ece9;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+  
+  &.not-today {
+    opacity: 0.6;
   }
+}
+
+.card-item-left {
+  flex: 1;
+  min-width: 0;
+  
+  .card-item-subject {
+    font-size: 12px;
+    color: #6b4ce6;
+    background: #f3f0ff;
+    padding: 2px 8px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    display: inline-block;
+  }
+  
+  .card-item-question {
+    display: block;
+    font-size: 14px;
+    color: #1a1a2e;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.5;
+  }
+}
+
+.card-item-right {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  margin-left: 12px;
 }
 
 .mastery-badge {
   font-size: 11px;
-  padding: 3px 8px;
-  border-radius: 8px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 500;
   
-  &.unmastered {
-    background: #ffebee;
-    color: #c62828;
-  }
-  
-  &.familiar {
-    background: #fff3e0;
-    color: #e65100;
-  }
-  
-  &.mastered {
-    background: #e8f5e9;
-    color: #2e7d32;
-  }
+  &.badge-red { background: #ffebee; color: #c62828; }
+  &.badge-orange { background: #fff3e0; color: #e65100; }
+  &.badge-green { background: #e8f5e9; color: #2e7d32; }
 }
 
-.card-question {
-  display: block;
-  font-size: 16px;
-  font-weight: 600;
-  color: $ink;
-  margin-bottom: 8px;
+.review-count, .review-date {
+  font-size: 11px;
+  color: #999;
 }
 
-.card-answer {
-  display: block;
-  font-size: 14px;
-  color: $muted;
-  line-height: 1.6;
-  margin-bottom: 12px;
-}
-
-.card-footer {
+.empty {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 12px;
-  
-  .review-count, .next-review {
-    font-size: 12px;
-    color: $muted;
-  }
-}
-
-.card-actions {
-  display: flex;
-  gap: 8px;
-  
-  .action-btn {
-    flex: 1;
-    padding: 8px;
-    text-align: center;
-    border-radius: 8px;
-    font-size: 13px;
-    background: $soft;
-    color: $accent;
-    
-    &.delete {
-      background: #ffebee;
-      color: #c62828;
-    }
-  }
-}
-
-.fab-area {
-  position: fixed;
-  right: 20px;
-  bottom: 120px;
-}
-
-.fab {
-  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 14px 20px;
-  background: #5c6bc0;
-  border-radius: 50px;
-  box-shadow: 0 4px 12px rgba(92, 107, 192, 0.3);
+  padding: 40px 20px;
   
-  .fab-icon {
-    font-size: 20px;
-    color: #fff;
-  }
-  
-  .fab-text {
-    font-size: 15px;
-    color: #fff;
-    font-weight: 500;
-  }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-text { font-size: 16px; color: #65746d; margin-bottom: 8px; }
+  .empty-hint { font-size: 13px; color: #999; text-align: center; }
 }
 
-.bottom-space {
-  height: 100px;
-}
+.mt-24 { margin-top: 24px; }
+.bottom-space { height: 100px; }
 </style>
