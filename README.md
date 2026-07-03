@@ -1,11 +1,8 @@
 # StudyMate 学习星球
 
 <p align="center">
-  <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=A%20beautiful%20logo%20for%20a%20study%20app%20named%20StudyMate%20with%20a%20planet%20and%20stars%20theme%2C%20green%20and%20%5B...%5D" />
-</p>
-
-<p align="center">
-  <strong>AI 抗遗忘备考工具 —— 让知识进脑子，而不是走过场</strong>
+  <!-- logo removed because the original external T2I URL was truncated and fails to load -->
+  <strong style="font-size:1.15em">AI 抗遗忘备考工具 —— 让知识进脑子，而不是走过场</strong>
 </p>
 
 <p align="center">
@@ -187,26 +184,26 @@ studymate-uniapp/
 │   │   ├── plans.py                #   学习计划 CRUD
 │   │   ├── tasks.py                #   每日任务管理
 │   │   ├── cards.py                #   知识卡片 + 艾宾浩斯复习
-│   │   │   ├── mistakes.py             #   错题本 + 掌握度追踪
-│   │   │   ├── farm.py                 #   学习农场（种植/浇水/收获）
-│   │   │   ├── ai.py                   #   DeepSeek AI 接口
-│   │   │   └── upload.py               #   腾讯云 COS 图片上传
-│   │   ├── schemas/                    # Pydantic 数据校验
-│   │   │   ├── user.py
-│   │   │   ├── plan.py
-│   │   │   ├── task.py
-│   │   │   ├── card.py
-│   │   │   ├── mistake.py
-│   │   │   └── farm.py
-│   │   ├── services/                   # 业务逻辑层
-│   │   │   ├── memory.py               #   艾宾浩斯遗忘曲线算法
-│   │   │   ├── ai_service.py           #   DeepSeek API 封装
-│   │   │   └── cos_service.py          #   腾讯云 COS STS 凭证
-│   │   ├── config.py                   # 环境配置
-│   │   ├── database.py                 # 数据库模型 & 连接
-│   │   ├── main.py                     # FastAPI 应用入口
-│   │   ├── seed.py                     # 测试种子数据脚本
-│   │   │   └── requirements.txt            # Python 依赖
+│   │   ├── mistakes.py             #   错题本 + 掌握度追踪
+│   │   ├── farm.py                 #   学习农场（种植/浇水/收获）
+│   │   ├── ai.py                   #   DeepSeek AI 接口
+│   │   └── upload.py               #   腾讯云 COS 图片上传
+│   ├── schemas/                    # Pydantic 数据校验
+│   │   ├── user.py
+│   │   ├── plan.py
+│   │   ├── task.py
+│   │   ├── card.py
+│   │   ├── mistake.py
+│   │   └── farm.py
+│   ├── services/                   # 业务逻辑层
+│   │   ├── memory.py               #   艾宾浩斯遗忘曲线算法
+│   │   ├── ai_service.py           #   DeepSeek API 封装
+│   │   └── cos_service.py          #   腾讯云 COS STS 凭证
+│   ├── config.py                   # 环境配置
+│   ├── database.py                 # 数据库模型 & 连接
+│   ├── main.py                     # FastAPI 应用入口
+│   ├── seed.py                     # 测试种子数据脚本
+│   └── requirements.txt            # Python 依赖
 │
 ├── src/                            # 前端源码
 │   ├── pages/                      # 页面组件
@@ -218,39 +215,34 @@ studymate-uniapp/
 │   │   │   ├── flash-cards.vue     #     知识卡片
 │   │   │   └── mistake-book.vue    #     错题本
 │   │   ├── farm/                   #   学习农场
-│   │   │   ├── plan/                   #   学习计划
-│   │   │   │   ├── target-setup.vue    #     目标设置
-│   │   │   │   └── plan-overview.vue   #     计划总览
-│   │   │   ├── statistics/             #   学习统计
-│   │   │   ├── profile/                #   个人中心
-│   │   │   └── auth/                   #   登录/注册
-│   │   ├── stores/                     # Pinia 状态管理
-│   │   │   ├── user.js                 #   用户状态
-│   │   │   ├── plan.js                 #   计划状态
-│   │   │   ├── task.js                 #   任务状态
-│   │   │   ├── card.js                 #   卡片状态
-│   │   │   └── farm.js                 #   农场状态
-│   │   ├── api/                        # API 请求封装
-│   │   │   ├── client.js               #   Axios 实例 + 拦截器
-│   │   │   └── ai.js                   #   AI 接口
-│   │   ├── utils/                      # 工具函数
-│   │   │   ├── date.js                 #   日期格式化
-│   │   │   ├── storage.js              #   本地存储
-│   │   │   └── upload.js               #   图片上传
-│   │   ├── styles/                     # 全局样式
-│   │   │   ├── variables.scss          #   SCSS 变量
-│   │   │   ├── mixins.scss             #   SCSS 混入
-│   │   │   └── global.scss             #   全局样式
-│   │   ├── static/icons/               # 图标资源
-│   │   ├── App.vue                     # 根组件
-│   │   ├── main.js                     # 入口文件
-│   │   ├── pages.json                  # 页面路由配置
-│   │   │   └── manifest.json               # 应用配置
-│   │
-│   │
-│   ├── vite.config.js                  # Vite 构建配置
-│   ├── package.json                    # Node 依赖
-│   └── README.md
+│   │   ├── plan/                   #   学习计划
+│   │   │   ├── target-setup.vue    #     目标设置
+│   │   │   └── plan-overview.vue   #     计划总览
+│   │   ├── statistics/             #   学习统计
+│   │   ├── profile/                #   个人中心
+│   │   └── auth/                   #   登录/注册
+│   ├── stores/                     # Pinia 状态管理
+│   │   ├── user.js                 #   用户状态
+│   │   ├── plan.js                 #   计划状态
+│   │   ├── task.js                 #   任务状态
+│   │   ├── card.js                 #   卡片状态
+│   │   └── farm.js                 #   农场状态
+│   ├── api/                        # API 请求封装
+│   │   ├── client.js               #   Axios 实例 + 拦截器
+│   │   └── ai.js                   #   AI 接口
+│   ├── utils/                      # 工具函数
+│   │   ├── date.js                 #   日期格式化
+│   │   ├── storage.js              #   本地存储
+│   │   └── upload.js               #   图片上传
+│   ├── styles/                     # 全局样式
+│   │   ├── variables.scss          #   SCSS 变量
+│   │   ├── mixins.scss             #   SCSS 混入
+│   │   └── global.scss             #   全局样式
+│   ├── static/icons/               # 图标资源
+│   ├── App.vue                     # 根组件
+│   ├── main.js                     # 入口文件
+│   ├── pages.json                  # 页面路由配置
+│   └── manifest.json               # 应用配置
 ```
 
 ## 快速开始
