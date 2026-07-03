@@ -120,6 +120,27 @@
       <text class="empty-hint">点击上方「添加任务」按钮手动创建任务</text>
     </view>
 
+    <!-- 番茄钟专注记录（历史视图或当天有记录时显示） -->
+    <view class="focus-records-section" v-if="dateFocusRecords.length > 0">
+      <view class="focus-records-header">
+        <text class="focus-records-title">🍅 番茄钟专注记录</text>
+        <text class="focus-records-count">共 {{ dateFocusRecords.length }} 条 · {{ totalFocusMinutes }}分钟</text>
+      </view>
+      <view class="focus-record-item" v-for="(r, idx) in dateFocusRecords" :key="idx">
+        <view class="focus-record-icon">
+          <text class="focus-record-emoji">{{ r.type === 'manual' ? '📝' : '🍅' }}</text>
+        </view>
+        <view class="focus-record-body">
+          <text class="focus-record-task">{{ r.task_name || '专注学习' }}</text>
+          <text class="focus-record-meta">
+            {{ r.subject || '未分类' }} · {{ r.duration }}分钟
+            <text v-if="r.start_time"> · {{ formatTime(r.start_time) }}</text>
+          </text>
+        </view>
+        <text class="focus-record-duration">{{ r.duration }}m</text>
+      </view>
+    </view>
+
     <!-- Add/Edit Task Modal -->
     <view class="modal-overlay" v-if="showAddForm || editingTask" @click="closeForm">
       <view class="modal-content" @click.stop>
@@ -246,10 +267,12 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useTaskStore } from '@/stores/task'
 import { usePlanStore } from '@/stores/plan'
 import { useUserStore } from '@/stores/user'
 import { useFarmStore } from '@/stores/farm'
+import { getFocusRecords } from '@/api/client'
 
 const taskStore = useTaskStore()
 const planStore = usePlanStore()
@@ -269,6 +292,9 @@ const selectedDate = ref(formatDate(new Date()))
 const calendarMonth = ref(new Date())  // 当前显示的月份
 const calendarDays = ref([])
 const taskDates = ref(new Set())  // 有任务的日期集合
+
+// 番茄钟记录（历史视图用）
+const dateFocusRecords = ref([])
 
 const allSubjects = ['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络']
 const subjectOptions = ref(JSON.parse(uni.getStorageSync('studymate_subjects') || JSON.stringify(allSubjects)))
@@ -373,6 +399,18 @@ const filteredTasks = computed(() => {
   if (activeFilter.value !== 'all') tasks = tasks.filter(t => t.subject === activeFilter.value)
   return tasks
 })
+
+const totalFocusMinutes = computed(() => {
+  return dateFocusRecords.value.reduce((s, r) => s + (r.duration || 0), 0)
+})
+
+function formatTime(isoStr) {
+  if (!isoStr) return ''
+  try {
+    const d = new Date(isoStr)
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  } catch (e) { return '' }
+}
 
 const getTypeLabel = (type) => {
   const map = { new_study: '新学', review: '复习', mistake: '错题' }
@@ -578,6 +616,18 @@ async function loadTasks() {
     saveTaskDatesToStorage()
     generateCalendar()
   }
+  // 加载该日期的番茄钟记录
+  await loadFocusRecords()
+}
+
+async function loadFocusRecords() {
+  if (!planStore.currentPlan) { dateFocusRecords.value = []; return }
+  try {
+    const records = await getFocusRecords(planStore.currentPlan.id, selectedDate.value, selectedDate.value)
+    dateFocusRecords.value = records || []
+  } catch (e) {
+    dateFocusRecords.value = []
+  }
 }
 
 onMounted(async () => {
@@ -588,6 +638,13 @@ onMounted(async () => {
       loadTaskDates()
       await loadTasks()
     }
+  }
+})
+
+// 页面每次显示时刷新数据（从番茄钟页面返回时触发，同步 actual_duration）
+onShow(async () => {
+  if (planStore.currentPlan && userStore.isLoggedIn) {
+    await loadTasks()
   }
 })
 
@@ -857,4 +914,42 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 
 .bottom-space { height: 100px; }
+
+/* 番茄钟专注记录 */
+.focus-records-section {
+  margin: 16px 0;
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.focus-records-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px; padding-bottom: 10px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.focus-records-title { font-size: 16px; font-weight: 600; color: #333; }
+.focus-records-count { font-size: 12px; color: #999; }
+.focus-record-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f8f8f8;
+  &:last-child { border-bottom: none; }
+}
+.focus-record-icon {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: #fff3e0; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.focus-record-emoji { font-size: 18px; }
+.focus-record-body { flex: 1; min-width: 0; }
+.focus-record-task {
+  font-size: 14px; color: #333; font-weight: 500;
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.focus-record-meta { font-size: 12px; color: #999; margin-top: 2px; }
+.focus-record-duration {
+  font-size: 14px; font-weight: 600; color: #ef5350;
+  flex-shrink: 0;
+}
 </style>
