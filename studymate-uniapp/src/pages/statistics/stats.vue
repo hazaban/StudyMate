@@ -156,7 +156,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
 import { usePlanStore } from '@/stores/plan'
 import { useTaskStore } from '@/stores/task'
@@ -166,6 +167,7 @@ const planStore = usePlanStore()
 const taskStore = useTaskStore()
 
 const timeRange = ref('today')
+const refreshKey = ref(0)
 
 const COLORS = ['#ef5350', '#5c6bc0', '#66bb6a', '#ffb74d', '#ab47bc', '#26c6da', '#ec407a', '#8d6e63']
 
@@ -299,6 +301,8 @@ const recentRecords = computed(() => {
 
 // ── Helpers ──
 function getFilteredRecords() {
+  // refreshKey 依赖确保数据刷新
+  void refreshKey.value
   const all = JSON.parse(uni.getStorageSync('studymate_pomodoro_records') || '[]')
   const today = new Date().toISOString().split('T')[0]
 
@@ -345,6 +349,20 @@ onMounted(() => {
   if (!existing || existing === '[]') {
     generateSeedRecords()
   }
+
+  // 监听番茄钟记录更新事件
+  uni.$on('pomodoroRecordUpdated', () => {
+    refreshKey.value++
+  })
+})
+
+// 页面每次显示时刷新数据（从番茄钟页面返回时触发）
+onShow(() => {
+  refreshKey.value++
+})
+
+onUnmounted(() => {
+  uni.$off('pomodoroRecordUpdated')
 })
 
 // 生成模拟番茄钟记录数据（30天）

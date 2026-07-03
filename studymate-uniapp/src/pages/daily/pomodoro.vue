@@ -411,6 +411,8 @@ function deleteRecord(i) {
 
 function saveRecords() {
   uni.setStorageSync('studymate_pomodoro_records', JSON.stringify(todayRecords.value))
+  // 通知统计页面刷新数据
+  uni.$emit('pomodoroRecordUpdated')
 }
 
 // --- Notification: sound + popup + vibration ---
