@@ -1,7 +1,12 @@
 <template>
   <view class="page">
     <view class="header">
-      <text class="page-title">个人中心</text>
+      <view class="header-top">
+        <text class="page-title">个人中心</text>
+        <view class="settings-btn" @click="goToSettings">
+          <text class="settings-icon">⚙</text>
+        </view>
+      </view>
     </view>
 
     <view class="profile-card" v-if="userStore.user">
@@ -40,18 +45,30 @@
     </view>
 
     <view class="menu-section">
-      <view class="menu-title">学习管理</view>
+      <view class="menu-title">计划管理</view>
       <view class="menu-list">
+        <view class="menu-item" @click="goToPlanOverview">
+          <text class="menu-icon">📋</text>
+          <text class="menu-text">我的计划</text>
+          <text class="menu-text-sub" v-if="planCount > 0">{{ planCount }}个进行中</text>
+          <text class="menu-arrow">›</text>
+        </view>
         <view class="menu-item" @click="goToTargetSetup">
           <text class="menu-icon">🎯</text>
           <text class="menu-text">新建计划</text>
           <text class="menu-arrow">›</text>
         </view>
-        <view class="menu-item" @click="goToMistakeBook">
-          <text class="menu-icon">❌</text>
-          <text class="menu-text">错题本</text>
+        <view class="menu-item" @click="goToAIPlan">
+          <text class="menu-icon">🤖</text>
+          <text class="menu-text">AI 生成计划</text>
           <text class="menu-arrow">›</text>
         </view>
+      </view>
+    </view>
+
+    <view class="menu-section">
+      <view class="menu-title">学习管理</view>
+      <view class="menu-list">
         <view class="menu-item" @click="goToStats">
           <text class="menu-icon">📊</text>
           <text class="menu-text">学习统计</text>
@@ -61,25 +78,11 @@
     </view>
 
     <view class="menu-section">
-      <view class="menu-title">设置</view>
+      <view class="menu-title">其他</view>
       <view class="menu-list">
-        <view class="menu-item">
-          <text class="menu-icon">🔔</text>
-          <text class="menu-text">学习提醒</text>
-          <view class="menu-switch">
-            <view class="switch" :class="{ on: notificationEnabled }" @click="notificationEnabled = !notificationEnabled"></view>
-          </view>
-        </view>
-        <view class="menu-item">
-          <text class="menu-icon">🌙</text>
-          <text class="menu-text">夜间模式</text>
-          <view class="menu-switch">
-            <view class="switch" :class="{ on: darkMode }" @click="darkMode = !darkMode"></view>
-          </view>
-        </view>
-        <view class="menu-item" @click="showAbout">
-          <text class="menu-icon">ℹ️</text>
-          <text class="menu-text">关于我们</text>
+        <view class="menu-item" @click="goToSettings">
+          <text class="menu-icon">⚙</text>
+          <text class="menu-text">设置</text>
           <text class="menu-arrow">›</text>
         </view>
       </view>
@@ -105,8 +108,6 @@ const userStore = useUserStore()
 const planStore = usePlanStore()
 const cardStore = useCardStore()
 
-const notificationEnabled = ref(true)
-const darkMode = ref(false)
 const planCount = ref(0)
 const cardCount = ref(0)
 const totalDays = ref(0)
@@ -119,20 +120,20 @@ function goToTargetSetup() {
   uni.navigateTo({ url: '/pages/plan/target-setup' })
 }
 
-function goToMistakeBook() {
-  uni.navigateTo({ url: '/pages/review/mistake-book' })
+function goToAIPlan() {
+  uni.navigateTo({ url: '/pages/plan/ai-plan' })
+}
+
+function goToPlanOverview() {
+  uni.navigateTo({ url: '/pages/plan/plan-overview' })
 }
 
 function goToStats() {
   uni.navigateTo({ url: '/pages/statistics/stats' })
 }
 
-function showAbout() {
-  uni.showModal({
-    title: '关于 StudyMate',
-    content: 'StudyMate学习星球 - AI抗遗忘备考工具\n\n版本：1.0.0\n\n让知识进脑子而不是走过场',
-    showCancel: false
-  })
+function goToSettings() {
+  uni.navigateTo({ url: '/pages/profile/settings' })
 }
 
 async function handleLogout() {
@@ -176,11 +177,31 @@ onMounted(async () => {
   border-radius: 0 0 30px 30px;
   margin-bottom: 20px;
   
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
   .page-title {
-    display: block;
     font-size: 28px;
     font-weight: 700;
     color: #fff;
+  }
+  
+  .settings-btn {
+    width: 40px;
+    height: 40px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    .settings-icon {
+      font-size: 20px;
+      color: #fff;
+    }
   }
 }
 
@@ -323,6 +344,12 @@ onMounted(async () => {
     flex: 1;
     font-size: 16px;
     color: $ink;
+  }
+
+  .menu-text-sub {
+    font-size: 12px;
+    color: $muted;
+    margin-right: 8px;
   }
   
   .menu-arrow {
