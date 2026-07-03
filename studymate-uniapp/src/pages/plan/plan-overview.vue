@@ -112,38 +112,9 @@
             <view class="modal-close" @click="showSubjectModal = false">✕</view>
           </view>
           <scroll-view scroll-y class="modal-body">
-            <!-- Text description → AI -->
-            <view class="form-group">
-              <text class="form-label">文字描述（AI 自动匹配规划）</text>
-              <view class="input-wrapper">
-                <textarea class="textarea-field" v-model="phaseDescription" placeholder="描述你的学习进度和计划，如：数据结构还有3章没学，每天想学2小时..." />
-              </view>
-              <view class="ai-btn" @click="aiAnalyzePhase" style="margin-top: 8px;">
-                <text>🤖 AI 分析生成规划</text>
-              </view>
-            </view>
-
-            <!-- Image upload -->
-            <view class="form-group">
-              <text class="form-label">上传科目大纲图片（AI 解析）</text>
-              <view class="image-upload-area">
-                <view class="image-item" v-if="syllabusImage">
-                  <image :src="syllabusImage" mode="aspectFill" class="uploaded-image" />
-                  <view class="image-remove" @click="syllabusImage = ''">✕</view>
-                </view>
-                <view class="image-add-btn" @click="chooseSyllabusImage" v-if="!syllabusImage">
-                  <text class="add-icon">+</text>
-                  <text class="add-text">上传大纲图片</text>
-                </view>
-              </view>
-              <view class="ai-btn" @click="aiAnalyzeSyllabus" v-if="syllabusImage" style="margin-top: 8px;">
-                <text>🤖 AI 解析图片</text>
-              </view>
-            </view>
-
             <!-- Manual chapter editing -->
             <view class="form-group">
-              <text class="form-label">章节规划（可手动编辑）</text>
+              <text class="form-label">章节规划</text>
               <view class="chapter-list">
                 <view class="chapter-item" v-for="(ch, ci) in editingChapters" :key="ci">
                   <view class="chapter-row">
@@ -238,9 +209,6 @@ const showAddSubject = ref(false)
 const showPlanSwitcher = ref(false)
 const editingSubjectIndex = ref(-1)
 const editingChapters = ref([])
-const phaseDescription = ref('')
-const syllabusImage = ref('')
-const syllabusImageBase64 = ref('')
 const newSubject = ref({ name: '', target_score: '' })
 
 const editingSubject = computed(() => {
@@ -296,94 +264,7 @@ function editSubjectPhase(idx) {
   editingSubjectIndex.value = idx
   const subj = subjects.value[idx]
   editingChapters.value = JSON.parse(JSON.stringify(subj.chapters || []))
-  phaseDescription.value = ''
-  syllabusImage.value = ''
-  syllabusImageBase64.value = ''
   showSubjectModal.value = true
-}
-
-async function aiAnalyzePhase() {
-  if (!phaseDescription.value.trim()) return
-  uni.showLoading({ title: 'AI 分析中...' })
-  try {
-    const result = await api.aiAnalyzeSubjectPhase(phaseDescription.value, editingSubject.value?.name || '')
-    if (result.chapters) {
-      editingChapters.value = result.chapters.map(c => ({
-        name: c.name,
-        duration: c.daily_duration || 30
-      }))
-    }
-    uni.showToast({ title: '分析完成', icon: 'success' })
-  } catch (e) {
-    uni.showToast({ title: '分析失败', icon: 'none' })
-  } finally {
-    uni.hideLoading()
-  }
-}
-
-function chooseSyllabusImage() {
-  uni.chooseImage({
-    count: 1,
-    sizeType: ['compressed'],
-    sourceType: ['album', 'camera'],
-    success: (res) => {
-      const tempPath = res.tempFilePaths[0]
-      syllabusImage.value = tempPath
-      // Convert image to base64 for AI analysis
-      // #ifdef H5
-      const img = new Image()
-      img.crossOrigin = 'anonymous'
-      img.onload = () => {
-        const canvas = document.createElement('canvas')
-        const maxSize = 1024
-        let { width, height } = img
-        if (width > maxSize || height > maxSize) {
-          const ratio = Math.min(maxSize / width, maxSize / height)
-          width = Math.round(width * ratio)
-          height = Math.round(height * ratio)
-        }
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-        ctx.drawImage(img, 0, 0, width, height)
-        syllabusImageBase64.value = canvas.toDataURL('image/jpeg', 0.8)
-      }
-      img.src = tempPath
-      // #endif
-      // #ifndef H5
-      uni.getFileSystemManager().readFile({
-        filePath: tempPath,
-        encoding: 'base64',
-        success: (data) => {
-          syllabusImageBase64.value = `data:image/jpeg;base64,${data.data}`
-        }
-      })
-      // #endif
-    }
-  })
-}
-
-async function aiAnalyzeSyllabus() {
-  if (!syllabusImage.value) return
-  if (!syllabusImageBase64.value) {
-    uni.showToast({ title: '图片正在处理中，请稍等', icon: 'none' })
-    return
-  }
-  uni.showLoading({ title: '千问AI 解析图片中...' })
-  try {
-    const result = await api.aiAnalyzeSyllabus(syllabusImageBase64.value, editingSubject.value?.name || '')
-    if (result.chapters) {
-      editingChapters.value = result.chapters.map(c => ({
-        name: c.name,
-        duration: c.estimated_days ? Math.round(c.estimated_days * 30) : 30
-      }))
-    }
-    uni.showToast({ title: '解析完成', icon: 'success' })
-  } catch (e) {
-    uni.showToast({ title: e.message || '解析失败', icon: 'none' })
-  } finally {
-    uni.hideLoading()
-  }
 }
 
 async function saveSubjectPhase() {
@@ -697,13 +578,6 @@ onMounted(async () => {
 .chapter-input { flex: 1; padding: 8px 12px; border: 1px solid #e8ece9; border-radius: 8px; font-size: 14px; background: #fff; &.short { flex: 0 0 80px; } }
 .chapter-remove { font-size: 16px; color: #ef5350; padding: 4px; }
 .add-chapter-btn { padding: 10px; text-align: center; border: 1.5px dashed #d0d5d2; border-radius: 10px; font-size: 14px; color: $accent; }
-.image-upload-area { display: flex; gap: 10px; flex-wrap: wrap; }
-.image-item { position: relative; width: 80px; height: 80px; }
-.uploaded-image { width: 80px; height: 80px; border-radius: 10px; }
-.image-remove { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: #ef5350; color: #fff; font-size: 12px; display: flex; align-items: center; justify-content: center; }
-.image-add-btn { width: 80px; height: 80px; border-radius: 10px; border: 2px dashed #d0d5d2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: #fafafa; }
-.add-icon { font-size: 24px; color: #999; }
-.add-text { font-size: 11px; color: #999; }
 
 .bottom-space { height: 60px; }
 </style>

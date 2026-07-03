@@ -4,122 +4,178 @@
       <view class="back-btn" @click="goBack">
         <text class="back-icon">←</text>
       </view>
-      <text class="page-title">AI 生成计划</text>
+      <text class="page-title">AI 智能规划</text>
       <view style="width: 40px;"></view>
     </view>
 
-    <view class="form-card">
-      <text class="form-desc">告诉 AI 你的考试目标，它将为你生成科学的学习计划</text>
+    <!-- Tab 切换 -->
+    <view class="tabs">
+      <view class="tab-item" :class="{ active: activeTab === 'plan' }" @click="activeTab = 'plan'">
+        <text class="tab-text">📋 整体规划对话</text>
+      </view>
+      <view class="tab-item" :class="{ active: activeTab === 'syllabus' }" @click="activeTab = 'syllabus'">
+        <text class="tab-text">📖 科目框架分析</text>
+      </view>
+    </view>
 
-      <view class="form-group">
-        <text class="form-label">考试名称</text>
-        <view class="input-wrapper">
-          <input class="input-field" v-model="form.examName" placeholder="如：2025年考研" />
+    <!-- 整体规划对话 -->
+    <view class="chat-section" v-if="activeTab === 'plan'">
+      <scroll-view scroll-y class="chat-messages" :scroll-into-view="scrollToMsg">
+        <view class="msg-item ai" v-for="(msg, idx) in planMessages" :key="idx" :id="'msg-' + idx">
+          <view class="msg-avatar ai">🤖</view>
+          <view class="msg-bubble ai">
+            <text class="msg-text">{{ msg.text }}</text>
+            <view class="msg-actions" v-if="msg.type === 'result' && !msg.confirmed">
+              <view class="msg-btn secondary" @click="regeneratePlan">重新生成</view>
+              <view class="msg-btn primary" @click="confirmPlan">确认应用此计划</view>
+            </view>
+            <view class="msg-confirmed" v-if="msg.confirmed">
+              <text class="confirmed-text">✓ 已应用到计划</text>
+            </view>
+          </view>
+        </view>
+        <view class="msg-item user" v-for="(msg, idx) in userPlanMessages" :key="'u-' + idx">
+          <view class="msg-bubble user">
+            <text class="msg-text">{{ msg.text }}</text>
+          </view>
+          <view class="msg-avatar user">👤</view>
+        </view>
+        <view class="msg-item ai" v-if="planLoading">
+          <view class="msg-avatar ai">🤖</view>
+          <view class="msg-bubble ai loading">
+            <text class="msg-text">AI 正在思考中...</text>
+          </view>
+        </view>
+      </scroll-view>
+
+      <view class="chat-input-area">
+        <view class="quick-tips" v-if="planMessages.length <= 1">
+          <view class="tip-item" @click="quickFill('考研408计算机，还有150天，每天8小时')">
+            <text>考研408，150天，每天8小时</text>
+          </view>
+          <view class="tip-item" @click="quickFill('考公行测申论，还有90天，每天6小时')">
+            <text>考公，90天，每天6小时</text>
+          </view>
+        </view>
+        <view class="input-row">
+          <input class="chat-input" v-model="planInput" placeholder="告诉我你的考试目标，AI 帮你规划..." @confirm="sendPlanMessage" />
+          <view class="send-btn" :class="{ disabled: !planInput.trim() || planLoading }" @click="sendPlanMessage">
+            <text class="send-icon">➤</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 科目框架分析 -->
+    <view class="syllabus-section" v-if="activeTab === 'syllabus'">
+      <view class="subject-selector">
+        <text class="selector-label">选择科目</text>
+        <view class="subject-options">
+          <view
+            class="subject-option"
+            :class="{ active: currentSubject === subj }"
+            v-for="subj in subjectList"
+            :key="subj"
+            @click="currentSubject = subj"
+          >
+            <text>{{ subj }}</text>
+          </view>
+          <view class="subject-option add" @click="showAddSubject = true">
+            <text>+ 添加</text>
+          </view>
         </view>
       </view>
 
-      <view class="form-group">
-        <text class="form-label">考试日期</text>
-        <view class="input-wrapper">
-          <picker mode="date" :value="form.examDate" @change="onDateChange">
-            <text class="picker-text" :class="{ placeholder: !form.examDate }">{{ form.examDate || '请选择考试日期' }}</text>
-          </picker>
+      <!-- 上传区域 -->
+      <view class="upload-area">
+        <view class="image-upload-box" v-if="!syllabusImage" @click="chooseSyllabusImage">
+          <text class="upload-icon">📷</text>
+          <text class="upload-text">上传科目大纲/目录图片</text>
+          <text class="upload-hint">AI 将自动解析章节结构</text>
         </view>
-      </view>
-
-      <view class="form-group">
-        <text class="form-label">考试科目（逗号分隔）</text>
-        <view class="input-wrapper">
-          <input class="input-field" v-model="form.subjects" placeholder="如：数学, 英语, 政治, 专业课" />
-        </view>
-      </view>
-
-      <!-- AI 分析科目框架图入口 -->
-      <view class="syllabus-section">
-        <view class="syllabus-header">
-          <text class="syllabus-title">🤖 AI 分析科目框架图</text>
-          <text class="syllabus-desc">上传科目大纲/目录图片，AI 自动解析章节结构</text>
-        </view>
-        <view class="image-upload-area">
-          <view class="image-item" v-if="syllabusImage">
-            <image :src="syllabusImage" mode="aspectFill" class="uploaded-image" />
-            <view class="image-remove" @click="removeSyllabusImage">✕</view>
-          </view>
-          <view class="image-add-btn" @click="chooseSyllabusImage" v-if="!syllabusImage">
-            <text class="add-icon">+</text>
-            <text class="add-text">上传大纲图片</text>
-          </view>
-        </view>
-        <view class="syllabus-actions">
-          <view class="ai-btn" :class="{ disabled: !syllabusImage || analyzing }" @click="aiAnalyzeSyllabus">
-            <text v-if="!analyzing">🔍 AI 解析图片</text>
-            <text v-else>AI 解析中...</text>
-          </view>
-        </view>
-        <view class="syllabus-result" v-if="syllabusResult">
-          <text class="result-label">解析结果：</text>
-          <view class="chapter-tags">
-            <view class="chapter-tag" v-for="(ch, idx) in syllabusResult.chapters" :key="idx">
-              {{ ch.name }}
+        <view class="image-preview" v-else>
+          <image :src="syllabusImage" mode="aspectFit" class="preview-image" />
+          <view class="image-actions">
+            <view class="action-btn" @click="chooseSyllabusImage">
+              <text>重新上传</text>
+            </view>
+            <view class="action-btn danger" @click="removeSyllabusImage">
+              <text>删除</text>
             </view>
           </view>
         </view>
       </view>
 
-      <view class="form-group">
-        <text class="form-label">目标分数（选填，格式：科目:分数）</text>
-        <view class="input-wrapper">
-          <textarea class="textarea-field" v-model="form.targetScores" placeholder="如：数学:130, 英语:80, 政治:75" />
-        </view>
+      <!-- 分析按钮 -->
+      <view class="analyze-btn" :class="{ disabled: !syllabusImage || syllabusLoading }" @click="analyzeSyllabus">
+        <text v-if="!syllabusLoading">🔍 AI 解析科目框架</text>
+        <text v-else>AI 解析中...</text>
       </view>
 
-      <view class="form-group">
-        <text class="form-label">每日可用学习时间（小时）</text>
-        <view class="input-wrapper">
-          <input class="input-field" v-model="form.dailyHours" type="number" placeholder="8" />
+      <!-- 分析结果 & 对话 -->
+      <view class="syllabus-chat" v-if="syllabusResult">
+        <view class="result-card">
+          <view class="result-header">
+            <text class="result-title">📊 章节分析结果</text>
+            <text class="result-subject">{{ currentSubject }}</text>
+          </view>
+          <view class="chapter-list">
+            <view class="chapter-item" v-for="(ch, idx) in syllabusChapters" :key="idx">
+              <view class="chapter-info">
+                <text class="chapter-name">{{ idx + 1 }}. {{ ch.name }}</text>
+                <text class="chapter-desc" v-if="ch.description">{{ ch.description }}</text>
+              </view>
+              <view class="chapter-duration">
+                <text class="duration-value">{{ ch.daily_duration || 30 }}</text>
+                <text class="duration-unit">分钟/天</text>
+              </view>
+            </view>
+          </view>
         </view>
-      </view>
 
-      <view class="form-group">
-        <text class="form-label">薄弱环节（选填）</text>
-        <view class="input-wrapper">
-          <input class="input-field" v-model="form.weakPoints" placeholder="如：英语阅读, 数学大题" />
+        <!-- 对话区域 -->
+        <scroll-view scroll-y class="chat-area">
+          <view class="chat-msg ai" v-for="(msg, idx) in syllabusMessages" :key="idx">
+            <text class="msg-role">🤖 AI</text>
+            <text class="msg-content">{{ msg.text }}</text>
+          </view>
+          <view class="chat-msg ai" v-if="syllabusChatLoading">
+            <text class="msg-role">🤖 AI</text>
+            <text class="msg-content">正在思考中...</text>
+          </view>
+        </scroll-view>
+
+        <view class="chat-input-row">
+          <input class="chat-input" v-model="syllabusInput" placeholder="对章节安排有疑问？问我..." @confirm="sendSyllabusMessage" />
+          <view class="send-btn small" :class="{ disabled: !syllabusInput.trim() || syllabusChatLoading }" @click="sendSyllabusMessage">
+            <text>发送</text>
+          </view>
         </view>
-      </view>
 
-      <view class="form-group">
-        <text class="form-label">当前阶段</text>
-        <view class="phase-options">
-          <view class="phase-option" :class="{ active: form.phase === '基础阶段' }" @click="form.phase = '基础阶段'">基础阶段</view>
-          <view class="phase-option" :class="{ active: form.phase === '强化阶段' }" @click="form.phase = '强化阶段'">强化阶段</view>
-          <view class="phase-option" :class="{ active: form.phase === '冲刺阶段' }" @click="form.phase = '冲刺阶段'">冲刺阶段</view>
+        <!-- 确认按钮 -->
+        <view class="confirm-section">
+          <view class="confirm-btn" @click="confirmSyllabusToTasks">
+            <text>✓ 确认并写入每日任务</text>
+          </view>
         </view>
-      </view>
-
-      <view class="form-group">
-        <text class="form-label">额外说明（选填）</text>
-        <view class="input-wrapper">
-          <textarea class="textarea-field" v-model="form.notes" placeholder="其他特殊要求..." />
-        </view>
-      </view>
-
-      <view class="generate-btn" @click="generatePlan" :class="{ loading: generating }">
-        <text v-if="!generating">🤖 开始生成</text>
-        <text v-else>AI 正在制定计划...</text>
       </view>
     </view>
 
-    <view class="result-card" v-if="generatedPlan">
-      <text class="result-title">生成结果</text>
-      <view class="result-content">
-        <text class="result-text">{{ generatedPlan }}</text>
-      </view>
-      <view class="result-actions">
-        <view class="result-btn secondary" @click="regenerate">
-          <text>重新生成</text>
+    <!-- 添加科目弹窗 -->
+    <view class="modal-overlay" v-if="showAddSubject" @click="showAddSubject = false">
+      <view class="modal-content small" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">添加科目</text>
+          <view class="modal-close" @click="showAddSubject = false">✕</view>
         </view>
-        <view class="result-btn primary" @click="applyPlan">
-          <text>应用此计划</text>
+        <view class="modal-body">
+          <view class="input-wrapper">
+            <input class="input-field" v-model="newSubjectName" placeholder="输入科目名称" />
+          </view>
+        </view>
+        <view class="modal-footer">
+          <view class="cancel-btn" @click="showAddSubject = false">取消</view>
+          <view class="submit-btn" @click="addSubject">添加</view>
         </view>
       </view>
     </view>
@@ -129,7 +185,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, nextTick } from 'vue'
 import { usePlanStore } from '@/stores/plan'
 import { useUserStore } from '@/stores/user'
 import * as api from '@/api/client'
@@ -137,31 +193,153 @@ import * as api from '@/api/client'
 const planStore = usePlanStore()
 const userStore = useUserStore()
 
-const generating = ref(false)
-const generatedPlan = ref(null)
-const generatedPlanData = ref(null)
-const syllabusImage = ref('')
-const syllabusImageBase64 = ref('')
-const syllabusResult = ref(null)
-const analyzing = ref(false)
+const activeTab = ref('plan')
+const scrollToMsg = ref('')
+const showAddSubject = ref(false)
+const newSubjectName = ref('')
 
-const form = reactive({
-  examName: '',
-  examDate: '',
-  subjects: '',
-  targetScores: '',
-  dailyHours: 8,
-  weakPoints: '',
-  phase: '基础阶段',
-  notes: ''
-})
+// ========== 整体规划对话 ==========
+const planInput = ref('')
+const planLoading = ref(false)
+const planConfirmed = ref(false)
+const planMessages = ref([
+  { text: '你好！我是 AI 学习规划助手。告诉我你的考试目标（考试名称、科目、剩余时间、每天学习时间等），我来帮你制定科学的学习计划。', type: 'intro', confirmed: false }
+])
+const userPlanMessages = ref([])
+const currentPlanResult = ref(null)
 
-function onDateChange(e) {
-  form.examDate = e.detail.value
+function quickFill(text) {
+  planInput.value = text
 }
 
-function goBack() {
-  uni.navigateBack()
+async function sendPlanMessage() {
+  if (!planInput.value.trim() || planLoading.value) return
+
+  const userText = planInput.value.trim()
+  userPlanMessages.value.push({ text: userText })
+  planInput.value = ''
+  planLoading.value = true
+
+  await scrollToBottom()
+
+  try {
+    const result = await api.aiGeneratePlan({
+      description: userText,
+      subjects: [],
+      daily_study_time: 480,
+      study_phase: '基础阶段',
+      exam_name: '',
+      exam_date: ''
+    })
+
+    currentPlanResult.value = result
+    const planText = formatPlanText(result)
+
+    planMessages.value.push({
+      text: planText,
+      type: 'result',
+      confirmed: false
+    })
+  } catch (e) {
+    planMessages.value.push({
+      text: '抱歉，生成计划失败了，请重试。',
+      type: 'error',
+      confirmed: false
+    })
+  } finally {
+    planLoading.value = false
+    await scrollToBottom()
+  }
+}
+
+function formatPlanText(result) {
+  let text = ''
+  const plan = result.plan || result
+  if (plan.overview) {
+    text += `📋 总体规划：\n${plan.overview}\n\n`
+  }
+  if (plan.phases && plan.phases.length > 0) {
+    text += '📅 阶段安排：\n'
+    plan.phases.forEach((p, i) => {
+      text += `  ${i + 1}. ${p.name}：${p.description}\n`
+    })
+    text += '\n'
+  }
+  if (plan.daily_plan) {
+    text += `⏰ 每日安排：\n${plan.daily_plan}\n\n`
+  }
+  if (plan.tips) {
+    text += `💡 学习建议：\n${plan.tips}`
+  }
+  if (!text) {
+    text = JSON.stringify(result, null, 2)
+  }
+  text += '\n\n你觉得这个计划怎么样？可以继续和我对话调整细节，或者确认应用此计划。'
+  return text
+}
+
+function regeneratePlan() {
+  if (userPlanMessages.value.length > 0) {
+    planMessages.value = planMessages.value.slice(0, 1)
+    userPlanMessages.value = []
+    currentPlanResult.value = null
+  }
+}
+
+async function confirmPlan() {
+  uni.showLoading({ title: '创建计划中...' })
+  try {
+    const data = {
+      exam_name: 'AI 生成计划',
+      exam_date: new Date(Date.now() + 150 * 24 * 3600 * 1000).toISOString().split('T')[0],
+      daily_study_time: 480,
+      weak_points: [],
+      study_phase: '基础阶段',
+      notes: '',
+      ai_plan: currentPlanResult.value,
+      subjects: [],
+      subject_phases: {}
+    }
+    const result = await planStore.createPlan(data)
+    if (result.success) {
+      planMessages.value[planMessages.value.length - 1].confirmed = true
+      planConfirmed.value = true
+      uni.showToast({ title: '计划创建成功！', icon: 'success' })
+      setTimeout(() => {
+        uni.switchTab({ url: '/pages/index/index' })
+      }, 1500)
+    }
+  } catch (e) {
+    uni.showToast({ title: '创建失败', icon: 'none' })
+  } finally {
+    uni.hideLoading()
+  }
+}
+
+async function scrollToBottom() {
+  await nextTick()
+  const total = planMessages.value.length + userPlanMessages.value.length
+  scrollToMsg.value = 'msg-' + (total - 1)
+}
+
+// ========== 科目框架分析 ==========
+const subjectList = ref(['数据结构', '操作系统', '计算机网络', '数学', '英语'])
+const currentSubject = ref('数据结构')
+const syllabusImage = ref('')
+const syllabusImageBase64 = ref('')
+const syllabusLoading = ref(false)
+const syllabusChatLoading = ref(false)
+const syllabusResult = ref(null)
+const syllabusChapters = ref([])
+const syllabusInput = ref('')
+const syllabusMessages = ref([])
+
+function addSubject() {
+  if (!newSubjectName.value.trim()) return
+  subjectList.value.push(newSubjectName.value.trim())
+  currentSubject.value = newSubjectName.value.trim()
+  newSubjectName.value = ''
+  showAddSubject.value = false
 }
 
 function chooseSyllabusImage() {
@@ -173,6 +351,8 @@ function chooseSyllabusImage() {
       const tempPath = res.tempFilePaths[0]
       syllabusImage.value = tempPath
       syllabusResult.value = null
+      syllabusChapters.value = []
+      syllabusMessages.value = []
       // #ifdef H5
       const img = new Image()
       img.crossOrigin = 'anonymous'
@@ -210,147 +390,148 @@ function removeSyllabusImage() {
   syllabusImage.value = ''
   syllabusImageBase64.value = ''
   syllabusResult.value = null
+  syllabusChapters.value = []
+  syllabusMessages.value = []
 }
 
-async function aiAnalyzeSyllabus() {
-  if (!syllabusImage.value) return
+async function analyzeSyllabus() {
+  if (!syllabusImage.value || syllabusLoading.value) return
   if (!syllabusImageBase64.value) {
-    uni.showToast({ title: '图片正在处理中，请稍等', icon: 'none' })
+    uni.showToast({ title: '图片处理中，请稍等', icon: 'none' })
     return
   }
 
-  analyzing.value = true
+  syllabusLoading.value = true
   uni.showLoading({ title: 'AI 解析中...' })
 
   try {
-    const firstSubject = form.subjects.split(',')[0]?.trim() || ''
-    const result = await api.aiAnalyzeSyllabus(syllabusImageBase64.value, firstSubject)
+    const result = await api.aiAnalyzeSyllabus(syllabusImageBase64.value, currentSubject.value)
     syllabusResult.value = result
-    uni.showToast({ title: '解析成功', icon: 'success' })
+    if (result.chapters) {
+      syllabusChapters.value = result.chapters.map(c => ({
+        name: c.name,
+        description: c.description || '',
+        daily_duration: c.daily_duration || c.estimated_days * 30 || 30
+      }))
+    }
+    syllabusMessages.value = [{
+      text: `我已解析完「${currentSubject.value}」的大纲，共识别出 ${syllabusChapters.value.length} 个章节，并为每个章节规划了每日学习时长。你觉得这个安排合理吗？有任何问题都可以问我，比如调整某章节的时长、增加/删除章节等。`
+    }]
+    uni.showToast({ title: '解析完成', icon: 'success' })
   } catch (e) {
-    console.error('Syllabus analysis error:', e)
-    uni.showToast({ title: e.message || '解析失败，请重试', icon: 'none' })
+    uni.showToast({ title: e.message || '解析失败', icon: 'none' })
   } finally {
-    analyzing.value = false
+    syllabusLoading.value = false
     uni.hideLoading()
   }
 }
 
-async function generatePlan() {
-  if (!form.examName || !form.examDate || !form.subjects) {
-    uni.showToast({ title: '请填写考试名称、日期和科目', icon: 'none' })
+async function sendSyllabusMessage() {
+  if (!syllabusInput.value.trim() || syllabusChatLoading.value) return
+  const userText = syllabusInput.value.trim()
+  syllabusInput.value = ''
+  syllabusChatLoading.value = true
+
+  try {
+    const result = await api.aiAnalyzeSubjectPhase(
+      `${userText}\n\n当前章节安排：${syllabusChapters.value.map(c => c.name + '(' + c.daily_duration + '分钟/天)').join('，')}`,
+      currentSubject.value
+    )
+
+    if (result.chapters) {
+      syllabusChapters.value = result.chapters.map(c => ({
+        name: c.name,
+        description: c.description || '',
+        daily_duration: c.daily_duration || 30
+      }))
+    }
+
+    syllabusMessages.value.push({
+      text: result.description || '好的，我已经根据你的建议调整了章节安排。你看看还有什么需要调整的吗？'
+    })
+  } catch (e) {
+    syllabusMessages.value.push({
+      text: '抱歉，处理失败了，请重试。'
+    })
+  } finally {
+    syllabusChatLoading.value = false
+  }
+}
+
+async function confirmSyllabusToTasks() {
+  if (!planStore.currentPlan) {
+    uni.showToast({ title: '请先创建学习计划', icon: 'none' })
+    return
+  }
+  if (syllabusChapters.value.length === 0) {
+    uni.showToast({ title: '没有章节可添加', icon: 'none' })
     return
   }
 
-  generating.value = true
-  uni.showLoading({ title: 'AI 生成中...' })
-
-  try {
-    const dailyStudyTime = parseInt(form.dailyHours) * 60
-    const result = await api.aiGeneratePlan({
-      exam_name: form.examName,
-      exam_date: form.examDate,
-      daily_study_time: dailyStudyTime,
-      subjects: form.subjects.split(',').map(s => s.trim()).filter(Boolean),
-      target_scores: form.targetScores,
-      weak_points: form.weakPoints ? form.weakPoints.split(',').map(s => s.trim()).filter(Boolean) : [],
-      study_phase: form.phase,
-      notes: form.notes
-    })
-
-    generatedPlanData.value = result
-    generatedPlan.value = formatPlan(result)
-    uni.showToast({ title: '生成成功', icon: 'success' })
-  } catch (e) {
-    console.error('AI plan generation error:', e)
-    uni.showToast({ title: '生成失败，请重试', icon: 'none' })
-  } finally {
-    generating.value = false
-    uni.hideLoading()
-  }
+  uni.showModal({
+    title: '确认添加',
+    content: `将「${currentSubject.value}」的 ${syllabusChapters.value.length} 个章节添加到今日任务？`,
+    success: async (res) => {
+      if (res.confirm) {
+        uni.showLoading({ title: '添加中...' })
+        const today = new Date().toISOString().split('T')[0]
+        let added = 0
+        for (const ch of syllabusChapters.value) {
+          try {
+            await api.createTask({
+              plan_id: planStore.currentPlan.id,
+              date: today,
+              type: 'new_study',
+              subject: currentSubject.value,
+              content: ch.name,
+              duration: ch.daily_duration || 30,
+              status: 'pending'
+            })
+            added++
+          } catch (e) { /* skip */ }
+        }
+        uni.hideLoading()
+        uni.showToast({ title: `已添加 ${added} 个任务`, icon: 'success' })
+      }
+    }
+  })
 }
 
-function formatPlan(result) {
-  let text = ''
-  if (result.plan) {
-    const plan = result.plan
-    if (plan.overview) text += `📋 总体规划：${plan.overview}\n\n`
-    if (plan.phases && plan.phases.length > 0) {
-      text += '📅 阶段规划：\n'
-      plan.phases.forEach((p, i) => {
-        text += `${i + 1}. ${p.name}：${p.description}\n`
-      })
-      text += '\n'
-    }
-    if (plan.daily_plan) text += `📝 每日安排：${plan.daily_plan}\n\n`
-    if (plan.tips) text += `💡 学习建议：${plan.tips}`
-  } else {
-    text = JSON.stringify(result, null, 2)
-  }
-  return text
-}
-
-function regenerate() {
-  generatedPlan.value = null
-  generatedPlanData.value = null
-}
-
-async function applyPlan() {
-  if (!generatedPlanData.value) return
-
-  uni.showLoading({ title: '创建计划中...' })
-  try {
-    const dailyStudyTime = parseInt(form.dailyHours) * 60
-    const data = {
-      exam_name: form.examName,
-      exam_date: form.examDate,
-      daily_study_time: dailyStudyTime,
-      weak_points: form.weakPoints ? form.weakPoints.split(',').map(s => s.trim()).filter(Boolean) : [],
-      study_phase: form.phase,
-      notes: form.notes,
-      ai_plan: generatedPlanData.value,
-      subjects: form.subjects.split(',').map(s => ({ name: s.trim(), target_score: '', chapters: [] })).filter(s => s.name),
-      subject_phases: {}
-    }
-
-    const result = await planStore.createPlan(data)
-    if (result.success) {
-      uni.showToast({ title: '计划创建成功！', icon: 'success' })
-      setTimeout(() => {
-        uni.switchTab({ url: '/pages/index/index' })
-      }, 1000)
-    }
-  } catch (e) {
-    console.error('Create plan error:', e)
-    uni.showToast({ title: '创建失败', icon: 'none' })
-  } finally {
-    uni.hideLoading()
-  }
+function goBack() {
+  uni.navigateBack()
 }
 </script>
 
 <style lang="scss" scoped>
+.page {
+  min-height: 100vh;
+  background: $bg2;
+  display: flex;
+  flex-direction: column;
+}
+
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 60px 0 20px;
-  
+  padding: 60px 20px 16px;
+  background: $bg2;
+
   .back-btn {
     width: 40px;
     height: 40px;
-    background: $bg2;
+    background: #fff;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    
+
     .back-icon {
       font-size: 20px;
       color: $ink;
     }
   }
-  
+
   .page-title {
     font-size: 20px;
     font-weight: 600;
@@ -358,38 +539,570 @@ async function applyPlan() {
   }
 }
 
-.form-card {
-  background: $bg2;
-  border-radius: 20px;
-  padding: 24px;
-  border: 1px solid $rule;
-  margin-bottom: 20px;
+// Tabs
+.tabs {
+  display: flex;
+  padding: 0 16px 12px;
+  gap: 8px;
+
+  .tab-item {
+    flex: 1;
+    padding: 12px;
+    background: #fff;
+    border-radius: 12px;
+    text-align: center;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+
+    &.active {
+      background: $accent;
+      border-color: $accent;
+
+      .tab-text {
+        color: #fff;
+        font-weight: 600;
+      }
+    }
+
+    .tab-text {
+      font-size: 14px;
+      color: $muted;
+    }
+  }
 }
 
-.form-desc {
-  display: block;
-  font-size: 14px;
-  color: $muted;
-  margin-bottom: 20px;
-  line-height: 1.6;
+// ===== 整体规划对话 =====
+.chat-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0 16px;
 }
 
-.form-group {
+.chat-messages {
+  flex: 1;
+  height: 0;
+  padding: 8px 0;
+}
+
+.msg-item {
+  display: flex;
+  gap: 10px;
   margin-bottom: 16px;
+  align-items: flex-start;
+
+  &.user {
+    flex-direction: row-reverse;
+  }
+
+  .msg-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+
+    &.ai {
+      background: #e8f5e9;
+    }
+
+    &.user {
+      background: #e3f2fd;
+    }
+  }
+
+  .msg-bubble {
+    max-width: 75%;
+    padding: 12px 16px;
+    border-radius: 14px;
+    line-height: 1.6;
+
+    &.ai {
+      background: #fff;
+      border-top-left-radius: 4px;
+
+      .msg-text {
+        font-size: 14px;
+        color: $ink;
+        white-space: pre-wrap;
+      }
+
+      &.loading {
+        .msg-text {
+          color: $muted;
+          font-style: italic;
+        }
+      }
+    }
+
+    &.user {
+      background: $accent;
+      border-top-right-radius: 4px;
+
+      .msg-text {
+        font-size: 14px;
+        color: #fff;
+      }
+    }
+
+    .msg-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid $rule;
+    }
+
+    .msg-btn {
+      flex: 1;
+      padding: 8px;
+      text-align: center;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+
+      &.primary {
+        background: $accent;
+        color: #fff;
+      }
+
+      &.secondary {
+        background: $soft;
+        color: $ink;
+      }
+    }
+
+    .msg-confirmed {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid $rule;
+
+      .confirmed-text {
+        font-size: 13px;
+        color: $accent;
+        font-weight: 500;
+      }
+    }
+  }
 }
 
-.form-label {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
+.chat-input-area {
+  padding: 12px 0 20px;
+  background: $bg2;
+}
+
+.quick-tips {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  overflow-x: auto;
+
+  .tip-item {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    background: #fff;
+    border-radius: 20px;
+    font-size: 12px;
+    color: $accent;
+    border: 1px solid $accent;
+  }
+}
+
+.input-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: #fff;
+  border-radius: 24px;
+  padding: 6px 6px 6px 16px;
+}
+
+.chat-input {
+  flex: 1;
+  font-size: 15px;
   color: $ink;
-  margin-bottom: 8px;
+  border: none;
+  outline: none;
+  background: transparent;
+  height: 40px;
+}
+
+.send-btn {
+  width: 40px;
+  height: 40px;
+  background: $accent;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &.disabled {
+    opacity: 0.5;
+  }
+
+  .send-icon {
+    color: #fff;
+    font-size: 16px;
+  }
+
+  &.small {
+    width: auto;
+    padding: 0 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    color: #fff;
+  }
+}
+
+// ===== 科目框架分析 =====
+.syllabus-section {
+  flex: 1;
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.subject-selector {
+  margin-bottom: 16px;
+
+  .selector-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: $ink;
+    margin-bottom: 10px;
+  }
+
+  .subject-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    .subject-option {
+      padding: 8px 14px;
+      background: #fff;
+      border-radius: 20px;
+      font-size: 13px;
+      color: $muted;
+      border: 1px solid $rule;
+
+      &.active {
+        background: $accent;
+        color: #fff;
+        border-color: $accent;
+      }
+
+      &.add {
+        border-style: dashed;
+        color: $accent;
+      }
+    }
+  }
+}
+
+.upload-area {
+  margin-bottom: 16px;
+
+  .image-upload-box {
+    background: #fff;
+    border: 2px dashed $accent;
+    border-radius: 16px;
+    padding: 40px 20px;
+    text-align: center;
+
+    .upload-icon {
+      display: block;
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    .upload-text {
+      display: block;
+      font-size: 16px;
+      font-weight: 600;
+      color: $accent;
+      margin-bottom: 4px;
+    }
+
+    .upload-hint {
+      font-size: 13px;
+      color: $muted;
+    }
+  }
+
+  .image-preview {
+    background: #fff;
+    border-radius: 16px;
+    padding: 12px;
+
+    .preview-image {
+      width: 100%;
+      height: 200px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+    }
+
+    .image-actions {
+      display: flex;
+      gap: 10px;
+
+      .action-btn {
+        flex: 1;
+        padding: 10px;
+        text-align: center;
+        border-radius: 10px;
+        background: $soft;
+        font-size: 13px;
+        color: $ink;
+
+        &.danger {
+          color: #ef5350;
+        }
+      }
+    }
+  }
+}
+
+.analyze-btn {
+  padding: 14px;
+  background: $accent;
+  border-radius: 14px;
+  text-align: center;
+  font-size: 15px;
+  color: #fff;
+  font-weight: 600;
+  margin-bottom: 16px;
+
+  &.disabled {
+    opacity: 0.5;
+  }
+}
+
+.syllabus-chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.result-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+
+  .result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+
+    .result-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: $ink;
+    }
+
+    .result-subject {
+      font-size: 12px;
+      padding: 4px 10px;
+      background: $soft;
+      color: $accent;
+      border-radius: 12px;
+    }
+  }
+
+  .chapter-list {
+    max-height: 200px;
+    overflow-y: auto;
+
+    .chapter-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid $rule;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      .chapter-info {
+        flex: 1;
+
+        .chapter-name {
+          display: block;
+          font-size: 14px;
+          font-weight: 500;
+          color: $ink;
+          margin-bottom: 2px;
+        }
+
+        .chapter-desc {
+          font-size: 12px;
+          color: $muted;
+        }
+      }
+
+      .chapter-duration {
+        text-align: right;
+        margin-left: 12px;
+
+        .duration-value {
+          display: block;
+          font-size: 18px;
+          font-weight: 700;
+          color: $accent;
+        }
+
+        .duration-unit {
+          font-size: 11px;
+          color: $muted;
+        }
+      }
+    }
+  }
+}
+
+.chat-area {
+  flex: 1;
+  height: 0;
+  background: #fff;
+  border-radius: 16px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.chat-msg {
+  margin-bottom: 12px;
+
+  .msg-role {
+    display: block;
+    font-size: 12px;
+    color: $accent;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+
+  .msg-content {
+    font-size: 13px;
+    color: $ink;
+    line-height: 1.6;
+    background: $soft;
+    padding: 10px 12px;
+    border-radius: 10px;
+    display: inline-block;
+  }
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+
+  .chat-input {
+    flex: 1;
+    height: 40px;
+    padding: 0 16px;
+    background: #fff;
+    border-radius: 20px;
+    font-size: 14px;
+    color: $ink;
+    border: 1px solid $rule;
+  }
+}
+
+.confirm-section {
+  .confirm-btn {
+    padding: 14px;
+    background: #4caf50;
+    border-radius: 14px;
+    text-align: center;
+    font-size: 15px;
+    color: #fff;
+    font-weight: 600;
+  }
+}
+
+// Modal
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background: #fff;
+  border-radius: 20px;
+  width: 85%;
+  max-width: 400px;
+
+  &.small {
+    width: 80%;
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid $rule;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: $ink;
+}
+
+.modal-close {
+  font-size: 20px;
+  color: $muted;
+  padding: 4px;
+}
+
+.modal-body {
+  padding: 20px 24px;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px 24px;
+}
+
+.cancel-btn, .submit-btn {
+  flex: 1;
+  padding: 14px;
+  text-align: center;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.cancel-btn {
+  background: $soft;
+  color: $ink;
+}
+
+.submit-btn {
+  background: $accent;
+  color: #fff;
 }
 
 .input-wrapper {
   border: 1.5px solid $rule;
-  border-radius: 14px;
-  padding: 12px 16px;
+  border-radius: 12px;
+  padding: 10px 14px;
   background: $soft;
 }
 
@@ -402,244 +1115,7 @@ async function applyPlan() {
   background: transparent;
 }
 
-.textarea-field {
-  width: 100%;
-  min-height: 60px;
-  font-size: 15px;
-  color: $ink;
-  line-height: 1.6;
-  border: none;
-  outline: none;
-  background: transparent;
-  resize: none;
-}
-
-.picker-text {
-  font-size: 15px;
-  color: $ink;
-  
-  &.placeholder {
-    color: $muted;
-  }
-}
-
-.phase-options {
-  display: flex;
-  gap: 8px;
-}
-
-.phase-option {
-  flex: 1;
-  padding: 12px;
-  text-align: center;
-  border-radius: 12px;
-  font-size: 14px;
-  color: $muted;
-  background: $soft;
-  
-  &.active {
-    background: $accent;
-    color: #fff;
-  }
-}
-
-.generate-btn {
-  padding: 16px;
-  background: $accent;
-  border-radius: 14px;
-  text-align: center;
-  font-size: 16px;
-  color: #fff;
-  font-weight: 600;
-  margin-top: 8px;
-  
-  &.loading {
-    opacity: 0.7;
-  }
-}
-
-.syllabus-section {
-  background: $soft;
-  border-radius: 14px;
-  padding: 16px;
-  margin-bottom: 16px;
-  border: 1px dashed $accent;
-
-  .syllabus-header {
-    margin-bottom: 12px;
-
-    .syllabus-title {
-      display: block;
-      font-size: 15px;
-      font-weight: 600;
-      color: $accent;
-      margin-bottom: 4px;
-    }
-
-    .syllabus-desc {
-      font-size: 12px;
-      color: $muted;
-    }
-  }
-
-  .image-upload-area {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 12px;
-
-    .image-item {
-      position: relative;
-      width: 100%;
-      height: 160px;
-      border-radius: 10px;
-      overflow: hidden;
-
-      .uploaded-image {
-        width: 100%;
-        height: 100%;
-      }
-
-      .image-remove {
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        width: 24px;
-        height: 24px;
-        background: rgba(0, 0, 0, 0.5);
-        color: #fff;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-      }
-    }
-
-    .image-add-btn {
-      width: 100%;
-      height: 120px;
-      border: 2px dashed $rule;
-      border-radius: 10px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-
-      .add-icon {
-        font-size: 28px;
-        color: $muted;
-      }
-
-      .add-text {
-        font-size: 13px;
-        color: $muted;
-      }
-    }
-  }
-
-  .syllabus-actions {
-    .ai-btn {
-      padding: 12px;
-      background: $accent;
-      border-radius: 10px;
-      text-align: center;
-      font-size: 14px;
-      color: #fff;
-      font-weight: 500;
-
-      &.disabled {
-        opacity: 0.5;
-      }
-    }
-  }
-
-  .syllabus-result {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid $rule;
-
-    .result-label {
-      display: block;
-      font-size: 13px;
-      font-weight: 500;
-      color: $ink;
-      margin-bottom: 8px;
-    }
-
-    .chapter-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-
-      .chapter-tag {
-        padding: 4px 10px;
-        background: #fff;
-        border: 1px solid $rule;
-        border-radius: 6px;
-        font-size: 12px;
-        color: $ink;
-      }
-    }
-  }
-}
-
-.result-card {
-  background: $bg2;
-  border-radius: 20px;
-  padding: 24px;
-  border: 1px solid $accent;
-  margin-bottom: 20px;
-}
-
-.result-title {
-  display: block;
-  font-size: 18px;
-  font-weight: 600;
-  color: $accent;
-  margin-bottom: 16px;
-}
-
-.result-content {
-  background: $soft;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 16px;
-}
-
-.result-text {
-  font-size: 14px;
-  color: $ink;
-  line-height: 1.8;
-  white-space: pre-wrap;
-}
-
-.result-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.result-btn {
-  flex: 1;
-  padding: 14px;
-  text-align: center;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 500;
-  
-  &.primary {
-    background: $accent;
-    color: #fff;
-  }
-  
-  &.secondary {
-    background: $soft;
-    color: $ink;
-  }
-}
-
 .bottom-space {
-  height: 100px;
+  height: 20px;
 }
 </style>
