@@ -139,7 +139,7 @@
       },
       {
         "pagePath": "pages/profile/profile",
-        "text": "我的",
+        "text": "个人中心",
         "iconPath": "static/icons/profile.png",
         "selectedIconPath": "static/icons/profile-active.png"
       }
