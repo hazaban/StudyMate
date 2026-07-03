@@ -3,7 +3,7 @@ import uni from '@dcloudio/vite-plugin-uni'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const apiTarget = env.VITE_API_BASE_URL || 'http://localhost:8002'
+  const apiTarget = env.VITE_PROXY_TARGET || 'http://localhost:8000'
 
   return {
     plugins: [uni()],
