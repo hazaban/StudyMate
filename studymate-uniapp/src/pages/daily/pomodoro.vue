@@ -457,7 +457,18 @@ function playCompletionSound(isFocusEnd) {
   // #endif
 }
 
-function vibrateDevice() {
+function vibrateDevice(type = 'focus') {
+  // #ifdef H5
+  // H5端（含手机浏览器）：使用 Vibration API
+  try {
+    if ('vibrate' in navigator) {
+      // 专注结束：震动 200ms 停 100ms 再震动 200ms
+      // 休息结束：单次震动 300ms
+      const pattern = type === 'break' ? [300] : [200, 100, 200]
+      navigator.vibrate(pattern)
+    }
+  } catch (e) { /* ignore */ }
+  // #endif
   // #ifdef APP-PLUS
   try { uni.vibrateLong() } catch (e) { /* ignore */ }
   // #endif
@@ -470,7 +481,7 @@ function notifyCompletion(title, body, isFocusEnd) {
   // 1. 播放提示音
   playCompletionSound(isFocusEnd)
   // 2. 震动（手机端）
-  vibrateDevice()
+  vibrateDevice(isFocusEnd ? 'focus' : 'break')
   // 3. 弹窗
   uni.showModal({
     title,
