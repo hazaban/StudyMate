@@ -9,12 +9,16 @@
     <view class="form-section">
       <view class="input-group">
         <text class="input-label">邮箱</text>
-        <input class="input-field" v-model="email" placeholder="请输入邮箱" type="email" />
+        <view class="input-wrapper">
+          <input class="input-field" v-model="email" placeholder="请输入邮箱" type="email" />
+        </view>
       </view>
 
       <view class="input-group">
         <text class="input-label">密码</text>
-        <input class="input-field" v-model="password" placeholder="请输入密码" type="password" />
+        <view class="input-wrapper">
+          <input class="input-field" v-model="password" placeholder="请输入密码" type="password" />
+        </view>
       </view>
 
       <view class="remember-row">
@@ -148,15 +152,24 @@ function goToRegister() {
   
   .input-field {
     width: 100%;
+    font-size: 16px;
+    color: $ink;
+    border: none;
+    outline: none;
+    background: transparent;
+    padding: 0;
+    line-height: 1.5;
+  }
+
+  .input-wrapper {
+    width: 100%;
     padding: 14px 16px;
     border: 1px solid $rule;
     border-radius: 12px;
-    font-size: 16px;
-    color: $ink;
+    background: $bg2;
     
-    &:focus {
+    &:focus-within {
       border-color: $accent;
-      outline: none;
     }
   }
 }

@@ -1,114 +1,80 @@
+/** Task store - connects to FastAPI backend */
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { supabase } from '@/api/supabase'
-import { ai } from '@/api/ai'
+import * as api from '@/api/client'
 
-export const useTaskStore = defineStore('task', () => {
-  const todayTasks = ref([])
-  const currentTask = ref(null)
-  const loading = ref(false)
+export const useTaskStore = defineStore('task', {
+  state: () => ({
+    todayTasks: [],
+    currentTask: null,
+    completedCount: 0,
+    totalCount: 0
+  }),
 
-  const completedCount = computed(() => {
-    return todayTasks.value.filter(t => t.status === 'completed').length
-  })
+  getters: {
+    pendingTasks: (state) => state.todayTasks.filter(t => t.status === 'pending'),
+    completedTasks: (state) => state.todayTasks.filter(t => t.status === 'completed')
+  },
 
-  const totalCount = computed(() => {
-    return todayTasks.value.length
-  })
+  actions: {
+    async getTasksByDate(planId, date) {
+      try {
+        const tasks = await api.getTasks(planId, date)
+        this.todayTasks = tasks
+        this.totalCount = tasks.length
+        this.completedCount = tasks.filter(t => t.status === 'completed').length
+        return { success: true }
+      } catch (error) {
+        return { success: false, error: error.message }
+      }
+    },
 
-  const pendingTasks = computed(() => {
-    return todayTasks.value.filter(t => t.status === 'pending')
-  })
+    async createTask(data) {
+      try {
+        const task = await api.createTask(data)
+        this.todayTasks.push(task)
+        this.totalCount++
+        return { success: true, task }
+      } catch (error) {
+        return { success: false, error: error.message }
+      }
+    },
 
-  const inProgressTasks = computed(() => {
-    return todayTasks.value.filter(t => t.status === 'doing')
-  })
+    async updateTask(id, data) {
+      try {
+        const task = await api.updateTask(id, data)
+        const idx = this.todayTasks.findIndex(t => t.id === id)
+        if (idx !== -1) this.todayTasks[idx] = task
+        this._updateCounts()
+        return { success: true, task }
+      } catch (error) {
+        return { success: false, error: error.message }
+      }
+    },
 
-  async function getTasksByDate(planId, date) {
-    loading.value = true
-    try {
-      const { data, error } = await supabase
-        .from('daily_tasks')
-        .select()
-        .eq('plan_id', planId)
-        .eq('date', date)
-        .order('created_at', { ascending: true })
-      if (error) throw error
-      todayTasks.value = data
-      return { success: true, data }
-    } catch (error) {
-      return { success: false, error: error.message }
-    } finally {
-      loading.value = false
+    async completeTask(id) {
+      try {
+        const task = await api.completeTask(id)
+        const idx = this.todayTasks.findIndex(t => t.id === id)
+        if (idx !== -1) this.todayTasks[idx] = task
+        this._updateCounts()
+        return { success: true, task }
+      } catch (error) {
+        return { success: false, error: error.message }
+      }
+    },
+
+    async generateDailyTasks(params) {
+      try {
+        return await api.aiGenerateTasks(params)
+      } catch (error) {
+        console.error('AI task generation failed:', error)
+        return { tasks: [] }
+      }
+    },
+
+    _updateCounts() {
+      this.totalCount = this.todayTasks.length
+      this.completedCount = this.todayTasks.filter(t => t.status === 'completed').length
     }
-  }
-
-  async function createTask(data) {
-    loading.value = true
-    try {
-      const { data: task, error } = await supabase
-        .from('daily_tasks')
-        .insert([data])
-        .select()
-        .single()
-      if (error) throw error
-      todayTasks.value.push(task)
-      return { success: true, data: task }
-    } catch (error) {
-      return { success: false, error: error.message }
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function updateTask(id, data) {
-    loading.value = true
-    try {
-      const { data: task, error } = await supabase
-        .from('daily_tasks')
-        .update(data)
-        .eq('id', id)
-        .select()
-        .single()
-      if (error) throw error
-      const index = todayTasks.value.findIndex(t => t.id === id)
-      if (index !== -1) todayTasks.value[index] = task
-      return { success: true, data: task }
-    } catch (error) {
-      return { success: false, error: error.message }
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function completeTask(id) {
-    return updateTask(id, {
-      status: 'completed',
-      completed_at: new Date().toISOString()
-    })
-  }
-
-  async function generateDailyTasks(params) {
-    try {
-      const result = await ai.generateDailyTasks(params)
-      return result
-    } catch (error) {
-      return { success: false, error: error.message }
-    }
-  }
-
-  return {
-    todayTasks,
-    currentTask,
-    loading,
-    completedCount,
-    totalCount,
-    pendingTasks,
-    inProgressTasks,
-    getTasksByDate,
-    createTask,
-    updateTask,
-    completeTask,
-    generateDailyTasks
   }
 })
