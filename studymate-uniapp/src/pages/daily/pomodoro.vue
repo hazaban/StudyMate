@@ -333,11 +333,11 @@ async function completeSession() {
 
     uni.showToast({ title: `完成 ${dur} 分钟专注!`, icon: 'success' })
 
-    // #ifdef H5
-    if (uni.getStorageSync('studymate_reminder_enabled') && 'Notification' in window && Notification.permission === 'granted') {
-      new Notification('StudyMate - 番茄钟完成', { body: `已完成 ${dur} 分钟专注学习: ${name}`, tag: 'pomodoro-complete' })
-    }
-    // #endif
+    notifyCompletion(
+      '🎉 番茄钟完成',
+      `已完成 ${dur} 分钟专注学习${currentTaskName.value ? '：' + currentTaskName.value : ''}，休息一下吧！`,
+      true
+    )
 
     const bs = currentBreakSeconds.value
     if (bs > 0) {
@@ -349,7 +349,11 @@ async function completeSession() {
   } else {
     isBreak.value = false
     timeRemaining.value = currentFocusSeconds.value
-    uni.showToast({ title: '休息结束，继续加油！', icon: 'none' })
+    notifyCompletion(
+      '☕ 休息结束',
+      '休息时间到了，继续专注学习吧！',
+      false
+    )
   }
 }
 
@@ -409,6 +413,83 @@ function saveRecords() {
   uni.setStorageSync('studymate_pomodoro_records', JSON.stringify(todayRecords.value))
 }
 
+// --- Notification: sound + popup + vibration ---
+function playCompletionSound(isFocusEnd) {
+  // #ifdef H5
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext
+    if (!AudioCtx) return
+    const ctx = new AudioCtx()
+    // Play 3 ascending beeps for focus end, 2 gentle beeps for break end
+    const beeps = isFocusEnd ? [
+      { freq: 523.25, time: 0, dur: 0.15 },   // C5
+      { freq: 659.25, time: 0.18, dur: 0.15 }, // E5
+      { freq: 783.99, time: 0.36, dur: 0.3 }   // G5
+    ] : [
+      { freq: 659.25, time: 0, dur: 0.2 },     // E5
+      { freq: 523.25, time: 0.24, dur: 0.3 }   // C5
+    ]
+    beeps.forEach(b => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = 'sine'
+      osc.frequency.value = b.freq
+      gain.gain.setValueAtTime(0, ctx.currentTime + b.time)
+      gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + b.time + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + b.time + b.dur)
+      osc.start(ctx.currentTime + b.time)
+      osc.stop(ctx.currentTime + b.time + b.dur)
+    })
+  } catch (e) { /* ignore */ }
+  // #endif
+  // #ifndef H5
+  // App端：使用系统默认提示音
+  try {
+    const audio = uni.createInnerAudioContext()
+    audio.src = isFocusEnd
+      ? 'https://web.cdn.dcloud.net.cn/uni-app/static/notice.wav'
+      : 'https://web.cdn.dcloud.net.cn/uni-app/static/notice.wav'
+    audio.play()
+    setTimeout(() => audio.destroy(), 3000)
+  } catch (e) { /* ignore */ }
+  // #endif
+}
+
+function vibrateDevice() {
+  // #ifdef APP-PLUS
+  try { uni.vibrateLong() } catch (e) { /* ignore */ }
+  // #endif
+  // #ifdef MP
+  try { uni.vibrateShort({ type: 'medium' }) } catch (e) { /* ignore */ }
+  // #endif
+}
+
+function notifyCompletion(title, body, isFocusEnd) {
+  // 1. 播放提示音
+  playCompletionSound(isFocusEnd)
+  // 2. 震动（手机端）
+  vibrateDevice()
+  // 3. 弹窗
+  uni.showModal({
+    title,
+    content: body,
+    showCancel: false,
+    confirmText: '知道了'
+  })
+  // #ifdef H5
+  // 4. 浏览器通知（后台时也能收到）
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body, tag: 'pomodoro-complete' })
+  } else if ('Notification' in window && Notification.permission !== 'denied') {
+    Notification.requestPermission().then(p => {
+      if (p === 'granted') new Notification(title, { body, tag: 'pomodoro-complete' })
+    })
+  }
+  // #endif
+}
+
 function goBack() { uni.navigateBack() }
 
 onMounted(() => {
@@ -434,6 +515,13 @@ onMounted(() => {
   totalMinutes.value = todayRecords.value.reduce((s, r) => s + (r.duration || 0), 0)
 
   timeRemaining.value = currentFocusSeconds.value
+
+  // #ifdef H5
+  // 请求浏览器通知权限（用于页面后台时提醒）
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission()
+  }
+  // #endif
 })
 
 onUnmounted(() => {
