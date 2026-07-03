@@ -26,6 +26,10 @@ async function chooseImage(count = 1) {
 }
 
 async function compressImage(filePath) {
+  // #ifdef H5
+  return filePath
+  // #endif
+  // #ifndef H5
   return new Promise((resolve, reject) => {
     uni.compressImage({
       src: filePath,
@@ -36,6 +40,7 @@ async function compressImage(filePath) {
       fail: (err) => reject(err),
     })
   })
+  // #endif
 }
 
 async function uploadToCOS(filePath, userId, date, keyPrefix = '') {
