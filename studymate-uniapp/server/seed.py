@@ -8,8 +8,7 @@ from datetime import date, timedelta
 from uuid import uuid4
 
 from database import SessionLocal, engine, Base
-from database import User, StudyPlan, DailyTask, FlashCard, Mistake, Plant, FarmState
-
+from database import get_db, Base, User, StudyPlan, DailyTask, FlashCard, Mistake, Plant, FarmState, FocusRecord
 # ── Subject → Tags mapping (tags are linked to subjects) ──
 SUBJECT_TAGS = {
     "数据结构": ["二叉树", "遍历", "哈希表", "排序", "BST", "图", "重点", "公式", "易错", "必考"],
@@ -131,6 +130,54 @@ farm_state = FarmState(
 )
 db.add(farm_state)
 print("Created farm state: level 2, 120 coins")
+
+# ── 8. Create 30 days of focus records (番茄钟种子数据) ──
+import random
+random.seed(42)
+focus_subjects = ["数据结构", "操作系统", "计算机网络", "英语", "政治"]
+subject_chapters = {
+    "数据结构": ["二叉树遍历", "哈希表", "排序算法", "图论", "BST操作", "链表", "栈与队列"],
+    "操作系统": ["进程管理", "内存管理", "PV操作", "死锁", "文件系统", "设备管理"],
+    "计算机网络": ["TCP/IP", "OSI模型", "子网划分", "HTTP协议", "TCP三次握手", "UDP"],
+    "英语": ["词汇Unit5", "阅读理解", "长难句分析", "写作练习", "完形填空"],
+    "政治": ["马原", "毛中特", "史纲", "时政", "思修"]
+}
+durations = [25, 25, 25, 25, 50, 50]
+
+focus_records = []
+for i in range(29, -1, -1):
+    d = today - timedelta(days=i)
+    weekday = d.weekday()
+    sessions_count = random.randint(3, 6) if weekday >= 5 else random.randint(2, 4)
+    for j in range(sessions_count):
+        subj = random.choice(focus_subjects)
+        chapter = random.choice(subject_chapters[subj])
+        duration = random.choice(durations)
+        hour = 8 + j * 2 + random.randint(0, 1)
+        minute = random.randint(0, 59)
+        start_h = max(0, min(23, hour))
+        start_m = minute
+        end_minutes = start_h * 60 + start_m + duration
+        end_h = min(23, end_minutes // 60)
+        end_m = end_minutes % 60
+        start_time = f"{d.isoformat()} {start_h:02d}:{start_m:02d}:00"
+        end_time = f"{d.isoformat()} {end_h:02d}:{end_m:02d}:00"
+        focus_records.append(FocusRecord(
+            id=uuid4(),
+            plan_id=plan_id,
+            user_id=user_id,
+            date=d,
+            type="focus",
+            subject=subj,
+            task_name=f"{subj} - {chapter}",
+            duration=duration,
+            start_time=start_time,
+            end_time=end_time
+        ))
+
+for r in focus_records:
+    db.add(r)
+print(f"Created {len(focus_records)} focus records (30 days)")
 
 cards_due_today = sum(1 for c in cards if c.next_review_date <= today)
 mistakes_due_today = sum(1 for m in mistakes if m.next_review_date <= today and m.mastered == '0')

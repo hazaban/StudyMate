@@ -170,6 +170,28 @@ class FarmState(Base):
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
 
+class FocusRecord(Base):
+    __tablename__ = "focus_records"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    plan_id = Column(UUID(as_uuid=True), ForeignKey("study_plans.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    date = Column(Date, nullable=False, index=True)
+    type = Column(String(20), default="focus")        # focus / manual / break
+    subject = Column(String(100), default="")
+    task_id = Column(UUID(as_uuid=True), ForeignKey("daily_tasks.id", ondelete="SET NULL"), nullable=True)
+    task_name = Column(String(255), default="")
+    duration = Column(Integer, default=25)              # minutes
+    start_time = Column(DateTime(timezone=True), default=None)
+    end_time = Column(DateTime(timezone=True), default=None)
+    note = Column(Text, default="")
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    plan = relationship("StudyPlan")
+    task = relationship("DailyTask")
+
+
 # ---------------------------------------------------------------------------
 # Create tables
 # ---------------------------------------------------------------------------

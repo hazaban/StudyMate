@@ -274,6 +274,49 @@ export async function harvestPlant(plantId) {
   return request(`/farm/plants/${plantId}/harvest`, { method: 'POST' })
 }
 
+// ==================== Focus Records (番茄钟) ====================
+
+export async function createFocusRecord(data) {
+  return request('/focus', { method: 'POST', data })
+}
+
+export async function getFocusRecords(planId, startDate, endDate, subject) {
+  let url = `/focus?plan_id=${planId}`
+  if (startDate) url += `&start_date=${startDate}`
+  if (endDate) url += `&end_date=${endDate}`
+  if (subject) url += `&subject=${encodeURIComponent(subject)}`
+  return request(url)
+}
+
+export async function getFocusStats(planId, startDate, endDate) {
+  let url = `/focus/stats?plan_id=${planId}`
+  if (startDate) url += `&start_date=${startDate}`
+  if (endDate) url += `&end_date=${endDate}`
+  return request(url)
+}
+
+export async function getFocusSubjectStats(planId, startDate, endDate) {
+  let url = `/focus/stats/subject?plan_id=${planId}`
+  if (startDate) url += `&start_date=${startDate}`
+  if (endDate) url += `&end_date=${endDate}`
+  return request(url)
+}
+
+export async function getFocusDailyStats(planId, startDate, endDate) {
+  let url = `/focus/stats/daily?plan_id=${planId}`
+  if (startDate) url += `&start_date=${startDate}`
+  if (endDate) url += `&end_date=${endDate}`
+  return request(url)
+}
+
+export async function updateFocusRecord(id, data) {
+  return request(`/focus/${id}`, { method: 'PUT', data })
+}
+
+export async function deleteFocusRecord(id) {
+  return request(`/focus/${id}`, { method: 'DELETE' })
+}
+
 // ==================== AI ====================
 
 export async function aiDailyReview(planId, date) {

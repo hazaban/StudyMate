@@ -143,10 +143,10 @@
         <view class="record-item" v-for="(r, idx) in recentRecords" :key="idx">
           <text class="record-date">{{ r.date }}</text>
           <view class="record-info">
-            <text class="record-task">{{ r.taskName }}</text>
-            <text class="record-detail">第{{ r.sessionCount }}次 · {{ r.minutes }}分</text>
+            <text class="record-task">{{ r.task_name }}</text>
+            <text class="record-detail">{{ r.subject || '' }}</text>
           </view>
-          <text class="record-time">{{ r.time }}</text>
+          <text class="record-time">{{ r.duration }}分</text>
         </view>
       </view>
     </view>
@@ -156,45 +156,53 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { useUserStore } from '@/stores/user'
 import { usePlanStore } from '@/stores/plan'
-import { useTaskStore } from '@/stores/task'
+import { getFocusStats, getFocusSubjectStats, getFocusDailyStats, getFocusRecords } from '@/api/client'
 
-const userStore = useUserStore()
 const planStore = usePlanStore()
-const taskStore = useTaskStore()
 
-const timeRange = ref('today')
-const refreshKey = ref(0)
+const timeRange = ref('month')
+const loading = ref(false)
+
+const overviewStats = ref({ total_minutes: 0, total_sessions: 0, avg_minutes: 0 })
+const subjectStats = ref([])
+const dailyStats = ref([])
+const recentRecords = ref([])
 
 const COLORS = ['#ef5350', '#5c6bc0', '#66bb6a', '#ffb74d', '#ab47bc', '#26c6da', '#ec407a', '#8d6e63']
 
-// ── Stats computation from real storage ──
-const statsData = computed(() => {
-  const records = getFilteredRecords()
-  const totalMinutes = records.reduce((s, r) => s + r.duration, 0)
-  const pomodoroRecords = records.filter(r => r.type === 'focus')
-  return {
-    totalMinutes,
-    totalPomodoros: pomodoroRecords.length,
-    recordCount: records.length,
-    avgMinutes: records.length > 0 ? Math.round(totalMinutes / records.length) : 0
-  }
+const statsData = computed(() => ({
+  totalMinutes: overviewStats.value.total_minutes,
+  totalPomodoros: overviewStats.value.total_sessions,
+  recordCount: overviewStats.value.total_sessions,
+  avgMinutes: overviewStats.value.avg_minutes
+}))
+
+const subjectDistribution = computed(() => {
+  if (subjectStats.value.length === 0) return []
+  const total = subjectStats.value.reduce((s, v) => s + v.minutes, 0) || 1
+  return subjectStats.value
+    .map((item, i) => ({
+      name: item.subject,
+      minutes: item.minutes,
+      count: item.sessions,
+      percent: Math.round(item.minutes / total * 100),
+      color: COLORS[i % COLORS.length]
+    }))
+    .sort((a, b) => b.minutes - a.minutes)
 })
 
-// ── Task distribution for donut chart ──
 const taskDistribution = computed(() => {
-  const records = getFilteredRecords()
-  if (records.length === 0) return []
+  if (recentRecords.value.length === 0) return []
   const map = {}
-  records.forEach(r => {
-    const key = r.taskName || '未命名任务'
+  recentRecords.value.forEach(r => {
+    const key = r.task_name || '未命名任务'
     if (!map[key]) map[key] = 0
     map[key] += r.duration
   })
-  const total = Object.values(map).reduce((s, v) => s + v, 0)
+  const total = Object.values(map).reduce((s, v) => s + v, 0) || 1
   return Object.entries(map)
     .map(([name, minutes], i) => ({
       name,
@@ -208,58 +216,24 @@ const taskDistribution = computed(() => {
 
 const donutSegments = computed(() => {
   let cumulative = 0
-  return taskDistribution.value.map((item, i) => {
+  return taskDistribution.value.map((item) => {
     const seg = { ...item, offset: cumulative }
     cumulative += item.percent
     return seg
   })
 })
 
-// ── Subject distribution ──
-const subjectDistribution = computed(() => {
-  const records = getFilteredRecords()
-  if (records.length === 0) return []
-  const map = {}
-  records.forEach(r => {
-    // Extract subject from task name (e.g., "数学 - 第三章: 做习题" -> "数学")
-    const subject = extractSubject(r.taskName)
-    if (!map[subject]) map[subject] = { minutes: 0, count: 0 }
-    map[subject].minutes += r.duration
-    map[subject].count++
-  })
-  const total = Object.values(map).reduce((s, v) => s + v.minutes, 0)
-  return Object.entries(map)
-    .map(([name, data], i) => ({
-      name,
-      minutes: data.minutes,
-      count: data.count,
-      percent: Math.round(data.minutes / total * 100),
-      color: COLORS[i % COLORS.length]
-    }))
-    .sort((a, b) => b.minutes - a.minutes)
-})
-
-// ── Daily trend ──
 const dailyTrend = computed(() => {
-  const records = getFilteredRecords()
-  const today = new Date()
-  const days = []
-  const count = timeRange.value === 'today' ? 1 : timeRange.value === 'week' ? 7 : 30
-  for (let i = count - 1; i >= 0; i--) {
-    const d = new Date(today)
-    d.setDate(d.getDate() - i)
-    const dateStr = d.toISOString().split('T')[0]
-    const dayRecords = records.filter(r => r.date === dateStr)
-    const minutes = dayRecords.reduce((s, r) => s + r.duration, 0)
-    const weekdays = ['日', '一', '二', '三', '四', '五', '六']
-    days.push({
-      label: `${d.getMonth() + 1}/${d.getDate()}`,
-      weekday: weekdays[d.getDay()],
-      date: dateStr,
-      minutes
-    })
-  }
-  return days
+  if (dailyStats.value.length === 0) return []
+  return dailyStats.value.map(d => {
+    const date = new Date(d.date)
+    return {
+      label: `${date.getMonth() + 1}/${date.getDate()}`,
+      date: d.date,
+      minutes: d.minutes,
+      sessions: d.sessions
+    }
+  })
 })
 
 const yMax = computed(() => {
@@ -278,136 +252,56 @@ const yAxisLabels = computed(() => {
   return labels
 })
 
-const recentRecords = computed(() => {
-  const records = getFilteredRecords()
-  // Group by date+taskName
-  const grouped = {}
-  records.forEach(r => {
-    const key = `${r.date}|${r.taskName}`
-    if (!grouped[key]) {
-      grouped[key] = { ...r, sessionCount: 0, totalMinutes: 0 }
-    }
-    grouped[key].sessionCount++
-    grouped[key].totalMinutes += r.duration
-  })
-  return Object.values(grouped)
-    .map(g => ({ ...g, minutes: g.totalMinutes }))
-    .sort((a, b) => {
-      if (a.date !== b.date) return b.date.localeCompare(a.date)
-      return b.totalMinutes - a.totalMinutes
-    })
-    .slice(0, 15)
-})
-
-// ── Helpers ──
-function getFilteredRecords() {
-  // refreshKey 依赖确保数据刷新
-  void refreshKey.value
-  const all = JSON.parse(uni.getStorageSync('studymate_pomodoro_records') || '[]')
-  const today = new Date().toISOString().split('T')[0]
-
-  if (timeRange.value === 'today') {
-    return all.filter(r => r.date === today)
-  }
-  if (timeRange.value === 'week') {
-    const weekAgo = new Date()
-    weekAgo.setDate(weekAgo.getDate() - 7)
-    const cutoff = weekAgo.toISOString().split('T')[0]
-    return all.filter(r => r.date >= cutoff)
-  }
-  if (timeRange.value === 'month') {
-    const monthAgo = new Date()
-    monthAgo.setDate(monthAgo.getDate() - 30)
-    const cutoff = monthAgo.toISOString().split('T')[0]
-    return all.filter(r => r.date >= cutoff)
-  }
-  return all
-}
-
-function extractSubject(taskName) {
-  if (!taskName) return '其他'
-  // Try "科目 - xxx" or "科目: xxx" pattern
-  const dashIdx = taskName.indexOf(' - ')
-  const colonIdx = taskName.indexOf(': ')
-  if (dashIdx > 0) return taskName.substring(0, dashIdx)
-  if (colonIdx > 0) return taskName.substring(0, colonIdx)
-  // Try predefined subjects
-  const known = ['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络']
-  for (const s of known) {
-    if (taskName.includes(s)) return s
-  }
-  return '其他'
-}
-
-function goBack() {
-  uni.navigateBack()
-}
-
-onMounted(() => {
-  // 如果没有番茄钟记录，生成模拟种子数据用于展示统计效果
-  const existing = uni.getStorageSync('studymate_pomodoro_records')
-  if (!existing || existing === '[]') {
-    generateSeedRecords()
-  }
-
-  // 监听番茄钟记录更新事件
-  uni.$on('pomodoroRecordUpdated', () => {
-    refreshKey.value++
-  })
-})
-
-// 页面每次显示时刷新数据（从番茄钟页面返回时触发）
-onShow(() => {
-  refreshKey.value++
-})
-
-onUnmounted(() => {
-  uni.$off('pomodoroRecordUpdated')
-})
-
-// 生成模拟番茄钟记录数据（30天）
-function generateSeedRecords() {
-  const subjects = [
-    { name: '数据结构', chapters: ['二叉树遍历', '哈希表', '排序算法', '图论', 'BST操作'] },
-    { name: '操作系统', chapters: ['进程管理', '内存管理', 'PV操作', '死锁', '文件系统'] },
-    { name: '计算机网络', chapters: ['TCP/IP', 'OSI模型', '子网划分', 'HTTP协议'] },
-    { name: '英语', chapters: ['词汇Unit5', '阅读理解', '长难句分析', '写作练习'] },
-    { name: '政治', chapters: ['马原', '毛中特', '史纲', '时政'] }
-  ]
-  const records = []
+function getDateRange() {
   const today = new Date()
-
-  for (let i = 29; i >= 0; i--) {
+  const endDate = today.toISOString().split('T')[0]
+  let startDate
+  if (timeRange.value === 'today') {
+    startDate = endDate
+  } else if (timeRange.value === 'week') {
     const d = new Date(today)
-    d.setDate(d.getDate() - i)
-    const dateStr = d.toISOString().split('T')[0]
-    const weekday = d.getDay()
-
-    // 周末学习时间多一些，工作日少一些
-    const sessionsPerDay = weekday === 0 || weekday === 6
-      ? Math.floor(Math.random() * 4) + 3  // 3-6次
-      : Math.floor(Math.random() * 3) + 2  // 2-4次
-
-    for (let j = 0; j < sessionsPerDay; j++) {
-      const subj = subjects[Math.floor(Math.random() * subjects.length)]
-      const chapter = subj.chapters[Math.floor(Math.random() * subj.chapters.length)]
-      const duration = [25, 25, 25, 50, 50][Math.floor(Math.random() * 5)]
-      const hour = 8 + j * 2 + Math.floor(Math.random() * 2)
-      const minute = Math.floor(Math.random() * 60)
-      const ts = `${hour}:${String(minute).padStart(2, '0')}`
-
-      records.push({
-        type: 'focus',
-        taskName: `${subj.name} - ${chapter}`,
-        time: ts,
-        duration,
-        date: dateStr
-      })
-    }
+    d.setDate(d.getDate() - 6)
+    startDate = d.toISOString().split('T')[0]
+  } else if (timeRange.value === 'month') {
+    const d = new Date(today)
+    d.setDate(d.getDate() - 29)
+    startDate = d.toISOString().split('T')[0]
+  } else {
+    startDate = null
   }
-
-  uni.setStorageSync('studymate_pomodoro_records', JSON.stringify(records))
+  return { startDate, endDate }
 }
+
+async function loadStats() {
+  const planId = planStore.currentPlan?.id
+  if (!planId) return
+  loading.value = true
+  try {
+    const { startDate, endDate } = getDateRange()
+    const [overview, subjectRes, dailyRes, recordsRes] = await Promise.all([
+      getFocusStats(planId, startDate, endDate),
+      getFocusSubjectStats(planId, startDate, endDate),
+      getFocusDailyStats(planId, startDate, endDate),
+      getFocusRecords(planId, startDate, endDate)
+    ])
+    overviewStats.value = overview
+    subjectStats.value = subjectRes
+    dailyStats.value = dailyRes
+    recentRecords.value = (recordsRes || []).slice(0, 15)
+  } catch (e) {
+    console.error('Failed to load stats:', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+function goBack() { uni.navigateBack() }
+
+watch(timeRange, () => { loadStats() })
+
+onShow(() => {
+  loadStats()
+})
 </script>
 
 <style lang="scss" scoped>

@@ -172,6 +172,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useTaskStore } from '@/stores/task'
 import { useFarmStore } from '@/stores/farm'
 import { usePlanStore } from '@/stores/plan'
+import { createFocusRecord } from '@/api/client'
 
 const taskStore = useTaskStore()
 const farmStore = useFarmStore()
@@ -311,6 +312,29 @@ async function completeSession() {
     todayRecords.value.unshift({ type: 'focus', taskName: name, time: ts, duration: dur, date: today.value })
     saveRecords()
 
+    if (planStore.currentPlan) {
+      try {
+        let subj = ''
+        const t = taskStore.todayTasks.find(t => t.id === currentTaskId.value)
+        if (t) subj = t.subject
+        else if (currentTaskName.value) subj = currentTaskName.value.split(':')[0].split(' - ')[0].trim()
+        const now = new Date()
+        const endTime = now.toISOString()
+        const startTime = new Date(now.getTime() - dur * 60 * 1000).toISOString()
+        await createFocusRecord({
+          plan_id: planStore.currentPlan.id,
+          date: today.value,
+          type: 'focus',
+          subject: subj,
+          task_id: currentTaskId.value || null,
+          task_name: name,
+          duration: dur,
+          start_time: startTime,
+          end_time: endTime
+        })
+      } catch (e) { console.warn('Sync focus record failed:', e) }
+    }
+
     if (currentTaskId.value) {
       try {
         const t = taskStore.todayTasks.find(t => t.id === currentTaskId.value)
@@ -375,6 +399,24 @@ function submitManualRecord() {
   saveRecords()
   totalMinutes.value += m
   manualMinutes.value = ''; manualTaskName.value = ''
+
+  if (planStore.currentPlan) {
+    try {
+      const endTime = now.toISOString()
+      const startTime = new Date(now.getTime() - m * 60 * 1000).toISOString()
+      createFocusRecord({
+        plan_id: planStore.currentPlan.id,
+        date: today.value,
+        type: 'manual',
+        subject: '',
+        task_name: name,
+        duration: m,
+        start_time: startTime,
+        end_time: endTime
+      })
+    } catch (e) { console.warn('Sync manual record failed:', e) }
+  }
+
   uni.showToast({ title: '记录成功', icon: 'success' })
 }
 
