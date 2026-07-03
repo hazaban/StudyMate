@@ -114,9 +114,12 @@ print(f"Created {len(mistakes)} mistakes")
 # ── 6. Create farm data ──
 plants = [
     Plant(id=uuid4(), plan_id=plan_id, type="growing", subject="数据结构", progress=70, water_count=5, fertilize_count=2),
+    Plant(id=uuid4(), plan_id=plan_id, type="harvested", subject="数据结构", progress=100, water_count=0, fertilize_count=0),
     Plant(id=uuid4(), plan_id=plan_id, type="sprout", subject="操作系统", progress=30, water_count=3, fertilize_count=1),
     Plant(id=uuid4(), plan_id=plan_id, type="seed", subject="计算机网络", progress=0, water_count=4, fertilize_count=1),
     Plant(id=uuid4(), plan_id=plan_id, type="sprout", subject="英语", progress=25, water_count=6, fertilize_count=3),
+    Plant(id=uuid4(), plan_id=plan_id, type="harvested", subject="英语", progress=100, water_count=0, fertilize_count=0),
+    Plant(id=uuid4(), plan_id=plan_id, type="harvested", subject="政治", progress=100, water_count=0, fertilize_count=0),
 ]
 for p in plants:
     db.add(p)

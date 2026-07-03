@@ -28,68 +28,55 @@
           <text class="stat-label">生长中</text>
         </view>
       </view>
-
-      <view class="subject-counts" v-if="subjectCounts.length > 0">
-        <view class="subj-count-item" v-for="s in subjectCounts" :key="s.subject">
-          <text class="subj-count-emoji">{{ getPlantEmoji(s.mainType) }}</text>
-          <text class="subj-count-name">{{ s.subject }}</text>
-          <text class="subj-count-num">×{{ s.count }}</text>
-        </view>
-      </view>
     </view>
 
-    <view class="farm-grid">
-      <view class="plant-card" v-for="plant in farmStore.plants" :key="plant.id" :class="plant.type">
-        <view class="plant-emoji">{{ getPlantEmoji(plant.type) }}</view>
-        <text class="plant-name">{{ plant.subject }}</text>
-        
-        <view class="plant-progress-wrap">
-          <view class="progress-bar">
-            <view class="progress-fill" :style="{ width: plant.progress + '%' }"></view>
+    <view class="subject-list">
+      <view class="subject-card" v-for="group in subjectGroups" :key="group.subject">
+        <view class="subject-card-header">
+          <view class="subject-card-title">
+            <text class="subject-emoji">{{ getPlantEmoji(group.mainType) }}</text>
+            <text class="subject-name">{{ group.subject }}</text>
           </view>
-          <text class="progress-text">{{ plant.progress }}%</text>
+          <text class="subject-count-badge">×{{ group.plants.length }}</text>
         </view>
 
-        <view class="plant-counts" v-if="plant.type !== 'harvested'">
-          <view class="count-item water">
-            <text class="count-icon">💧</text>
-            <text class="count-num">{{ plant.water_count || 0 }}</text>
+        <scroll-view scroll-x class="plants-scroll" v-if="group.plants.length > 0">
+          <view class="plants-row">
+            <view class="plant-mini-card" v-for="plant in group.plants" :key="plant.id" :class="plant.type">
+              <view class="mini-emoji">{{ getPlantEmoji(plant.type) }}</view>
+              <view class="mini-progress-wrap">
+                <view class="mini-progress-bar">
+                  <view class="mini-progress-fill" :style="{ width: plant.progress + '%' }"></view>
+                </view>
+                <text class="mini-progress-text">{{ plant.progress }}%</text>
+              </view>
+              <view class="mini-counts" v-if="plant.type !== 'harvested'">
+                <text class="mini-count water">💧{{ plant.water_count || 0 }}</text>
+                <text class="mini-count fert">🧪{{ plant.fertilize_count || 0 }}</text>
+              </view>
+              <view class="mini-actions">
+                <view class="mini-btn water" 
+                      v-if="plant.type !== 'harvested' && plant.type !== 'mature'"
+                      :class="{ disabled: !(plant.water_count > 0) }"
+                      @click="water(plant)">
+                  <text>💧浇水</text>
+                </view>
+                <view class="mini-btn fertilize" 
+                      v-if="plant.type !== 'harvested' && plant.type !== 'mature'"
+                      :class="{ disabled: !(plant.fertilize_count > 0) }"
+                      @click="fertilize(plant)">
+                  <text>🧪施肥</text>
+                </view>
+                <view class="mini-btn harvest" v-if="plant.type === 'mature'" @click="harvest(plant)">
+                  <text>🌾收获</text>
+                </view>
+                <view class="mini-tag harvested" v-if="plant.type === 'harvested'">
+                  <text>已收获</text>
+                </view>
+              </view>
+            </view>
           </view>
-          <view class="count-item fertilizer">
-            <text class="count-icon">🧪</text>
-            <text class="count-num">{{ plant.fertilize_count || 0 }}</text>
-          </view>
-        </view>
-
-        <view class="plant-grow-info" v-if="plant.type !== 'harvested' && plant.type !== 'mature'">
-          <text class="grow-info-text">
-            距成熟还需 💧{{ getWaterNeeded(plant) }} / 🧪{{ getFertilizeNeeded(plant) }}
-          </text>
-        </view>
-
-        <view class="plant-actions">
-          <view class="water-btn" 
-                v-if="plant.type !== 'harvested' && plant.type !== 'mature'"
-                :class="{ disabled: !(plant.water_count > 0) }"
-                @click="water(plant)">
-            <text class="water-icon">💧</text>
-            <text class="water-text">浇水</text>
-          </view>
-          <view class="fertilize-btn" 
-                v-if="plant.type !== 'harvested' && plant.type !== 'mature'"
-                :class="{ disabled: !(plant.fertilize_count > 0) }"
-                @click="fertilize(plant)">
-            <text class="fertilize-icon">🧪</text>
-            <text class="fertilize-text">施肥</text>
-          </view>
-          <view class="harvest-btn" v-if="plant.type === 'mature'" @click="harvest(plant)">
-            <text class="harvest-icon">🌾</text>
-            <text class="harvest-text">收获</text>
-          </view>
-          <view class="done-label" v-if="plant.type === 'harvested'">
-            <text>✅ 已收获</text>
-          </view>
-        </view>
+        </scroll-view>
       </view>
     </view>
 
@@ -180,17 +167,24 @@
           <view class="guide-section">
             <text class="guide-section-title">🌾 关于植物数量</text>
             <view class="guide-item">
-              <text class="guide-item-icon">📊</text>
+              <text class="guide-item-icon">📚</text>
               <view class="guide-item-content">
-                <text class="guide-item-name">每科目多株植物</text>
-                <text class="guide-item-desc">每个科目可以有多株植物同时生长。完成番茄钟/任务时，会给最新的一株植物增加浇水/施肥次数</text>
+                <text class="guide-item-name">按科目分组展示</text>
+                <text class="guide-item-desc">每个科目作为一个卡片，右上角显示该科目下的植物总数，卡片内可左右滑动查看所有植物</text>
               </view>
             </view>
             <view class="guide-item">
-              <text class="guide-item-icon">🌍</text>
+              <text class="guide-item-icon">🍅</text>
               <view class="guide-item-content">
-                <text class="guide-item-name">顶部科目统计</text>
-                <text class="guide-item-desc">页面顶部显示每个科目的植物总数，点击科目可快速查看对应植物</text>
+                <text class="guide-item-name">番茄钟与浇水</text>
+                <text class="guide-item-desc">完成番茄钟会给该科目最新一株植物增加浇水次数；如果没有植物则自动种下一株新的</text>
+              </view>
+            </view>
+            <view class="guide-item">
+              <text class="guide-item-icon">✅</text>
+              <view class="guide-item-content">
+                <text class="guide-item-name">完成任务与施肥</text>
+                <text class="guide-item-desc">完成任务会给该科目最新一株植物增加施肥次数；如果没有植物则自动种下一株新的</text>
               </view>
             </view>
           </view>
@@ -243,19 +237,24 @@ const showGuide = ref(false)
 const WATER_PER = 15
 const FERTILIZE_PER = 30
 
-const subjectCounts = computed(() => {
+const subjectGroups = computed(() => {
   const map = {}
   for (const p of farmStore.plants) {
     if (!map[p.subject]) {
-      map[p.subject] = { subject: p.subject, count: 0, types: [] }
+      map[p.subject] = { subject: p.subject, plants: [], types: [] }
     }
-    map[p.subject].count++
+    map[p.subject].plants.push(p)
     map[p.subject].types.push(p.type)
   }
   const result = Object.values(map)
-  for (const s of result) {
+  for (const g of result) {
     const priority = ['mature', 'growing', 'sprout', 'seed', 'harvested']
-    s.mainType = s.types.sort((a, b) => priority.indexOf(a) - priority.indexOf(b))[0]
+    g.mainType = g.types.sort((a, b) => priority.indexOf(a) - priority.indexOf(b))[0]
+    g.plants.sort((a, b) => {
+      if (a.type === 'harvested' && b.type !== 'harvested') return 1
+      if (b.type === 'harvested' && a.type !== 'harvested') return -1
+      return b.progress - a.progress
+    })
   }
   return result
 })
@@ -416,156 +415,149 @@ onShow(async () => {
   }
 }
 
-.subject-counts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.subj-count-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: rgba(255,255,255,0.2);
-  padding: 6px 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.25);
-  
-  .subj-count-emoji { font-size: 14px; }
-  .subj-count-name { font-size: 12px; color: #fff; font-weight: 500; }
-  .subj-count-num { font-size: 12px; color: rgba(255,255,255,0.85); font-weight: 600; }
-}
-
-.farm-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
-.plant-card {
-  background: #fff;
-  border-radius: 18px;
-  padding: 20px 16px;
+.subject-list {
   display: flex;
   flex-direction: column;
+  gap: 16px;
+}
+
+.subject-card {
+  background: #fff;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+  border: 1px solid #eef2ef;
+}
+
+.subject-card-header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  border: 1px solid #e8ece9;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-  transition: all 0.2s;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #f7f9f8 0%, #eef2ef 100%);
+  border-bottom: 1px solid #eef2ef;
+}
+
+.subject-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   
-  &:active { transform: scale(0.97); }
+  .subject-emoji { font-size: 22px; }
+  .subject-name { font-size: 15px; font-weight: 600; color: #1a1a2e; }
+}
+
+.subject-count-badge {
+  font-size: 13px;
+  font-weight: 600;
+  color: #667e75;
+  background: rgba(102,126,117,0.1);
+  padding: 4px 10px;
+  border-radius: 10px;
+}
+
+.plants-scroll {
+  white-space: nowrap;
+  width: 100%;
+}
+
+.plants-row {
+  display: inline-flex;
+  gap: 10px;
+  padding: 14px;
+}
+
+.plant-mini-card {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  width: 110px;
+  flex-shrink: 0;
+  background: #fafbfb;
+  border-radius: 14px;
+  padding: 12px 10px;
+  border: 1px solid #eef2ef;
+  transition: all 0.2s;
   
   &.seed { border-color: #e8d5c4; background: #fdf8f4; }
   &.sprout { border-color: #c8e6c9; background: #f4fbf4; }
   &.growing { border-color: #a5d6a7; background: #f0faf0; }
   &.mature { border-color: #ffcc80; background: #fff8f0; }
-  &.harvested { border-color: #e0e0e0; background: #f8f8f8; opacity: 0.7; }
+  &.harvested { border-color: #e0e0e0; background: #f5f5f5; opacity: 0.7; }
 }
 
-.plant-emoji {
-  font-size: 48px;
-  margin-bottom: 8px;
+.mini-emoji {
+  font-size: 36px;
+  margin-bottom: 6px;
   animation: bounce 2s ease infinite;
 }
 
 @keyframes bounce {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+  50% { transform: translateY(-4px); }
 }
 
-.plant-card.sprout .plant-emoji { animation-duration: 1.5s; }
-.plant-card.growing .plant-emoji { animation-duration: 1s; }
-.plant-card.mature .plant-emoji { animation-duration: 0.6s; }
+.plant-mini-card.sprout .mini-emoji { animation-duration: 1.5s; }
+.plant-mini-card.growing .mini-emoji { animation-duration: 1s; }
+.plant-mini-card.mature .mini-emoji { animation-duration: 0.6s; }
+.plant-mini-card.harvested .mini-emoji { animation: none; }
 
-.plant-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1a1a2e;
-  margin-bottom: 12px;
-}
-
-.plant-progress-wrap {
+.mini-progress-wrap {
   width: 100%;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   
-  .progress-bar {
-    height: 6px;
-    background: #f0f0f0;
-    border-radius: 3px;
+  .mini-progress-bar {
+    height: 4px;
+    background: #e8ece9;
+    border-radius: 2px;
     overflow: hidden;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
   }
-  
-  .progress-fill {
+  .mini-progress-fill {
     height: 100%;
     background: linear-gradient(90deg, #4caf50, #81c784);
-    border-radius: 3px;
+    border-radius: 2px;
     transition: width 0.5s ease;
   }
-  
-  .progress-text {
-    font-size: 11px;
+  .mini-progress-text {
+    font-size: 10px;
     color: #999;
     text-align: right;
     display: block;
   }
 }
 
-.plant-counts {
+.mini-counts {
   display: flex;
   justify-content: center;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: 6px;
   width: 100%;
-}
-
-.count-item {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  padding: 4px 8px;
-  border-radius: 10px;
+  margin-bottom: 8px;
   
-  &.water { background: #e3f2fd; }
-  &.fertilizer { background: #f3e5f5; }
-  
-  .count-icon { font-size: 13px; }
-  .count-num { font-size: 12px; font-weight: 600; }
-  
-  &.water .count-num { color: #1976d2; }
-  &.fertilizer .count-num { color: #7b1fa2; }
-}
-
-.plant-grow-info {
-  width: 100%;
-  margin-bottom: 10px;
-  text-align: center;
-  
-  .grow-info-text {
+  .mini-count {
     font-size: 11px;
-    color: #888;
-    background: #f5f5f5;
-    padding: 4px 8px;
-    border-radius: 8px;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 6px;
+    
+    &.water { background: #e3f2fd; color: #1976d2; }
+    &.fert { background: #f3e5f5; color: #7b1fa2; }
   }
 }
 
-.plant-actions {
+.mini-actions {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
-.water-btn, .fertilize-btn, .harvest-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 8px;
-  border-radius: 10px;
-  transition: all 0.2s;
+.mini-btn {
+  text-align: center;
+  padding: 6px 4px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
   
   &:active { transform: scale(0.95); }
   
@@ -573,31 +565,22 @@ onShow(async () => {
     opacity: 0.45;
     pointer-events: none;
   }
+  
+  &.water { background: #e3f2fd; color: #1976d2; }
+  &.fertilize { background: #f3e5f5; color: #7b1fa2; }
+  &.harvest { background: #fff3e0; color: #e65100; }
 }
 
-.water-btn {
-  background: #e3f2fd;
-  .water-icon { font-size: 14px; }
-  .water-text { font-size: 12px; color: #1976d2; font-weight: 500; }
-}
-
-.fertilize-btn {
-  background: #f3e5f5;
-  .fertilize-icon { font-size: 14px; }
-  .fertilize-text { font-size: 12px; color: #7b1fa2; font-weight: 500; }
-}
-
-.harvest-btn {
-  background: #fff3e0;
-  .harvest-icon { font-size: 14px; }
-  .harvest-text { font-size: 12px; color: #e65100; font-weight: 500; }
-}
-
-.done-label {
+.mini-tag {
   text-align: center;
-  font-size: 13px;
-  color: #999;
-  padding: 10px;
+  padding: 6px 4px;
+  font-size: 11px;
+  border-radius: 8px;
+  
+  &.harvested {
+    background: #f0f0f0;
+    color: #999;
+  }
 }
 
 .empty {
