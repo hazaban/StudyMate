@@ -172,7 +172,14 @@
           <view class="form-group">
             <text class="form-label">科目</text>
             <view class="subject-grid">
-              <view class="subject-item" v-for="s in allSubjects" :key="s" :class="{ active: form.subject === s }" @click="form.subject = s">{{ s }}</view>
+              <view class="subject-item" v-for="s in subjectOptions" :key="s" :class="{ active: form.subject === s }" @click="form.subject = s">{{ s }}</view>
+              <view class="subject-item subject-add" @click="showSubjectInput = !showSubjectInput">
+                <text v-if="!showSubjectInput">+ 自定义</text>
+                <text v-else>收起</text>
+              </view>
+            </view>
+            <view class="input-wrapper" v-if="showSubjectInput" style="margin-top: 10px;">
+              <input class="input-field" v-model="customSubject" placeholder="输入自定义科目..." @confirm="addCustomSubject" />
             </view>
           </view>
 
@@ -265,6 +272,22 @@ const today = new Date().toISOString().split('T')[0]
 
 const allSubjects = ['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络']
 
+const subjectOptions = ref(JSON.parse(uni.getStorageSync('studymate_subjects') || JSON.stringify(allSubjects)))
+const showSubjectInput = ref(false)
+const customSubject = ref('')
+
+function addCustomSubject() {
+  const name = customSubject.value.trim()
+  if (!name) return
+  if (!subjectOptions.value.includes(name)) {
+    subjectOptions.value.push(name)
+    uni.setStorageSync('studymate_subjects', JSON.stringify(subjectOptions.value))
+  }
+  form.value.subject = name
+  customSubject.value = ''
+  showSubjectInput.value = false
+}
+
 const form = ref({
   subject: '数据结构',
   question: '',
@@ -350,8 +373,10 @@ function chooseAnswerImage() {
 function previewImage(current, urls) { uni.previewImage({ current, urls }) }
 
 async function submitCard() {
-  if (!form.value.question.trim()) { uni.showToast({ title: '请输入问题', icon: 'none' }); return }
-  if (!form.value.answer.trim()) { uni.showToast({ title: '请输入答案', icon: 'none' }); return }
+  const hasQ = form.value.question.trim() || form.value.question_images.length > 0
+  const hasA = form.value.answer.trim() || form.value.answer_images.length > 0
+  if (!hasQ) { uni.showToast({ title: '请输入问题或上传问题图片', icon: 'none' }); return }
+  if (!hasA) { uni.showToast({ title: '请输入答案或上传答案图片', icon: 'none' }); return }
   if (!planStore.currentPlan) { uni.showToast({ title: '请先创建学习计划', icon: 'none' }); return }
 
   uni.showLoading({ title: '保存中...' })
@@ -624,6 +649,7 @@ onMounted(async () => {
 .subject-item {
   padding: 8px 16px; border-radius: 20px; font-size: 13px; color: #65746d; background: #f5f7f5; transition: all 0.2s;
   &.active { background: #6b4ce6; color: #fff; }
+  &.subject-add { background: #fff; border: 1.5px dashed #d0d5d2; color: #6b4ce6; }
 }
 .tag-preview { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .tag-chip {
