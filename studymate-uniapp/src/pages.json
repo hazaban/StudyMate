@@ -1,0 +1,128 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "StudyMate学习星球",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/daily/task-board",
+      "style": {
+        "navigationBarTitleText": "任务看板",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/farm/farm",
+      "style": {
+        "navigationBarTitleText": "学习农场",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/review/flash-cards",
+      "style": {
+        "navigationBarTitleText": "复习卡片",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/auth/login",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/auth/register",
+      "style": {
+        "navigationBarTitleText": "注册",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/plan/target-setup",
+      "style": {
+        "navigationBarTitleText": "目标设置",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/plan/plan-overview",
+      "style": {
+        "navigationBarTitleText": "计划总览",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/daily/pomodoro",
+      "style": {
+        "navigationBarTitleText": "番茄钟",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/review/mistake-book",
+      "style": {
+        "navigationBarTitleText": "错题本",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/statistics/stats",
+      "style": {
+        "navigationBarTitleText": "学习统计",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/profile",
+      "style": {
+        "navigationBarTitleText": "个人中心",
+        "navigationStyle": "custom"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "StudyMate学习星球",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f8fbf6",
+    "backgroundColorTop": "#f8fbf6",
+    "backgroundColorBottom": "#f8fbf6"
+  },
+  "tabBar": {
+    "color": "#65746d",
+    "selectedColor": "#2f7d4f",
+    "borderStyle": "black",
+    "backgroundColor": "#ffffff",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "static/icons/home.png",
+        "selectedIconPath": "static/icons/home-active.png"
+      },
+      {
+        "pagePath": "pages/daily/task-board",
+        "text": "任务",
+        "iconPath": "static/icons/home.png",
+        "selectedIconPath": "static/icons/home-active.png"
+      },
+      {
+        "pagePath": "pages/farm/farm",
+        "text": "农场",
+        "iconPath": "static/icons/home.png",
+        "selectedIconPath": "static/icons/home-active.png"
+      },
+      {
+        "pagePath": "pages/review/flash-cards",
+        "text": "复习",
+        "iconPath": "static/icons/home.png",
+        "selectedIconPath": "static/icons/home-active.png"
+      }
+    ]
+  }
+}

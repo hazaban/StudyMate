@@ -1,0 +1,144 @@
+@import './variables.scss';
+@import './mixins.scss';
+
+* {
+  box-sizing: border-box;
+}
+
+page {
+  margin: 0;
+  font-family: $font;
+  color: $ink;
+  background: linear-gradient(180deg, $bg, $soft);
+  line-height: 1.72;
+  min-height: 100vh;
+}
+
+.page {
+  width: min($max-width, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+.page-sm {
+  width: min($max-width, calc(100% - 24px));
+  margin: 0 auto;
+}
+
+.btn-primary {
+  background: $accent;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  transition: opacity 0.2s;
+  
+  &:active {
+    opacity: 0.8;
+  }
+}
+
+.btn-secondary {
+  background: $soft;
+  color: $accent;
+  border: 1px solid $accent;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  transition: opacity 0.2s;
+  
+  &:active {
+    opacity: 0.8;
+  }
+}
+
+.input-base {
+  width: 100%;
+  background: $bg2;
+  border: 1px solid $rule;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 16px;
+  color: $ink;
+  
+  &:focus {
+    border-color: $accent;
+    outline: none;
+  }
+}
+
+.text-muted {
+  color: $muted;
+}
+
+.text-accent {
+  color: $accent;
+}
+
+.card {
+  background: $bg2;
+  border: 1px solid $rule;
+  border-radius: 20px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.gap-8 {
+  gap: 8px;
+}
+
+.gap-12 {
+  gap: 12px;
+}
+
+.gap-16 {
+  gap: 16px;
+}
+
+.mt-16 {
+  margin-top: 16px;
+}
+
+.mt-24 {
+  margin-top: 24px;
+}
+
+.mb-16 {
+  margin-bottom: 16px;
+}
+
+.mb-24 {
+  margin-bottom: 24px;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-sm {
+  font-size: 14px;
+}
+
+.text-lg {
+  font-size: 18px;
+}
+
+.text-xl {
+  font-size: 24px;
+}
+
+.font-bold {
+  font-weight: 700;
+}
