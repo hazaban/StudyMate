@@ -10,7 +10,8 @@ from database import get_db, DailyTask, StudyPlan
 from config import SECRET_KEY, ALGORITHM
 from services.ai_service import (
     generate_study_plan, generate_daily_tasks,
-    generate_flash_cards, generate_daily_review
+    generate_flash_cards, generate_daily_review,
+    analyze_syllabus_image, analyze_subject_phase
 )
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
@@ -73,5 +74,25 @@ async def generate_review(
         completed_tasks=[t.content for t in tasks if t.status == "completed"],
         planned_time=planned_time,
         actual_time=actual_time
+    )
+    return result
+
+
+@router.post("/analyze-syllabus")
+async def analyze_syllabus(data: dict, user_id: UUID = Depends(_get_user_id)):
+    """Analyze a syllabus image description and extract structured study plan."""
+    result = await analyze_syllabus_image(
+        data.get("image_description", ""),
+        data.get("subject", "")
+    )
+    return result
+
+
+@router.post("/analyze-subject-phase")
+async def analyze_phase(data: dict, user_id: UUID = Depends(_get_user_id)):
+    """Analyze user's text description of subject phase."""
+    result = await analyze_subject_phase(
+        data.get("description", ""),
+        data.get("subject", "")
     )
     return result

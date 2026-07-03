@@ -182,3 +182,46 @@ async def generate_daily_review(
     ]
     result = await _call_deepseek(messages)
     return json.loads(result)
+
+
+async def analyze_syllabus_image(image_description: str, subject: str = "") -> dict:
+    """Analyze a syllabus image description and extract structured study plan."""
+    prompt = f"""请根据以下科目大纲描述，生成结构化的学习规划：
+
+科目：{subject}
+大纲描述：{image_description}
+
+请生成包含以下内容的JSON：
+1. chapters: 章节列表，每个章节包含 name（章节名）、estimated_days（预计天数）、key_points（重点内容）
+2. suggested_schedule: 建议学习安排，包含 daily_plan（每日学习计划）
+
+返回JSON格式。"""
+
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": prompt}
+    ]
+    result = await _call_deepseek(messages)
+    return json.loads(result)
+
+
+async def analyze_subject_phase(description: str, subject: str = "") -> dict:
+    """Analyze user's text description of study phase and generate structured plan."""
+    prompt = f"""请根据用户对科目学习的文字描述，生成结构化的阶段规划：
+
+科目：{subject}
+用户描述：{description}
+
+请生成包含以下内容的JSON：
+1. phase_name: 阶段名称
+2. chapters: 章节列表，每个章节包含 name（章节名）、daily_duration（建议每天学习分钟数）、estimated_days（预计天数）
+3. daily_schedule: 每日建议学习安排
+
+返回JSON格式。"""
+
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": prompt}
+    ]
+    result = await _call_deepseek(messages)
+    return json.loads(result)

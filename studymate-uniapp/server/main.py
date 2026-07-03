@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import CORS_ORIGINS
 from database import init_db
-from routes import auth, plans, tasks, cards, mistakes, farm, ai, upload
+from routes import auth, plans, tasks, cards, mistakes, farm, ai, upload, export
 
 
 @asynccontextmanager
@@ -40,6 +40,7 @@ app.include_router(mistakes.router)
 app.include_router(farm.router)
 app.include_router(ai.router)
 app.include_router(upload.router)
+app.include_router(export.router)
 
 
 @app.get("/")

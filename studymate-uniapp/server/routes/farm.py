@@ -149,3 +149,57 @@ def harvest_plant(plant_id: UUID, user_id: UUID = Depends(_get_user_id), db: Ses
     db.commit()
     db.refresh(plant)
     return PlantResponse.model_validate(plant)
+
+
+@router.post("/plants/{plant_id}/fertilize", response_model=PlantResponse)
+def fertilize_plant(plant_id: UUID, user_id: UUID = Depends(_get_user_id), db: Session = Depends(get_db)):
+    plant = db.query(Plant).join(StudyPlan).filter(
+        Plant.id == plant_id,
+        StudyPlan.user_id == user_id
+    ).first()
+    if not plant:
+        raise HTTPException(status_code=404, detail="植物不存在")
+
+    if plant.type == "harvested":
+        raise HTTPException(status_code=400, detail="已收获的植物不能施肥")
+
+    # Increase progress by 10 (fertilize is less than water since it's triggered by task completion)
+    plant.progress = min(100, plant.progress + 10)
+
+    # Update plant type based on progress
+    if plant.progress >= 100:
+        plant.type = "mature"
+    elif plant.progress >= 70:
+        plant.type = "growing"
+    elif plant.progress >= 30:
+        plant.type = "sprout"
+
+    # Add experience
+    farm_state = _get_or_create_farm_state(plant.plan_id, db)
+    farm_state.experience += 3
+
+    db.commit()
+    db.refresh(plant)
+    return PlantResponse.model_validate(plant)
+
+
+@router.post("/ensure-crop", response_model=PlantResponse)
+def ensure_crop(
+    plan_id: UUID = Query(...),
+    subject: str = Query(...),
+    user_id: UUID = Depends(_get_user_id),
+    db: Session = Depends(get_db)
+):
+    """Ensure a plant exists for a subject, create if not exists."""
+    plan = db.query(StudyPlan).filter(StudyPlan.id == plan_id, StudyPlan.user_id == user_id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="计划不存在")
+
+    plant = db.query(Plant).filter(Plant.plan_id == plan_id, Plant.subject == subject).first()
+    if not plant:
+        plant = Plant(plan_id=plan_id, subject=subject, type="seed", progress=0)
+        db.add(plant)
+        db.commit()
+        db.refresh(plant)
+
+    return PlantResponse.model_validate(plant)

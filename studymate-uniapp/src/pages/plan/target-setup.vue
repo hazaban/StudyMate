@@ -4,101 +4,76 @@
       <view class="back-btn" @click="goBack">
         <text class="back-icon">←</text>
       </view>
-      <text class="page-title">目标设置</text>
-      <view class="placeholder"></view>
+      <text class="page-title">{{ isEdit ? '编辑计划' : '制定目标' }}</text>
+      <view class="save-btn" @click="savePlan">
+        <text class="save-text">保存</text>
+      </view>
     </view>
 
-    <view class="form-section">
-      <view class="step-indicator">
-        <view class="step" :class="{ active: currentStep >= 1 }">1</view>
-        <view class="step-line"></view>
-        <view class="step" :class="{ active: currentStep >= 2 }">2</view>
-        <view class="step-line"></view>
-        <view class="step" :class="{ active: currentStep >= 3 }">3</view>
+    <view class="form">
+      <view class="form-group">
+        <text class="form-label">考试名称</text>
+        <view class="input-wrapper">
+          <input class="input-field" v-model="form.exam_name" placeholder="如：2025年考研" />
+        </view>
       </view>
 
-      <view class="step-content" v-if="currentStep === 1">
-        <text class="step-title">考试信息</text>
-        
-        <view class="input-group">
-          <text class="input-label">考试名称</text>
-          <view class="input-wrapper">
-            <input class="input-field" v-model="form.exam_name" placeholder="如：2026考研计算机" />
-          </view>
-        </view>
-
-        <view class="input-group">
-          <text class="input-label">考试日期</text>
+      <view class="form-group">
+        <text class="form-label">考试日期</text>
+        <view class="input-wrapper">
           <picker mode="date" :value="form.exam_date" @change="onDateChange">
-            <view class="input-wrapper input-wrapper-picker">
-              {{ form.exam_date || '请选择考试日期' }}
-              <text class="picker-arrow">▼</text>
-            </view>
+            <text class="picker-text" :class="{ placeholder: !form.exam_date }">{{ form.exam_date || '请选择考试日期' }}</text>
           </picker>
         </view>
+      </view>
 
-        <view class="input-group">
-          <text class="input-label">每日学习时间（分钟）</text>
-          <view class="input-wrapper">
-            <input class="input-field" v-model="form.daily_study_time" placeholder="如：480" type="number" />
-          </view>
+      <view class="form-group">
+        <text class="form-label">每日学习时长（分钟）</text>
+        <view class="input-wrapper">
+          <input class="input-field" v-model="form.daily_study_time" type="number" placeholder="480" />
         </view>
       </view>
 
-      <view class="step-content" v-if="currentStep === 2">
-        <text class="step-title">目标分数</text>
-        
-        <view class="score-list">
-          <view class="score-item" v-for="subject in subjects" :key="subject">
-            <text class="subject-name">{{ subject.name }}</text>
-            <input class="score-input" v-model="form.target_scores[subject.key]" :placeholder="subject.default" type="number" />
-          </view>
-        </view>
-
-        <view class="total-score">
-          <text class="total-label">总分目标：</text>
-          <text class="total-value">{{ totalScore }}</text>
-        </view>
-      </view>
-
-      <view class="step-content" v-if="currentStep === 3">
-        <text class="step-title">学习特点</text>
-        
-        <view class="input-group">
-          <text class="input-label">薄弱科目</text>
-          <view class="tag-list">
-            <view class="tag" :class="{ active: form.weak_points.includes(subject) }" v-for="subject in weakPointOptions" :key="subject" @click="toggleWeakPoint(subject)">
-              {{ subject }}
+      <!-- Custom Subjects -->
+      <view class="form-group">
+        <text class="form-label">科目设置（自定义添加，目标分数选填）</text>
+        <view class="subject-list">
+          <view class="subject-item" v-for="(subj, idx) in form.subjects" :key="idx">
+            <view class="subject-row">
+              <input class="subject-input name" v-model="subj.name" placeholder="科目名称" />
+              <input class="subject-input score" v-model="subj.target_score" placeholder="目标分(选填)" />
+              <view class="subject-remove" @click="form.subjects.splice(idx, 1)">✕</view>
             </view>
           </view>
-        </view>
-
-        <view class="input-group">
-          <text class="input-label">学习阶段</text>
-          <view class="radio-group">
-            <view class="radio" :class="{ active: form.study_phase === phase }" v-for="phase in phases" :key="phase" @click="form.study_phase = phase">
-              {{ phase }}
-            </view>
+          <view class="add-subject-btn" @click="form.subjects.push({ name: '', target_score: '' })">
+            <text>+ 添加科目</text>
           </view>
-        </view>
-
-        <view class="input-group">
-          <text class="input-label">备注（可选）</text>
-          <textarea class="textarea-field" v-model="form.notes" placeholder="请描述你的学习特点、备考经验等..." />
         </view>
       </view>
 
-      <view class="button-group">
-        <view class="btn-secondary" @click="prevStep" v-if="currentStep > 1">上一步</view>
-        <view class="btn-primary" @click="nextStep" v-if="currentStep < 3">下一步</view>
-        <view class="btn-primary" @click="submitPlan" v-if="currentStep === 3">生成计划</view>
+      <view class="form-group">
+        <text class="form-label">学习阶段</text>
+        <view class="phase-options">
+          <view class="phase-option" :class="{ active: form.study_phase === '基础阶段' }" @click="form.study_phase = '基础阶段'">基础阶段</view>
+          <view class="phase-option" :class="{ active: form.study_phase === '强化阶段' }" @click="form.study_phase = '强化阶段'">强化阶段</view>
+          <view class="phase-option" :class="{ active: form.study_phase === '冲刺阶段' }" @click="form.study_phase = '冲刺阶段'">冲刺阶段</view>
+        </view>
+      </view>
+
+      <view class="form-group">
+        <text class="form-label">备注</text>
+        <view class="input-wrapper">
+          <textarea class="textarea-field" v-model="form.notes" placeholder="其他说明..." />
+        </view>
       </view>
     </view>
+
+    <view class="bottom-space"></view>
   </view>
 </template>
 
 <script setup>
-import { ref, computed, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { usePlanStore } from '@/stores/plan'
 import { useUserStore } from '@/stores/user'
 import { dateUtil } from '@/utils/date'
@@ -106,117 +81,83 @@ import { dateUtil } from '@/utils/date'
 const planStore = usePlanStore()
 const userStore = useUserStore()
 
-const currentStep = ref(1)
-
-const subjects = [
-  { key: 'math', name: '数学', default: '120' },
-  { key: 'english', name: '英语', default: '70' },
-  { key: 'politics', name: '政治', default: '65' },
-  { key: 'professional', name: '专业课', default: '110' }
-]
-
-const weakPointOptions = ['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络']
-
-const phases = ['基础阶段', '强化阶段', '冲刺阶段']
+const isEdit = ref(false)
 
 const form = reactive({
   exam_name: '',
   exam_date: '',
-  daily_study_time: '480',
-  target_scores: {
-    math: '',
-    english: '',
-    politics: '',
-    professional: ''
-  },
-  weak_points: [],
+  daily_study_time: 480,
   study_phase: '基础阶段',
-  notes: ''
+  notes: '',
+  subjects: [],
+  subject_phases: {}
 })
 
-const totalScore = computed(() => {
-  let sum = 0
-  Object.values(form.target_scores).forEach(score => {
-    sum += parseInt(score) || 0
-  })
-  return sum
-})
+function goBack() {
+  uni.navigateBack()
+}
 
 function onDateChange(e) {
   form.exam_date = e.detail.value
 }
 
-function toggleWeakPoint(subject) {
-  const index = form.weak_points.indexOf(subject)
-  if (index === -1) {
-    form.weak_points.push(subject)
-  } else {
-    form.weak_points.splice(index, 1)
+async function savePlan() {
+  if (!form.exam_name || !form.exam_date) {
+    uni.showToast({ title: '请填写考试名称和日期', icon: 'none' })
+    return
   }
-}
 
-function prevStep() {
-  if (currentStep.value > 1) {
-    currentStep.value--
-  }
-}
+  // Filter out empty subjects
+  const subjects = form.subjects.filter(s => s.name.trim())
 
-function nextStep() {
-  if (currentStep.value === 1) {
-    if (!form.exam_name || !form.exam_date || !form.daily_study_time) {
-      uni.showToast({ title: '请填写完整信息', icon: 'none' })
-      return
-    }
-  }
-  currentStep.value++
-}
-
-async function submitPlan() {
-  uni.showLoading({ title: 'AI生成计划中...' })
-
+  uni.showLoading({ title: '保存中...' })
   try {
-    const aiPlan = await planStore.generatePlanByAI({
+    const data = {
       exam_name: form.exam_name,
       exam_date: form.exam_date,
-      target_scores: form.target_scores,
-      daily_study_time: parseInt(form.daily_study_time),
-      weak_points: form.weak_points,
-      study_phase: form.study_phase
-    })
-
-    const planData = {
-      user_id: userStore.user.id,
-      exam_name: form.exam_name,
-      exam_date: form.exam_date,
-      target_scores: form.target_scores,
-      daily_study_time: parseInt(form.daily_study_time),
-      weak_points: form.weak_points,
+      daily_study_time: parseInt(form.daily_study_time) || 480,
       study_phase: form.study_phase,
       notes: form.notes,
-      ai_plan: aiPlan
+      subjects,
+      subject_phases: form.subject_phases
     }
 
-    const result = await planStore.createPlan(planData)
-
-    if (result.success) {
-      uni.showToast({ title: '计划创建成功', icon: 'success' })
-      setTimeout(() => {
-        uni.redirectTo({ url: '/pages/plan/plan-overview' })
-      }, 1000)
+    if (isEdit.value && planStore.currentPlan) {
+      await planStore.updatePlan(planStore.currentPlan.id, data)
     } else {
-      uni.showToast({ title: '创建失败', icon: 'none' })
+      await planStore.createPlan(data)
     }
-  } catch (error) {
-    uni.showToast({ title: '创建失败', icon: 'none' })
-    console.error(error)
+
+    uni.showToast({ title: '保存成功', icon: 'success' })
+    setTimeout(() => {
+      uni.navigateBack()
+    }, 1000)
+  } catch (e) {
+    uni.showToast({ title: '保存失败', icon: 'none' })
   } finally {
     uni.hideLoading()
   }
 }
 
-function goBack() {
-  uni.navigateBack()
-}
+onMounted(async () => {
+  await userStore.getUserInfo()
+
+  // Check if editing
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1]
+  isEdit.value = currentPage?.options?.edit === '1'
+
+  if (isEdit.value && planStore.currentPlan) {
+    const p = planStore.currentPlan
+    form.exam_name = p.exam_name
+    form.exam_date = p.exam_date
+    form.daily_study_time = p.daily_study_time
+    form.study_phase = p.study_phase
+    form.notes = p.notes || ''
+    form.subjects = p.subjects ? JSON.parse(JSON.stringify(p.subjects)) : []
+    form.subject_phases = p.subject_phases ? JSON.parse(JSON.stringify(p.subject_phases)) : {}
+  }
+})
 </script>
 
 <style lang="scss" scoped>
@@ -225,260 +166,30 @@ function goBack() {
   align-items: center;
   justify-content: space-between;
   padding: 60px 20px 20px;
-  
-  .back-btn {
-    width: 40px;
-    height: 40px;
-    background: $bg2;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    .back-icon {
-      font-size: 20px;
-      color: $ink;
-    }
-  }
-  
-  .page-title {
-    font-size: 20px;
-    font-weight: 600;
-    color: $ink;
-  }
-  
-  .placeholder {
-    width: 40px;
-  }
+  .back-btn { width: 40px; height: 40px; background: $bg2; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .back-icon { font-size: 20px; color: $ink; }
+  .page-title { font-size: 20px; font-weight: 600; color: $ink; }
+  .save-btn { padding: 8px 20px; background: $accent; border-radius: 20px; }
+  .save-text { font-size: 14px; color: #fff; font-weight: 500; }
 }
 
-.step-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 30px;
-  gap: 8px;
-}
+.form { padding: 20px 0; }
+.form-group { margin-bottom: 20px; }
+.form-label { display: block; font-size: 14px; font-weight: 600; color: #1a1a2e; margin-bottom: 8px; }
+.input-wrapper { border: 1.5px solid #e8ece9; border-radius: 14px; padding: 12px 16px; background: #fafafa; }
+.input-field { width: 100%; font-size: 15px; color: #1a1a2e; border: none; outline: none; background: transparent; }
+.textarea-field { width: 100%; min-height: 80px; font-size: 15px; color: #1a1a2e; line-height: 1.6; border: none; outline: none; background: transparent; resize: none; }
+.picker-text { font-size: 15px; color: #1a1a2e; &.placeholder { color: #999; } }
 
-.step {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: $soft;
-  color: $muted;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 600;
-  
-  &.active {
-    background: $accent;
-    color: #fff;
-  }
-}
+.phase-options { display: flex; gap: 8px; }
+.phase-option { flex: 1; padding: 12px; text-align: center; border-radius: 12px; font-size: 14px; color: #65746d; background: #f5f7f5; &.active { background: $accent; color: #fff; } }
 
-.step-line {
-  width: 40px;
-  height: 2px;
-  background: $rule;
-  
-  .step.active + & {
-    background: $accent;
-  }
-}
+.subject-list { display: flex; flex-direction: column; gap: 8px; }
+.subject-item { background: #f5f7f5; border-radius: 10px; padding: 10px; }
+.subject-row { display: flex; align-items: center; gap: 8px; }
+.subject-input { flex: 1; padding: 8px 12px; border: 1px solid #e8ece9; border-radius: 8px; font-size: 14px; background: #fff; &.score { flex: 0 0 100px; } }
+.subject-remove { font-size: 16px; color: #ef5350; padding: 4px; }
+.add-subject-btn { padding: 10px; text-align: center; border: 1.5px dashed #d0d5d2; border-radius: 10px; font-size: 14px; color: $accent; }
 
-.step-content {
-  margin-bottom: 30px;
-}
-
-.step-title {
-  display: block;
-  font-size: 20px;
-  font-weight: 600;
-  color: $ink;
-  margin-bottom: 20px;
-}
-
-.input-group {
-  margin-bottom: 16px;
-  
-  .input-label {
-    display: block;
-    font-size: 14px;
-    color: $ink;
-    margin-bottom: 8px;
-    font-weight: 500;
-  }
-  
-  .input-field {
-    width: 100%;
-    font-size: 16px;
-    color: $ink;
-    border: none;
-    outline: none;
-    background: transparent;
-    padding: 0;
-    line-height: 1.5;
-  }
-
-  .input-wrapper {
-    width: 100%;
-    padding: 14px 16px;
-    border: 1px solid $rule;
-    border-radius: 12px;
-    background: $bg2;
-    
-    &:focus-within {
-      border-color: $accent;
-    }
-  }
-
-  .input-wrapper-picker {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 16px;
-    color: $ink;
-    
-    .picker-arrow {
-      font-size: 12px;
-      color: $muted;
-    }
-  }
-  
-  .textarea-field {
-    width: 100%;
-    padding: 14px 16px;
-    border: 1px solid $rule;
-    border-radius: 12px;
-    font-size: 16px;
-    color: $ink;
-    background: $bg2;
-    height: 120px;
-  }
-}
-
-.score-list {
-  background: $bg2;
-  border-radius: 12px;
-  padding: 16px;
-  border: 1px solid $rule;
-}
-
-.score-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 0;
-  border-bottom: 1px solid $rule;
-  
-  &:last-child {
-    border-bottom: none;
-  }
-  
-  .subject-name {
-    font-size: 16px;
-    color: $ink;
-  }
-  
-  .score-input {
-    width: 80px;
-    padding: 10px 12px;
-    border: 1px solid $rule;
-    border-radius: 8px;
-    font-size: 16px;
-    color: $ink;
-    text-align: center;
-  }
-}
-
-.total-score {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  margin-top: 16px;
-  padding: 12px;
-  background: $soft;
-  border-radius: 8px;
-  
-  .total-label {
-    font-size: 14px;
-    color: $muted;
-  }
-  
-  .total-value {
-    font-size: 24px;
-    font-weight: 700;
-    color: $accent;
-    margin-left: 8px;
-  }
-}
-
-.tag-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.tag {
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 13px;
-  background: $bg2;
-  color: $muted;
-  border: 1px solid $rule;
-  
-  &.active {
-    background: $soft;
-    color: $accent;
-    border-color: $accent;
-  }
-}
-
-.radio-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.radio {
-  padding: 10px 20px;
-  border-radius: 20px;
-  font-size: 14px;
-  background: $bg2;
-  color: $muted;
-  border: 1px solid $rule;
-  
-  &.active {
-    background: $accent;
-    color: #fff;
-    border-color: $accent;
-  }
-}
-
-.button-group {
-  display: flex;
-  gap: 12px;
-  
-  .btn-secondary, .btn-primary {
-    flex: 1;
-    padding: 14px;
-    border-radius: 12px;
-    text-align: center;
-    font-size: 16px;
-    font-weight: 500;
-  }
-  
-  .btn-secondary {
-    background: $bg2;
-    color: $ink;
-    border: 1px solid $rule;
-  }
-  
-  .btn-primary {
-    background: $accent;
-    color: #fff;
-  }
-}
+.bottom-space { height: 60px; }
 </style>

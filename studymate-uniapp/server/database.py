@@ -60,6 +60,8 @@ class StudyPlan(Base):
     study_phase = Column(String(50), default="基础阶段")
     notes = Column(Text, default="")
     ai_plan = Column(JSON, default=None)
+    subjects = Column(JSON, default=list)  # custom subjects list: [{name, target_score, chapters: [{name, duration}]}]
+    subject_phases = Column(JSON, default=dict)  # per-subject phase plans
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -78,8 +80,10 @@ class DailyTask(Base):
     date = Column(Date, nullable=False, index=True)
     type = Column(String(20), nullable=False)       # new_study / review / mistake
     subject = Column(String(100), nullable=False)
+    chapter = Column(String(200), default="")        # chapter name
     content = Column(Text, nullable=False)
-    duration = Column(Integer, default=25)           # minutes
+    duration = Column(Integer, default=25)           # planned minutes
+    actual_duration = Column(Integer, default=0)     # actual minutes spent (from pomodoro)
     status = Column(String(20), default="pending")   # pending / doing / completed
     completed_at = Column(DateTime(timezone=True), default=None)
     proof_image_url = Column(Text, default="")

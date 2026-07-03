@@ -1,61 +1,57 @@
 <template>
   <view class="page">
     <view class="header">
-      <view class="header-top">
-        <text class="title">学习农场</text>
-        <text class="subtitle">每一份努力，都会种出果实</text>
-      </view>
-      <view class="stats-row">
-        <view class="stat-item">
-          <text class="stat-icon">🪙</text>
-          <text class="stat-num">{{ farmStore.coins }}</text>
-          <text class="stat-label">金币</text>
-        </view>
-        <view class="stat-item">
-          <text class="stat-icon">⭐</text>
-          <text class="stat-num">Lv.{{ farmStore.level }}</text>
-          <text class="stat-label">{{ farmStore.experience }} XP</text>
-        </view>
-        <view class="stat-item">
-          <text class="stat-icon">🌱</text>
-          <text class="stat-num">{{ farmStore.activePlants.length }}</text>
-          <text class="stat-label">生长中</text>
-        </view>
+      <text class="title">学习农场</text>
+      <view class="coins">
+        <text class="coins-icon">🪙</text>
+        <text class="coins-num">{{ farmStore.coins || 0 }}</text>
       </view>
     </view>
 
-    <view class="farm-grid">
-      <view class="plant-card" v-for="plant in farmStore.plants" :key="plant.id" :class="plant.type">
-        <view class="plant-emoji">{{ getPlantEmoji(plant.type) }}</view>
-        <text class="plant-name">{{ plant.subject }}</text>
-        
-        <view class="plant-progress-wrap">
+    <view class="farm-field">
+      <view class="crop-card" v-for="plant in farmStore.plants" :key="plant.id">
+        <view class="crop-icon">{{ getCropIcon(plant.type) }}</view>
+        <view class="crop-info">
+          <text class="crop-name">{{ plant.subject }}</text>
           <view class="progress-bar">
             <view class="progress-fill" :style="{ width: plant.progress + '%' }"></view>
           </view>
-          <text class="progress-text">{{ plant.progress }}%</text>
+          <text class="crop-stage">{{ getStageLabel(plant.type) }}</text>
         </view>
-
-        <view class="plant-actions">
-          <view class="water-btn" v-if="plant.type !== 'harvested' && plant.type !== 'mature'" @click="water(plant)">
-            <text class="water-icon">💧</text>
-            <text class="water-text">浇水</text>
+        <view class="crop-actions">
+          <view class="crop-btn water-btn" @click="waterCrop(plant)" v-if="plant.type !== 'harvested'">
+            <text>💧</text>
           </view>
-          <view class="harvest-btn" v-if="plant.type === 'mature'" @click="harvest(plant)">
-            <text class="harvest-icon">🌾</text>
-            <text class="harvest-text">收获</text>
+          <view class="crop-btn fertilize-btn" @click="fertilizeCrop(plant)" v-if="plant.type !== 'harvested'">
+            <text>🪴</text>
           </view>
-          <view class="done-label" v-if="plant.type === 'harvested'">
-            <text>✅ 已收获</text>
+          <view class="crop-btn harvest-btn" @click="harvestCrop(plant)" v-if="plant.type === 'mature'">
+            <text>🧺 收获</text>
           </view>
         </view>
       </view>
+
+      <view class="empty" v-if="farmStore.plants.length === 0">
+        <text class="empty-icon">🌱</text>
+        <text class="empty-text">农场空空如也</text>
+        <text class="empty-hint">完成今日任务或番茄钟后，作物会自动出现</text>
+      </view>
     </view>
 
-    <view class="empty" v-if="farmStore.plants.length === 0">
-      <text class="empty-icon">🌍</text>
-      <text class="empty-text">农场还是空的</text>
-      <text class="empty-hint">创建学习计划后，开始学习即可种下第一株植物</text>
+    <view class="rules-section">
+      <text class="rules-title">农场规则</text>
+      <view class="rule-item">
+        <text class="rule-icon">✅</text>
+        <text class="rule-text">完成一个小任务 → 获得一袋肥料（+10%进度）</text>
+      </view>
+      <view class="rule-item">
+        <text class="rule-icon">🍅</text>
+        <text class="rule-text">完成一个番茄钟 → 获得一次浇水（+20%进度）</text>
+      </view>
+      <view class="rule-item">
+        <text class="rule-icon">📚</text>
+        <text class="rule-text">完成一个章节 → 成熟一颗作物</text>
+      </view>
     </view>
 
     <view class="bottom-space"></view>
@@ -72,28 +68,34 @@ const farmStore = useFarmStore()
 const planStore = usePlanStore()
 const userStore = useUserStore()
 
-const getPlantEmoji = (type) => {
-  const map = {
-    seed: '🌰',
-    sprout: '🌱',
-    growing: '🌿',
-    mature: '🌻',
-    harvested: '🏆'
-  }
-  return map[type] || '🌰'
+function getCropIcon(type) {
+  const map = { seed: '🌱', sprout: '🌿', growing: '🌳', mature: '🍎', harvested: '🧺' }
+  return map[type] || '🌱'
 }
 
-async function water(plant) {
+function getStageLabel(type) {
+  const map = { seed: '种子', sprout: '发芽', growing: '生长中', mature: '已成熟', harvested: '已收获' }
+  return map[type] || '种子'
+}
+
+async function waterCrop(plant) {
   const result = await farmStore.waterPlant(plant.id)
   if (result.success) {
-    uni.showToast({ title: '💧 浇水成功！+5XP', icon: 'none' })
+    uni.showToast({ title: '浇水成功！', icon: 'success' })
   }
 }
 
-async function harvest(plant) {
+async function fertilizeCrop(plant) {
+  const result = await farmStore.fertilizePlant(plant.id)
+  if (result.success) {
+    uni.showToast({ title: '施肥成功！', icon: 'success' })
+  }
+}
+
+async function harvestCrop(plant) {
   const result = await farmStore.harvestPlant(plant.id)
   if (result.success) {
-    uni.showToast({ title: '🌾 收获成功！+50金币', icon: 'none' })
+    uni.showToast({ title: '收获成功！+50金币', icon: 'success' })
   }
 }
 
@@ -102,7 +104,7 @@ onMounted(async () => {
   if (userStore.isLoggedIn) {
     await planStore.getPlansByUserId()
     if (planStore.currentPlan) {
-      await farmStore.getPlantsByPlanId(planStore.currentPlan.id)
+      await farmStore.getFarmState(planStore.currentPlan.id)
     }
   }
 })
@@ -110,182 +112,50 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .header {
-  padding: 60px 0 20px;
-  background: linear-gradient(135deg, #e8a838 0%, #f0c060 100%);
-  border-radius: 0 0 32px 32px;
-  margin-bottom: 24px;
-  margin-left: -20px;
-  margin-right: -20px;
-  padding-left: 20px;
-  padding-right: 20px;
-}
-
-.header-top {
-  margin-bottom: 16px;
-  
-  .title {
-    display: block;
-    font-size: 26px;
-    font-weight: 700;
-    color: #fff;
-    margin-bottom: 4px;
-  }
-  .subtitle {
-    font-size: 14px;
-    color: rgba(255,255,255,0.8);
-  }
-}
-
-.stats-row {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  background: rgba(255,255,255,0.15);
+  padding: 40px 0 20px;
+  .title { font-size: 22px; font-weight: 700; color: #1a1a2e; }
+  .coins { display: flex; align-items: center; gap: 4px; background: #fff8e1; padding: 8px 16px; border-radius: 20px; }
+  .coins-icon { font-size: 18px; }
+  .coins-num { font-size: 16px; font-weight: 600; color: #f57f17; }
+}
+
+.farm-field {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.crop-card {
+  background: #fff;
   border-radius: 16px;
   padding: 16px;
-  border: 1px solid rgba(255,255,255,0.2);
-}
-
-.stat-item {
-  flex: 1;
   text-align: center;
-  
-  .stat-icon {
-    font-size: 20px;
-    display: block;
-    margin-bottom: 4px;
-  }
-  .stat-num {
-    display: block;
-    font-size: 18px;
-    font-weight: 700;
-    color: #fff;
-  }
-  .stat-label {
-    font-size: 12px;
-    color: rgba(255,255,255,0.7);
-    margin-top: 2px;
-  }
-}
-
-.farm-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
-.plant-card {
-  background: #fff;
-  border-radius: 18px;
-  padding: 20px 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   border: 1px solid #e8ece9;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-  transition: all 0.2s;
-  
-  &:active { transform: scale(0.97); }
-  
-  &.seed { border-color: #e8d5c4; background: #fdf8f4; }
-  &.sprout { border-color: #c8e6c9; background: #f4fbf4; }
-  &.growing { border-color: #a5d6a7; background: #f0faf0; }
-  &.mature { border-color: #ffcc80; background: #fff8f0; }
-  &.harvested { border-color: #e0e0e0; background: #f8f8f8; opacity: 0.7; }
+  .crop-icon { font-size: 40px; margin-bottom: 8px; }
+  .crop-info { margin-bottom: 10px; }
+  .crop-name { display: block; font-size: 14px; font-weight: 600; color: #1a1a2e; margin-bottom: 6px; }
+  .progress-bar { height: 6px; background: #e8ece9; border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
+  .progress-fill { height: 100%; background: #2f7d4f; border-radius: 3px; transition: width 0.3s; }
+  .crop-stage { font-size: 11px; color: #999; }
+  .crop-actions { display: flex; gap: 8px; justify-content: center; }
+  .crop-btn { padding: 6px 12px; border-radius: 8px; font-size: 12px; &.water-btn { background: #e3f2fd; } &.fertilize-btn { background: #fff3e0; } &.harvest-btn { background: #e8f5e9; color: #2e7d32; font-weight: 600; } }
 }
 
-.plant-emoji {
-  font-size: 48px;
-  margin-bottom: 8px;
-  animation: bounce 2s ease infinite;
-}
+.empty { grid-column: 1 / -1; text-align: center; padding: 40px 20px; .empty-icon { font-size: 48px; } .empty-text { display: block; font-size: 16px; color: #65746d; margin: 8px 0; } .empty-hint { display: block; font-size: 13px; color: #999; } }
 
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-}
-
-.plant-card.sprout .plant-emoji { animation-duration: 1.5s; }
-.plant-card.growing .plant-emoji { animation-duration: 1s; }
-.plant-card.mature .plant-emoji { animation-duration: 0.6s; }
-
-.plant-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1a1a2e;
-  margin-bottom: 12px;
-}
-
-.plant-progress-wrap {
-  width: 100%;
-  margin-bottom: 12px;
-  
-  .progress-bar {
-    height: 6px;
-    background: #f0f0f0;
-    border-radius: 3px;
-    overflow: hidden;
-    margin-bottom: 4px;
-  }
-  
-  .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #4caf50, #81c784);
-    border-radius: 3px;
-    transition: width 0.5s ease;
-  }
-  
-  .progress-text {
-    font-size: 11px;
-    color: #999;
-    text-align: right;
-    display: block;
-  }
-}
-
-.plant-actions {
-  width: 100%;
-}
-
-.water-btn, .harvest-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 10px;
-  border-radius: 12px;
-  transition: all 0.2s;
-  
-  &:active { transform: scale(0.95); }
-}
-
-.water-btn {
-  background: #e3f2fd;
-  .water-icon { font-size: 16px; }
-  .water-text { font-size: 13px; color: #1976d2; font-weight: 500; }
-}
-
-.harvest-btn {
-  background: #fff3e0;
-  .harvest-icon { font-size: 16px; }
-  .harvest-text { font-size: 13px; color: #e65100; font-weight: 500; }
-}
-
-.done-label {
-  text-align: center;
-  font-size: 13px;
-  color: #999;
-  padding: 10px;
-}
-
-.empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 60px 20px;
-  
-  .empty-icon { font-size: 56px; margin-bottom: 12px; }
-  .empty-text { font-size: 16px; color: #65746d; margin-bottom: 8px; }
-  .empty-hint { font-size: 13px; color: #999; text-align: center; line-height: 1.6; }
+.rules-section {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid #e8ece9;
+  .rules-title { font-size: 14px; font-weight: 600; color: #1a1a2e; margin-bottom: 12px; display: block; }
+  .rule-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; &:last-child { margin-bottom: 0; } }
+  .rule-icon { font-size: 16px; }
+  .rule-text { font-size: 13px; color: #65746d; }
 }
 
 .bottom-space { height: 100px; }

@@ -15,6 +15,8 @@ class PlanCreate(BaseModel):
     study_phase: str = "基础阶段"
     notes: str = ""
     ai_plan: Optional[dict] = None
+    subjects: list = []
+    subject_phases: dict = {}
 
 
 class PlanUpdate(BaseModel):
@@ -26,6 +28,8 @@ class PlanUpdate(BaseModel):
     study_phase: Optional[str] = None
     notes: Optional[str] = None
     ai_plan: Optional[dict] = None
+    subjects: Optional[list] = None
+    subject_phases: Optional[dict] = None
 
 
 class PlanResponse(BaseModel):
@@ -39,6 +43,8 @@ class PlanResponse(BaseModel):
     study_phase: str
     notes: str
     ai_plan: Optional[dict]
+    subjects: list
+    subject_phases: dict
     created_at: datetime
     updated_at: datetime
 

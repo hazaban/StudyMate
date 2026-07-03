@@ -1,6 +1,27 @@
 @import './variables.scss';
 @import './mixins.scss';
 
+/* CSS Variables for dark mode theming */
+:root {
+  --bg: #f5f7f5;
+  --bg2: #ffffff;
+  --ink: #1a1a2e;
+  --muted: #65746d;
+  --rule: #e8ece9;
+  --soft: #f0f4f0;
+  --accent: #2f7d4f;
+}
+
+.dark-mode {
+  --bg: #1a1a2e;
+  --bg2: #252540;
+  --ink: #e0e0e0;
+  --muted: #a0a0a0;
+  --rule: #333;
+  --soft: #2a2a40;
+  --accent: #3d9a62;
+}
+
 * {
   box-sizing: border-box;
 }

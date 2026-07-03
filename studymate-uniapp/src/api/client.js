@@ -223,10 +223,26 @@ export async function harvestPlant(plantId) {
   return request(`/farm/plants/${plantId}/harvest`, { method: 'POST' })
 }
 
+export async function fertilizePlant(plantId) {
+  return request(`/farm/plants/${plantId}/fertilize`, { method: 'POST' })
+}
+
+export async function ensureCrop(planId, subject) {
+  return request(`/farm/ensure-crop?plan_id=${planId}&subject=${encodeURIComponent(subject)}`, { method: 'POST' })
+}
+
 // ==================== AI ====================
 
 export async function aiDailyReview(planId, date) {
   return request(`/ai/review?plan_id=${planId}&task_date=${date}`, { method: 'POST' })
+}
+
+export async function aiAnalyzeSyllabus(imageDescription, subject) {
+  return request('/ai/analyze-syllabus', { method: 'POST', data: { image_description: imageDescription, subject } })
+}
+
+export async function aiAnalyzeSubjectPhase(description, subject) {
+  return request('/ai/analyze-subject-phase', { method: 'POST', data: { description, subject } })
 }
 
 // ==================== Upload ====================
@@ -237,4 +253,23 @@ export async function getSTSCredential() {
 
 export async function presignUpload(filename) {
   return request(`/upload/presign?filename=${encodeURIComponent(filename)}`, { method: 'POST' })
+}
+
+// ==================== Export ====================
+
+export function getExportCardsUrl(planId, subject, tag, masteryLevel) {
+  let url = `${BASE_URL}/export/cards/csv?plan_id=${planId}`
+  if (subject) url += `&subject=${encodeURIComponent(subject)}`
+  if (tag) url += `&tag=${encodeURIComponent(tag)}`
+  if (masteryLevel) url += `&mastery_level=${encodeURIComponent(masteryLevel)}`
+  return url
+}
+
+export function getExportMistakesUrl(planId, subject, tag, difficulty, mastered) {
+  let url = `${BASE_URL}/export/mistakes/csv?plan_id=${planId}`
+  if (subject) url += `&subject=${encodeURIComponent(subject)}`
+  if (tag) url += `&tag=${encodeURIComponent(tag)}`
+  if (difficulty) url += `&difficulty=${encodeURIComponent(difficulty)}`
+  if (mastered !== undefined && mastered !== null) url += `&mastered=${mastered}`
+  return url
 }
