@@ -20,13 +20,13 @@
       </view>
     </view>
 
-    <!-- Task Link (Task Mode Only) -->
-    <view class="task-link-section" v-if="pomodoroMode === 'pomodoro'">
+    <!-- Task Link -->
+    <view class="task-link-section">
       <view class="section-title">关联任务</view>
       <view class="task-select" @click="showTaskPicker = true">
         <view class="task-select-left">
           <text class="task-select-icon">📋</text>
-          <text class="task-select-label">{{ currentTaskName || '选择今日任务' }}</text>
+          <text class="task-select-label">{{ currentTaskName || '选择今日任务（可选）' }}</text>
         </view>
         <text class="task-select-arrow">›</text>
       </view>
@@ -106,6 +106,10 @@
             <text class="history-time">{{ record.time }}</text>
           </view>
           <view class="history-duration">{{ record.duration }}分钟</view>
+          <view class="history-actions">
+            <text class="history-action-btn" @click="editRecord(idx)">编辑</text>
+            <text class="history-action-btn delete" @click="deleteRecord(idx)">删除</text>
+          </view>
         </view>
       </view>
       <view class="empty" v-else>
@@ -117,6 +121,30 @@
         <input class="manual-input manual-minutes" v-model="manualMinutes" type="number" placeholder="分钟数" />
         <input class="manual-input manual-task" v-model="manualTaskName" placeholder="任务描述" />
         <view class="manual-submit" @click="submitManualRecord">添加</view>
+      </view>
+    </view>
+
+    <!-- Edit Record Modal -->
+    <view class="modal-overlay" v-if="showEditModal" @click="showEditModal = false">
+      <view class="modal-content" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">编辑记录</text>
+          <view class="modal-close" @click="showEditModal = false">✕</view>
+        </view>
+        <view class="modal-body">
+          <view class="form-group">
+            <text class="form-label">时长（分钟）</text>
+            <input class="form-input" type="number" v-model="editDuration" placeholder="请输入分钟数" />
+          </view>
+          <view class="form-group">
+            <text class="form-label">任务描述</text>
+            <input class="form-input" type="text" v-model="editTaskName" placeholder="请输入任务描述" />
+          </view>
+        </view>
+        <view class="modal-footer">
+          <view class="cancel-btn" @click="showEditModal = false">取消</view>
+          <view class="submit-btn" @click="saveEdit">保存</view>
+        </view>
       </view>
     </view>
 
@@ -186,6 +214,12 @@ const showTaskPicker = ref(false)
 // Manual record
 const manualMinutes = ref('')
 const manualTaskName = ref('')
+
+// Edit record
+const showEditModal = ref(false)
+const editingIndex = ref(-1)
+const editDuration = ref('')
+const editTaskName = ref('')
 
 const today = computed(() => new Date().toISOString().split('T')[0])
 const todayTasks = computed(() => taskStore.todayTasks || [])
@@ -449,6 +483,48 @@ function submitManualRecord() {
   manualMinutes.value = ''
   manualTaskName.value = ''
   uni.showToast({ title: '记录成功', icon: 'success' })
+}
+
+function editRecord(idx) {
+  const record = todayRecords.value[idx]
+  editingIndex.value = idx
+  editDuration.value = String(record.duration)
+  editTaskName.value = record.taskName
+  showEditModal.value = true
+}
+
+function saveEdit() {
+  const mins = parseInt(editDuration.value)
+  if (!mins || mins <= 0) {
+    uni.showToast({ title: '请输入有效分钟数', icon: 'none' })
+    return
+  }
+  const taskName = editTaskName.value.trim() || '手动记录'
+  const record = todayRecords.value[editingIndex.value]
+  const oldDuration = record.duration
+  record.duration = mins
+  record.taskName = taskName
+  totalMinutes.value = totalMinutes.value - oldDuration + mins
+  saveRecords()
+  showEditModal.value = false
+  editingIndex.value = -1
+  uni.showToast({ title: '保存成功', icon: 'success' })
+}
+
+function deleteRecord(idx) {
+  uni.showModal({
+    title: '确认删除',
+    content: '确定要删除这条记录吗？',
+    success: (res) => {
+      if (res.confirm) {
+        const record = todayRecords.value[idx]
+        totalMinutes.value -= record.duration
+        todayRecords.value.splice(idx, 1)
+        saveRecords()
+        uni.showToast({ title: '删除成功', icon: 'success' })
+      }
+    }
+  })
 }
 
 function saveRecords() {
@@ -750,6 +826,15 @@ onUnmounted(() => {
   }
   .history-time { display: block; font-size: 11px; color: $muted; margin-top: 2px; }
   .history-duration { font-size: 14px; font-weight: 700; color: $accent; white-space: nowrap; }
+  .history-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+  .history-action-btn {
+    font-size: 11px;
+    color: $accent;
+    padding: 2px 6px;
+    background: $soft;
+    border-radius: 4px;
+    &.delete { color: #f44336; }
+  }
 }
 
 .manual-row {
@@ -830,6 +915,22 @@ onUnmounted(() => {
     color: transparent;
     &.checked { background: $accent; border-color: $accent; color: #fff; }
   }
+}
+
+.modal-footer { display: flex; gap: 12px; padding: 16px 24px; border-top: 1px solid $rule; }
+.cancel-btn { flex: 1; padding: 14px; text-align: center; border-radius: 14px; font-size: 16px; color: #65746d; background: #f5f7f5; font-weight: 500; }
+.submit-btn { flex: 2; padding: 14px; text-align: center; border-radius: 14px; font-size: 16px; color: #fff; background: $accent; font-weight: 600; }
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 14px; color: $muted; margin-bottom: 8px; }
+.form-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid $rule;
+  border-radius: 10px;
+  background: $bg;
+  color: $ink;
+  font-size: 15px;
+  box-sizing: border-box;
 }
 
 .bottom-space { height: 100px; }

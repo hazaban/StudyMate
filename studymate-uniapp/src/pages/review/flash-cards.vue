@@ -502,6 +502,7 @@ const exportDifficulty = ref('')
 const exportMinErrors = ref('')
 const exportQuestionsOnly = ref(false)
 const exportTagOptions = ref(['全部标签'])
+const exportSubjectOptions = ref(['全部科目'])
 
 const reviewMode = ref(false)
 const reviewShowAnswer = ref(false)
@@ -517,7 +518,7 @@ const tagInput = ref('')
 const today = new Date().toISOString().split('T')[0]
 
 // ==================== Constants ====================
-const allSubjects = ['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络']
+const allSubjects = ['高等数学', '英语', '数据结构', '计算机组成原理', '操作系统', '计算机网络']
 const subjectOptions = ref(JSON.parse(uni.getStorageSync('studymate_subjects') || JSON.stringify(allSubjects)))
 const showSubjectInput = ref(false)
 const customSubject = ref('')
@@ -560,8 +561,6 @@ const allTags = computed(() => {
 })
 
 const subjectFilterOptions = computed(() => ['全部科目', ...subjectOptions.value])
-
-const exportSubjectOptions = computed(() => ['全部科目', ...subjectOptions.value])
 
 const filteredCards = computed(() => {
   let result = cards.value
@@ -1063,15 +1062,26 @@ async function toggleMastered(mistake) {
 }
 
 // ==================== Export ====================
-function openExport() {
-  exportSubject.value = activeSubject.value
-  exportTag.value = activeTag.value
-  exportMastery.value = activeMastery.value
-  exportDifficulty.value = activeDifficulty.value
-  exportMinErrors.value = minErrorCount.value
+async function openExport() {
+  exportSubject.value = ''
+  exportTag.value = ''
+  exportMastery.value = ''
+  exportDifficulty.value = ''
+  exportMinErrors.value = ''
   exportQuestionsOnly.value = false
-  loadExportTags()
+  await loadExportSubjects()
+  await loadExportTags()
   showExport.value = true
+}
+
+async function loadExportSubjects() {
+  if (!planStore.currentPlan) return
+  try {
+    const result = await api.getExportTags(planStore.currentPlan.id, activeTab.value, '')
+    exportSubjectOptions.value = ['全部科目', ...(result.subjects || [])]
+  } catch (e) {
+    exportSubjectOptions.value = ['全部科目', ...subjectOptions.value]
+  }
 }
 
 async function doExport() {

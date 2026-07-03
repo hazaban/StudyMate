@@ -519,7 +519,7 @@ onMounted(async () => {
   .subject-score { font-size: 12px; color: $accent; }
   .chapters-label { font-size: 12px; color: $muted; display: block; margin-bottom: 6px; }
   .chapter-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chapter-tag { font-size: 11px; padding: 3px 8px; background: $bg2; border-radius: 8px; color: $ink; }
+  .chapter-tag { font-size: 12px; padding: 6px 10px; background: $bg2; border-radius: 8px; color: $ink; line-height: 1.4; }
   .subject-actions { margin-top: 8px; }
   .action-link { font-size: 12px; color: $accent; }
 }
