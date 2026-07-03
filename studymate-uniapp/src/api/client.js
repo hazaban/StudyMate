@@ -1,6 +1,6 @@
 /** API client for the FastAPI backend. */
 
-const BASE_URL = 'http://localhost:8000/api'
+const BASE_URL = '/api'
 
 function getToken() {
   return uni.getStorageSync('studymate_token') || ''
