@@ -34,6 +34,38 @@
         </view>
       </view>
 
+      <!-- AI 分析科目框架图入口 -->
+      <view class="syllabus-section">
+        <view class="syllabus-header">
+          <text class="syllabus-title">🤖 AI 分析科目框架图</text>
+          <text class="syllabus-desc">上传科目大纲/目录图片，AI 自动解析章节结构</text>
+        </view>
+        <view class="image-upload-area">
+          <view class="image-item" v-if="syllabusImage">
+            <image :src="syllabusImage" mode="aspectFill" class="uploaded-image" />
+            <view class="image-remove" @click="removeSyllabusImage">✕</view>
+          </view>
+          <view class="image-add-btn" @click="chooseSyllabusImage" v-if="!syllabusImage">
+            <text class="add-icon">+</text>
+            <text class="add-text">上传大纲图片</text>
+          </view>
+        </view>
+        <view class="syllabus-actions">
+          <view class="ai-btn" :class="{ disabled: !syllabusImage || analyzing }" @click="aiAnalyzeSyllabus">
+            <text v-if="!analyzing">🔍 AI 解析图片</text>
+            <text v-else>AI 解析中...</text>
+          </view>
+        </view>
+        <view class="syllabus-result" v-if="syllabusResult">
+          <text class="result-label">解析结果：</text>
+          <view class="chapter-tags">
+            <view class="chapter-tag" v-for="(ch, idx) in syllabusResult.chapters" :key="idx">
+              {{ ch.name }}
+            </view>
+          </view>
+        </view>
+      </view>
+
       <view class="form-group">
         <text class="form-label">目标分数（选填，格式：科目:分数）</text>
         <view class="input-wrapper">
@@ -108,6 +140,10 @@ const userStore = useUserStore()
 const generating = ref(false)
 const generatedPlan = ref(null)
 const generatedPlanData = ref(null)
+const syllabusImage = ref('')
+const syllabusImageBase64 = ref('')
+const syllabusResult = ref(null)
+const analyzing = ref(false)
 
 const form = reactive({
   examName: '',
@@ -126,6 +162,78 @@ function onDateChange(e) {
 
 function goBack() {
   uni.navigateBack()
+}
+
+function chooseSyllabusImage() {
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: (res) => {
+      const tempPath = res.tempFilePaths[0]
+      syllabusImage.value = tempPath
+      syllabusResult.value = null
+      // #ifdef H5
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const maxWidth = 1024
+        let width = img.width
+        let height = img.height
+        if (width > maxWidth) {
+          height = (maxWidth / width) * height
+          width = maxWidth
+        }
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+        syllabusImageBase64.value = canvas.toDataURL('image/jpeg', 0.8)
+      }
+      img.src = tempPath
+      // #endif
+      // #ifndef H5
+      uni.getFileSystemManager().readFile({
+        filePath: tempPath,
+        encoding: 'base64',
+        success: (data) => {
+          syllabusImageBase64.value = `data:image/jpeg;base64,${data.data}`
+        }
+      })
+      // #endif
+    }
+  })
+}
+
+function removeSyllabusImage() {
+  syllabusImage.value = ''
+  syllabusImageBase64.value = ''
+  syllabusResult.value = null
+}
+
+async function aiAnalyzeSyllabus() {
+  if (!syllabusImage.value) return
+  if (!syllabusImageBase64.value) {
+    uni.showToast({ title: '图片正在处理中，请稍等', icon: 'none' })
+    return
+  }
+
+  analyzing.value = true
+  uni.showLoading({ title: 'AI 解析中...' })
+
+  try {
+    const firstSubject = form.subjects.split(',')[0]?.trim() || ''
+    const result = await api.aiAnalyzeSyllabus(syllabusImageBase64.value, firstSubject)
+    syllabusResult.value = result
+    uni.showToast({ title: '解析成功', icon: 'success' })
+  } catch (e) {
+    console.error('Syllabus analysis error:', e)
+    uni.showToast({ title: e.message || '解析失败，请重试', icon: 'none' })
+  } finally {
+    analyzing.value = false
+    uni.hideLoading()
+  }
 }
 
 async function generatePlan() {
@@ -347,6 +455,133 @@ async function applyPlan() {
   
   &.loading {
     opacity: 0.7;
+  }
+}
+
+.syllabus-section {
+  background: $soft;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px dashed $accent;
+
+  .syllabus-header {
+    margin-bottom: 12px;
+
+    .syllabus-title {
+      display: block;
+      font-size: 15px;
+      font-weight: 600;
+      color: $accent;
+      margin-bottom: 4px;
+    }
+
+    .syllabus-desc {
+      font-size: 12px;
+      color: $muted;
+    }
+  }
+
+  .image-upload-area {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+
+    .image-item {
+      position: relative;
+      width: 100%;
+      height: 160px;
+      border-radius: 10px;
+      overflow: hidden;
+
+      .uploaded-image {
+        width: 100%;
+        height: 100%;
+      }
+
+      .image-remove {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 24px;
+        height: 24px;
+        background: rgba(0, 0, 0, 0.5);
+        color: #fff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+      }
+    }
+
+    .image-add-btn {
+      width: 100%;
+      height: 120px;
+      border: 2px dashed $rule;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+
+      .add-icon {
+        font-size: 28px;
+        color: $muted;
+      }
+
+      .add-text {
+        font-size: 13px;
+        color: $muted;
+      }
+    }
+  }
+
+  .syllabus-actions {
+    .ai-btn {
+      padding: 12px;
+      background: $accent;
+      border-radius: 10px;
+      text-align: center;
+      font-size: 14px;
+      color: #fff;
+      font-weight: 500;
+
+      &.disabled {
+        opacity: 0.5;
+      }
+    }
+  }
+
+  .syllabus-result {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid $rule;
+
+    .result-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: $ink;
+      margin-bottom: 8px;
+    }
+
+    .chapter-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+
+      .chapter-tag {
+        padding: 4px 10px;
+        background: #fff;
+        border: 1px solid $rule;
+        border-radius: 6px;
+        font-size: 12px;
+        color: $ink;
+      }
+    }
   }
 }
 
