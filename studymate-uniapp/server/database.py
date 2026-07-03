@@ -99,7 +99,9 @@ class FlashCard(Base):
     mastery_level = Column(String(20), default="unmastered")  # unmastered / familiar / mastered
     next_review_date = Column(Date, nullable=False, index=True)
     review_count = Column(Integer, default=0)
-    image_urls = Column(JSON, default=list)  # list of image URLs
+    image_urls = Column(JSON, default=list)  # list of image URLs (deprecated, kept for migration)
+    question_images = Column(JSON, default=list)  # images for question
+    answer_images = Column(JSON, default=list)    # images for answer
     tags = Column(JSON, default=list)        # custom tags
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
@@ -117,7 +119,9 @@ class Mistake(Base):
     analysis = Column(Text, default="")
     subject = Column(String(100), nullable=False)
     difficulty = Column(String(20), default="medium")          # easy / medium / hard
-    image_urls = Column(JSON, default=list)                    # list of image URLs
+    image_urls = Column(JSON, default=list)                    # list of image URLs (deprecated, kept for migration)
+    question_images = Column(JSON, default=list)                # images for question
+    answer_images = Column(JSON, default=list)                  # images for answer
     error_count = Column(Integer, default=1)                   # how many times got wrong
     correct_count = Column(Integer, default=0)                 # consecutive correct answers
     mastered = Column(String(1), default="0")                  # '0' or '1'

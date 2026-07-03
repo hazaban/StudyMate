@@ -13,7 +13,8 @@ class MistakeCreate(BaseModel):
     subject: str
     analysis: str = ""
     difficulty: str = "medium"
-    image_urls: list[str] = []
+    question_images: list[str] = []
+    answer_images: list[str] = []
     tags: list[str] = []
     next_review_date: date = None
 
@@ -24,7 +25,8 @@ class MistakeUpdate(BaseModel):
     subject: Optional[str] = None
     analysis: Optional[str] = None
     difficulty: Optional[str] = None
-    image_urls: Optional[list[str]] = None
+    question_images: Optional[list[str]] = None
+    answer_images: Optional[list[str]] = None
     tags: Optional[list[str]] = None
     error_count: Optional[int] = None
     correct_count: Optional[int] = None
@@ -40,7 +42,8 @@ class MistakeResponse(BaseModel):
     analysis: str
     subject: str
     difficulty: str
-    image_urls: list[str] = []
+    question_images: list[str] = []
+    answer_images: list[str] = []
     tags: list[str] = []
     error_count: int
     correct_count: int

@@ -21,6 +21,12 @@
       </view>
     </view>
 
+    <!-- Sub Navigation -->
+    <view class="sub-nav">
+      <view class="sub-nav-item" @click="goToCards">知识卡片</view>
+      <view class="sub-nav-item active">错题本</view>
+    </view>
+
     <!-- Mode Toggle -->
     <view class="mode-toggle">
       <view class="mode-btn" :class="{ active: viewMode === 'pending' }" @click="switchMode('pending')">今日复习</view>
@@ -53,8 +59,8 @@
             <text class="question-label">Q</text>
             <text class="question-text">{{ reviewCards[reviewIndex].question }}</text>
           </view>
-          <view class="image-gallery" v-if="reviewCards[reviewIndex].image_urls && reviewCards[reviewIndex].image_urls.length > 0">
-            <image v-for="(url, idx) in reviewCards[reviewIndex].image_urls" :key="idx" :src="url" mode="widthFix" class="review-image" @click="previewImage(url, reviewCards[reviewIndex].image_urls)" />
+          <view class="image-gallery" v-if="reviewCards[reviewIndex].question_images && reviewCards[reviewIndex].question_images.length > 0">
+            <image v-for="(url, idx) in reviewCards[reviewIndex].question_images" :key="'rq'+idx" :src="url" mode="widthFix" class="review-image" @click="previewImage(url, reviewCards[reviewIndex].question_images)" />
           </view>
 
           <view class="review-answer" v-if="reviewShowAnswer">
@@ -62,6 +68,9 @@
             <view class="answer-content">
               <text class="answer-label">A</text>
               <text class="answer-text">{{ reviewCards[reviewIndex].answer }}</text>
+            </view>
+            <view class="image-gallery" v-if="reviewCards[reviewIndex].answer_images && reviewCards[reviewIndex].answer_images.length > 0" style="margin-top: 10px;">
+              <image v-for="(url, idx) in reviewCards[reviewIndex].answer_images" :key="'ra'+idx" :src="url" mode="widthFix" class="review-image" @click="previewImage(url, reviewCards[reviewIndex].answer_images)" />
             </view>
             <view v-if="reviewCards[reviewIndex].analysis" class="analysis-content">
               <text class="analysis-label">分析</text>
@@ -128,8 +137,8 @@
           <view class="mistake-question-section">
             <text class="section-label">题目</text>
             <text class="mistake-question">{{ mistake.question }}</text>
-            <view class="image-gallery" v-if="mistake.image_urls && mistake.image_urls.length > 0">
-              <image v-for="(url, idx) in mistake.image_urls" :key="idx" :src="url" mode="widthFix" class="mistake-image" @click="previewImage(url, mistake.image_urls)" />
+            <view class="image-gallery" v-if="mistake.question_images && mistake.question_images.length > 0">
+              <image v-for="(url, idx) in mistake.question_images" :key="idx" :src="url" mode="widthFix" class="mistake-image" @click="previewImage(url, mistake.question_images)" />
             </view>
           </view>
 
@@ -223,15 +232,29 @@
           </view>
 
           <view class="form-group">
-            <text class="form-label">相关图片（可选，最多3张）</text>
+            <text class="form-label">题目图片（可选）</text>
             <view class="image-upload-area">
-              <view class="image-item" v-for="(img, idx) in form.image_urls" :key="idx">
+              <view class="image-item" v-for="(img, idx) in form.question_images" :key="'q'+idx">
                 <image :src="img" mode="aspectFill" class="uploaded-image" />
-                <view class="image-remove" @click="removeImage(idx)">✕</view>
+                <view class="image-remove" @click="form.question_images.splice(idx, 1)">✕</view>
               </view>
-              <view class="image-add-btn" v-if="form.image_urls.length < 3" @click="chooseImage">
+              <view class="image-add-btn" @click="chooseQuestionImage">
                 <text class="add-icon">+</text>
-                <text class="add-text">图片</text>
+                <text class="add-text">上传题目图片</text>
+              </view>
+            </view>
+          </view>
+
+          <view class="form-group">
+            <text class="form-label">答案图片（可选）</text>
+            <view class="image-upload-area">
+              <view class="image-item" v-for="(img, idx) in form.answer_images" :key="'a'+idx">
+                <image :src="img" mode="aspectFill" class="uploaded-image" />
+                <view class="image-remove" @click="form.answer_images.splice(idx, 1)">✕</view>
+              </view>
+              <view class="image-add-btn" @click="chooseAnswerImage">
+                <text class="add-icon">+</text>
+                <text class="add-text">上传答案图片</text>
               </view>
             </view>
           </view>
@@ -277,7 +300,8 @@ const form = ref({
   answer: '',
   analysis: '',
   difficulty: 'medium',
-  image_urls: [],
+  question_images: [],
+  answer_images: [],
   tags: []
 })
 
@@ -324,16 +348,28 @@ function switchMode(mode) {
   loadMistakes()
 }
 
-function chooseImage() {
+function goToCards() {
+  uni.navigateBack()
+}
+
+function chooseQuestionImage() {
   uni.chooseImage({
-    count: 3 - form.value.image_urls.length,
+    count: 9,
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
-    success: (res) => res.tempFilePaths.forEach(path => form.value.image_urls.push(path))
+    success: (res) => res.tempFilePaths.forEach(path => form.value.question_images.push(path))
   })
 }
 
-function removeImage(idx) { form.value.image_urls.splice(idx, 1) }
+function chooseAnswerImage() {
+  uni.chooseImage({
+    count: 9,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: (res) => res.tempFilePaths.forEach(path => form.value.answer_images.push(path))
+  })
+}
+
 function previewImage(current, urls) { uni.previewImage({ current, urls }) }
 
 async function submitMistake() {
@@ -347,10 +383,11 @@ async function submitMistake() {
       plan_id: planStore.currentPlan.id,
       question: form.value.question,
       answer: form.value.answer,
-      subject: form.value.subject,
       analysis: form.value.analysis,
+      subject: form.value.subject,
       difficulty: form.value.difficulty,
-      image_urls: form.value.image_urls,
+      question_images: form.value.question_images,
+      answer_images: form.value.answer_images,
       tags: form.value.tags
     })
     resetForm()
@@ -365,7 +402,7 @@ async function submitMistake() {
 
 function resetForm() {
   showForm.value = false
-  form.value = { subject: '数据结构', question: '', answer: '', analysis: '', difficulty: 'medium', image_urls: [], tags: [] }
+  form.value = { subject: '数据结构', question: '', answer: '', analysis: '', difficulty: 'medium', question_images: [], answer_images: [], tags: [] }
   tagInput.value = ''
 }
 
@@ -474,6 +511,15 @@ onMounted(async () => {
   flex: 1; text-align: center;
   .stat-num { display: block; font-size: 22px; font-weight: 700; color: #fff; }
   .stat-label { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+}
+
+/* Sub Navigation */
+.sub-nav {
+  display: flex; margin-bottom: 16px; background: #f5f7f5; border-radius: 12px; padding: 4px;
+}
+.sub-nav-item {
+  flex: 1; text-align: center; padding: 10px; border-radius: 10px; font-size: 14px; color: #65746d; transition: all 0.2s;
+  &.active { background: #fff; color: #6b4ce6; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
 }
 
 /* Mode Toggle */
