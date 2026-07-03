@@ -7,11 +7,10 @@ from sqlalchemy import (
     create_engine, Column, String, Integer, Float, Date, DateTime,
     ForeignKey, Text, JSON, Enum as SAEnum, func
 )
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from config import DATABASE_URL
 
-engine = create_engine(DATABASE_URL, pool_size=10, max_overflow=20)
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -36,7 +35,7 @@ def utcnow():
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     email = Column(String(255), unique=True, nullable=False, index=True)
     nickname = Column(String(100), default="")
     avatar_url = Column(Text, default="")
@@ -50,13 +49,13 @@ class User(Base):
 class StudyPlan(Base):
     __tablename__ = "study_plans"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     exam_name = Column(String(200), nullable=False)
     exam_date = Column(Date, nullable=False)
     target_scores = Column(JSON, default=dict)
     daily_study_time = Column(Integer, default=480)
-    weak_points = Column(ARRAY(String), default=list)
+    weak_points = Column(JSON, default=list)
     study_phase = Column(String(50), default="基础阶段")
     notes = Column(Text, default="")
     ai_plan = Column(JSON, default=None)
@@ -75,8 +74,8 @@ class StudyPlan(Base):
 class DailyTask(Base):
     __tablename__ = "daily_tasks"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    plan_id = Column(UUID(as_uuid=True), ForeignKey("study_plans.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    plan_id = Column(String(36), ForeignKey("study_plans.id", ondelete="CASCADE"), nullable=False, index=True)
     date = Column(Date, nullable=False, index=True)
     type = Column(String(20), nullable=False)       # new_study / review / mistake
     subject = Column(String(100), nullable=False)
@@ -95,8 +94,8 @@ class DailyTask(Base):
 class FlashCard(Base):
     __tablename__ = "flash_cards"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    plan_id = Column(UUID(as_uuid=True), ForeignKey("study_plans.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    plan_id = Column(String(36), ForeignKey("study_plans.id", ondelete="CASCADE"), nullable=False, index=True)
     question = Column(Text, nullable=False)
     answer = Column(Text, nullable=False)
     subject = Column(String(100), nullable=False)
@@ -116,8 +115,8 @@ class FlashCard(Base):
 class Mistake(Base):
     __tablename__ = "mistakes"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    plan_id = Column(UUID(as_uuid=True), ForeignKey("study_plans.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    plan_id = Column(String(36), ForeignKey("study_plans.id", ondelete="CASCADE"), nullable=False, index=True)
     question = Column(Text, nullable=False)
     answer = Column(Text, nullable=False)
     analysis = Column(Text, default="")
@@ -140,8 +139,8 @@ class Mistake(Base):
 class Plant(Base):
     __tablename__ = "plants"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    plan_id = Column(UUID(as_uuid=True), ForeignKey("study_plans.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    plan_id = Column(String(36), ForeignKey("study_plans.id", ondelete="CASCADE"), nullable=False, index=True)
     type = Column(String(20), default="seed")        # seed / sprout / growing / mature / harvested
     subject = Column(String(100), nullable=False)
     progress = Column(Integer, default=0)             # 0-100
@@ -154,8 +153,8 @@ class Plant(Base):
 class FarmState(Base):
     __tablename__ = "farm_states"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    plan_id = Column(UUID(as_uuid=True), ForeignKey("study_plans.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    plan_id = Column(String(36), ForeignKey("study_plans.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
     coins = Column(Integer, default=0)
     experience = Column(Integer, default=0)
     level = Column(Integer, default=1)

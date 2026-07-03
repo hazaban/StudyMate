@@ -8,7 +8,7 @@ load_dotenv()
 # Database
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://studymate:studymate123@localhost:5432/studymate"
+    "sqlite:///./studymate.db"
 )
 
 # JWT
