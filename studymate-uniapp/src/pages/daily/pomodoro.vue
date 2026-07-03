@@ -135,7 +135,7 @@ function adjustFocusTime(delta) {
   const newTime = focusTime.value + delta
   if (newTime >= 5 && newTime <= 60) {
     focusTime.value = newTime
-    if (!isRunning && !isBreak.value) {
+    if (!isRunning.value) {
       timeRemaining.value = newTime * 60
     }
   }
