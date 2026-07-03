@@ -5,6 +5,9 @@
   "versionName": "1.0.0",
   "versionCode": "100",
   "transformPx": false,
+  "uni-statistics": {
+    "version": "0"
+  },
   "h5": {
     "title": "StudyMate学习星球",
     "router": {
