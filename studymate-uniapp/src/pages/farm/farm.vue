@@ -28,6 +28,14 @@
           <text class="stat-label">生长中</text>
         </view>
       </view>
+
+      <view class="subject-counts" v-if="subjectCounts.length > 0">
+        <view class="subj-count-item" v-for="s in subjectCounts" :key="s.subject">
+          <text class="subj-count-emoji">{{ getPlantEmoji(s.mainType) }}</text>
+          <text class="subj-count-name">{{ s.subject }}</text>
+          <text class="subj-count-num">×{{ s.count }}</text>
+        </view>
+      </view>
     </view>
 
     <view class="farm-grid">
@@ -51,6 +59,12 @@
             <text class="count-icon">🧪</text>
             <text class="count-num">{{ plant.fertilize_count || 0 }}</text>
           </view>
+        </view>
+
+        <view class="plant-grow-info" v-if="plant.type !== 'harvested' && plant.type !== 'mature'">
+          <text class="grow-info-text">
+            距成熟还需 💧{{ getWaterNeeded(plant) }} / 🧪{{ getFertilizeNeeded(plant) }}
+          </text>
         </view>
 
         <view class="plant-actions">
@@ -137,24 +151,46 @@
               <text class="guide-item-icon">🌰</text>
               <view class="guide-item-content">
                 <text class="guide-item-name">种子 (0-29%)</text>
+                <text class="guide-item-desc">浇水 2 次 或 施肥 1 次即可发芽</text>
               </view>
             </view>
             <view class="guide-item">
               <text class="guide-item-icon">🌱</text>
               <view class="guide-item-content">
                 <text class="guide-item-name">发芽 (30-69%)</text>
+                <text class="guide-item-desc">再浇水 3 次 或 施肥 2 次进入成长期</text>
               </view>
             </view>
             <view class="guide-item">
               <text class="guide-item-icon">🌿</text>
               <view class="guide-item-content">
                 <text class="guide-item-name">成长 (70-99%)</text>
+                <text class="guide-item-desc">再浇水 2 次 或 施肥 1 次即可成熟</text>
               </view>
             </view>
             <view class="guide-item">
               <text class="guide-item-icon">🌻</text>
               <view class="guide-item-content">
                 <text class="guide-item-name">成熟 (100%)</text>
+                <text class="guide-item-desc">可以收获，获得金币和经验奖励</text>
+              </view>
+            </view>
+          </view>
+
+          <view class="guide-section">
+            <text class="guide-section-title">🌾 关于植物数量</text>
+            <view class="guide-item">
+              <text class="guide-item-icon">📊</text>
+              <view class="guide-item-content">
+                <text class="guide-item-name">每科目多株植物</text>
+                <text class="guide-item-desc">每个科目可以有多株植物同时生长。完成番茄钟/任务时，会给最新的一株植物增加浇水/施肥次数</text>
+              </view>
+            </view>
+            <view class="guide-item">
+              <text class="guide-item-icon">🌍</text>
+              <view class="guide-item-content">
+                <text class="guide-item-name">顶部科目统计</text>
+                <text class="guide-item-desc">页面顶部显示每个科目的植物总数，点击科目可快速查看对应植物</text>
               </view>
             </view>
           </view>
@@ -193,7 +229,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useFarmStore } from '@/stores/farm'
 import { usePlanStore } from '@/stores/plan'
@@ -204,6 +240,25 @@ const planStore = usePlanStore()
 const userStore = useUserStore()
 
 const showGuide = ref(false)
+const WATER_PER = 15
+const FERTILIZE_PER = 30
+
+const subjectCounts = computed(() => {
+  const map = {}
+  for (const p of farmStore.plants) {
+    if (!map[p.subject]) {
+      map[p.subject] = { subject: p.subject, count: 0, types: [] }
+    }
+    map[p.subject].count++
+    map[p.subject].types.push(p.type)
+  }
+  const result = Object.values(map)
+  for (const s of result) {
+    const priority = ['mature', 'growing', 'sprout', 'seed', 'harvested']
+    s.mainType = s.types.sort((a, b) => priority.indexOf(a) - priority.indexOf(b))[0]
+  }
+  return result
+})
 
 const getPlantEmoji = (type) => {
   const map = {
@@ -214,6 +269,16 @@ const getPlantEmoji = (type) => {
     harvested: '🏆'
   }
   return map[type] || '🌰'
+}
+
+function getWaterNeeded(plant) {
+  const remain = 100 - plant.progress
+  return Math.ceil(remain / WATER_PER)
+}
+
+function getFertilizeNeeded(plant) {
+  const remain = 100 - plant.progress
+  return Math.ceil(remain / FERTILIZE_PER)
 }
 
 async function water(plant) {
@@ -351,6 +416,27 @@ onShow(async () => {
   }
 }
 
+.subject-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.subj-count-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255,255,255,0.2);
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.25);
+  
+  .subj-count-emoji { font-size: 14px; }
+  .subj-count-name { font-size: 12px; color: #fff; font-weight: 500; }
+  .subj-count-num { font-size: 12px; color: rgba(255,255,255,0.85); font-weight: 600; }
+}
+
 .farm-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -449,6 +535,20 @@ onShow(async () => {
   
   &.water .count-num { color: #1976d2; }
   &.fertilizer .count-num { color: #7b1fa2; }
+}
+
+.plant-grow-info {
+  width: 100%;
+  margin-bottom: 10px;
+  text-align: center;
+  
+  .grow-info-text {
+    font-size: 11px;
+    color: #888;
+    background: #f5f5f5;
+    padding: 4px 8px;
+    border-radius: 8px;
+  }
 }
 
 .plant-actions {
