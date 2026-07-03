@@ -31,49 +31,120 @@
     </view>
 
     <view class="mistake-list">
-      <view class="empty" v-if="filteredMistakes.length === 0">
-        <text class="empty-icon">📝</text>
-        <text class="empty-text">暂无错题</text>
-        <text class="empty-hint">点击右下角按钮，手动录入错题</text>
+      <!-- Review Mode -->
+      <view class="review-card" v-if="reviewMode && reviewCards.length > 0">
+        <view class="review-progress">
+          <text class="review-counter">{{ reviewIndex + 1 }} / {{ reviewCards.length }}</text>
+          <view class="review-progress-bar">
+            <view class="review-progress-fill" :style="{ width: ((reviewIndex + 1) / reviewCards.length * 100) + '%' }"></view>
+          </view>
+        </view>
+
+        <view class="review-card-body">
+          <view class="review-subject">{{ reviewCards[reviewIndex].subject }}</view>
+          <view class="review-question">
+            <text class="question-label">Q</text>
+            <text class="question-text">{{ reviewCards[reviewIndex].question }}</text>
+          </view>
+          <view class="image-gallery" v-if="reviewCards[reviewIndex].image_urls && reviewCards[reviewIndex].image_urls.length > 0">
+            <image v-for="(url, idx) in reviewCards[reviewIndex].image_urls" :key="idx" :src="url" mode="widthFix" class="review-image" @click="previewImage(url, reviewCards[reviewIndex].image_urls)" />
+          </view>
+
+          <view class="review-answer" v-if="reviewShowAnswer">
+            <view class="answer-divider"></view>
+            <view class="answer-content">
+              <text class="answer-label">A</text>
+              <text class="answer-text">{{ reviewCards[reviewIndex].answer }}</text>
+            </view>
+            <view v-if="reviewCards[reviewIndex].analysis" class="analysis-content">
+              <text class="analysis-label">分析</text>
+              <text class="analysis-text">{{ reviewCards[reviewIndex].analysis }}</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="review-actions">
+          <view class="show-answer-btn" v-if="!reviewShowAnswer" @click="reviewShowAnswer = true">
+            <text>点击查看答案</text>
+          </view>
+          <view class="review-result-btns" v-else>
+            <view class="result-btn wrong" @click="reviewResult(false)">
+              <text class="result-icon">❌</text>
+              <text class="result-text">做错了</text>
+            </view>
+            <view class="result-btn correct" @click="reviewResult(true)">
+              <text class="result-icon">✅</text>
+              <text class="result-text">做对了</text>
+            </view>
+          </view>
+        </view>
       </view>
 
-      <view class="mistake-card" v-for="mistake in filteredMistakes" :key="mistake.id" :class="{ mastered: mistake.mastered === '1' }">
-        <view class="mistake-header">
-          <text class="mistake-subject">{{ mistake.subject }}</text>
-          <view class="mistake-tags">
-            <view class="mistake-tag" :class="mistake.difficulty">
-              {{ getDifficultyLabel(mistake.difficulty) }}
-            </view>
-            <view class="mistake-tag mastered-tag" v-if="mistake.mastered === '1'">已掌握</view>
+      <view class="review-complete" v-if="reviewMode && reviewCards.length === 0">
+        <text class="complete-icon">🎉</text>
+        <text class="complete-text">暂无待复习错题</text>
+      </view>
+
+      <view class="review-complete" v-if="reviewComplete">
+        <text class="complete-icon">🏆</text>
+        <text class="complete-text">复习完成！</text>
+        <text class="complete-hint">正确 {{ reviewCorrect }} / {{ reviewTotal }} 道</text>
+        <view class="back-btn" @click="exitReview">返回错题列表</view>
+      </view>
+
+      <!-- Normal List View -->
+      <view v-if="!reviewMode && !reviewComplete">
+        <view class="section-header">
+          <text class="section-title">错题列表</text>
+          <view class="start-review-btn" v-if="filteredMistakes.length > 0" @click="startReview">
+            <text>开始复习</text>
           </view>
         </view>
 
-        <view class="mistake-question-section">
-          <text class="section-label">题目</text>
-          <text class="mistake-question">{{ mistake.question }}</text>
-          <view class="image-gallery" v-if="mistake.image_urls && mistake.image_urls.length > 0">
-            <image v-for="(url, idx) in mistake.image_urls" :key="idx" :src="url" mode="widthFix" class="mistake-image" @click="previewImage(url, mistake.image_urls)" />
-          </view>
+        <view class="empty" v-if="filteredMistakes.length === 0">
+          <text class="empty-icon">📝</text>
+          <text class="empty-text">暂无错题</text>
+          <text class="empty-hint">点击右下角按钮，手动录入错题</text>
         </view>
 
-        <view class="mistake-answer-section">
-          <text class="section-label">正确答案</text>
-          <text class="mistake-answer">{{ mistake.answer }}</text>
-        </view>
-
-        <view class="mistake-analysis-section" v-if="mistake.analysis">
-          <text class="section-label">错误分析</text>
-          <text class="mistake-analysis">{{ mistake.analysis }}</text>
-        </view>
-
-        <view class="mistake-footer">
-          <text class="mistake-date">{{ formatDate(mistake.created_at) }}</text>
-          <text class="error-count">做错 {{ mistake.error_count }} 次</text>
-          <view class="mistake-actions">
-            <view class="action-btn" @click="toggleMastered(mistake)">
-              {{ mistake.mastered === '1' ? '重新攻克' : '已掌握' }}
+        <view class="mistake-card" v-for="mistake in filteredMistakes" :key="mistake.id" :class="{ mastered: mistake.mastered === '1' }">
+          <view class="mistake-header">
+            <text class="mistake-subject">{{ mistake.subject }}</text>
+            <view class="mistake-tags">
+              <view class="mistake-tag" :class="mistake.difficulty">
+                {{ getDifficultyLabel(mistake.difficulty) }}
+              </view>
+              <view class="mistake-tag mastered-tag" v-if="mistake.mastered === '1'">已掌握</view>
             </view>
-            <view class="action-btn delete-btn" @click="removeMistake(mistake)">删除</view>
+          </view>
+
+          <view class="mistake-question-section">
+            <text class="section-label">题目</text>
+            <text class="mistake-question">{{ mistake.question }}</text>
+            <view class="image-gallery" v-if="mistake.image_urls && mistake.image_urls.length > 0">
+              <image v-for="(url, idx) in mistake.image_urls" :key="idx" :src="url" mode="widthFix" class="mistake-image" @click="previewImage(url, mistake.image_urls)" />
+            </view>
+          </view>
+
+          <view class="mistake-answer-section">
+            <text class="section-label">正确答案</text>
+            <text class="mistake-answer">{{ mistake.answer }}</text>
+          </view>
+
+          <view class="mistake-analysis-section" v-if="mistake.analysis">
+            <text class="section-label">错误分析</text>
+            <text class="mistake-analysis">{{ mistake.analysis }}</text>
+          </view>
+
+          <view class="mistake-footer">
+            <text class="mistake-date">{{ formatDate(mistake.created_at) }}</text>
+            <text class="error-count">做错 {{ mistake.error_count }} 次</text>
+            <view class="mistake-actions">
+              <view class="action-btn" @click="toggleMastered(mistake)">
+                {{ mistake.mastered === '1' ? '重新攻克' : '已掌握' }}
+              </view>
+              <view class="action-btn delete-btn" @click="removeMistake(mistake)">删除</view>
+            </view>
           </view>
         </view>
       </view>
@@ -167,6 +238,12 @@ const userStore = useUserStore()
 
 const activeFilter = ref('all')
 const showForm = ref(false)
+const reviewMode = ref(false)
+const reviewShowAnswer = ref(false)
+const reviewIndex = ref(0)
+const reviewCorrect = ref(0)
+const reviewTotal = ref(0)
+const reviewComplete = ref(false)
 const mistakes = ref([])
 
 const allSubjects = ['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络']
@@ -189,6 +266,10 @@ const subjects = computed(() => {
 const filteredMistakes = computed(() => {
   if (activeFilter.value === 'all') return mistakes.value
   return mistakes.value.filter(m => m.subject === activeFilter.value)
+})
+
+const reviewCards = computed(() => {
+  return mistakes.value.filter(m => m.mastered === '0')
 })
 
 const masteredCount = computed(() => mistakes.value.filter(m => m.mastered === '1').length)
@@ -302,6 +383,42 @@ async function removeMistake(mistake) {
       uni.showToast({ title: '删除失败', icon: 'none' })
     }
   }
+}
+
+function startReview() {
+  reviewMode.value = true
+  reviewShowAnswer.value = false
+  reviewIndex.value = 0
+  reviewCorrect.value = 0
+  reviewTotal.value = reviewCards.value.length
+  reviewComplete.value = false
+}
+
+async function reviewResult(correct) {
+  if (correct) reviewCorrect.value++
+  const currentMistake = reviewCards.value[reviewIndex.value]
+
+  if (correct) {
+    await api.markMistakeMastered(currentMistake.id)
+  } else {
+    await api.retryMistake(currentMistake.id)
+  }
+
+  if (reviewIndex.value < reviewCards.value.length - 1) {
+    reviewIndex.value++
+    reviewShowAnswer.value = false
+  } else {
+    reviewMode.value = false
+    reviewComplete.value = true
+    await loadMistakes()
+  }
+}
+
+function exitReview() {
+  reviewMode.value = false
+  reviewComplete.value = false
+  reviewIndex.value = 0
+  activeFilter.value = 'all'
 }
 
 async function loadMistakes() {
@@ -499,4 +616,80 @@ onMounted(async () => {
 }
 
 .bottom-space { height: 100px; }
+
+/* Review Mode */
+.section-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;
+  .section-title { font-size: 18px; font-weight: 600; color: #1a1a2e; }
+}
+.start-review-btn {
+  background: #ef5350; color: #fff; padding: 8px 20px; border-radius: 20px;
+  font-size: 14px; font-weight: 500; transition: all 0.2s;
+  &:active { transform: scale(0.96); }
+}
+
+.review-card {
+  background: #fff; border-radius: 20px; padding: 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06); margin-bottom: 20px;
+}
+
+.review-progress {
+  margin-bottom: 20px;
+  .review-counter { display: block; font-size: 14px; color: #ef5350; font-weight: 600; margin-bottom: 8px; }
+  .review-progress-bar { height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden; }
+  .review-progress-fill { height: 100%; background: #ef5350; border-radius: 3px; transition: width 0.3s; }
+}
+
+.review-card-body { min-height: 160px; }
+
+.review-subject {
+  font-size: 13px; color: #ef5350; background: #ffebee;
+  padding: 4px 12px; border-radius: 12px; display: inline-block; margin-bottom: 16px;
+}
+
+.review-question { display: flex; gap: 12px; margin-bottom: 16px; }
+.question-label { font-size: 32px; font-weight: 800; color: #ef5350; line-height: 1; flex-shrink: 0; }
+.question-text { font-size: 18px; color: #1a1a2e; line-height: 1.6; font-weight: 500; }
+
+.review-image { width: 120px; border-radius: 8px; border: 1px solid #e8ece9; }
+
+.answer-divider { height: 1px; background: #e8ece9; margin: 16px 0; }
+
+.answer-content { display: flex; gap: 12px; margin-bottom: 12px; }
+.answer-label { font-size: 32px; font-weight: 800; color: #2e7d32; line-height: 1; flex-shrink: 0; }
+.answer-text { font-size: 16px; color: #1a1a2e; line-height: 1.7; }
+
+.analysis-content { margin-top: 12px; }
+.analysis-label { display: block; font-size: 12px; color: #ef5350; margin-bottom: 4px; font-weight: 500; }
+.analysis-text { font-size: 14px; color: #65746d; line-height: 1.6; }
+
+.review-actions { margin-top: 20px; }
+
+.show-answer-btn {
+  text-align: center; padding: 16px; background: #ffebee; border-radius: 14px; transition: all 0.2s;
+  &:active { transform: scale(0.98); background: #ffcdd2; }
+  text { font-size: 16px; color: #ef5350; font-weight: 600; }
+}
+
+.review-result-btns { display: flex; gap: 12px; }
+.result-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 14px 8px; border-radius: 14px; transition: all 0.2s;
+  &:active { transform: scale(0.96); }
+  &.wrong { background: #fff0f0; .result-text { color: #c62828; } }
+  &.correct { background: #f0fff4; .result-text { color: #2e7d32; } }
+  .result-icon { font-size: 24px; }
+  .result-text { font-size: 13px; font-weight: 500; }
+}
+
+.review-complete {
+  display: flex; flex-direction: column; align-items: center; padding: 60px 20px;
+  .complete-icon { font-size: 56px; margin-bottom: 12px; }
+  .complete-text { font-size: 20px; font-weight: 700; color: #1a1a2e; margin-bottom: 8px; }
+  .complete-hint { font-size: 14px; color: #65746d; margin-bottom: 20px; }
+  .back-btn {
+    padding: 12px 28px; background: #ef5350; color: #fff; border-radius: 25px;
+    font-size: 15px; font-weight: 500;
+  }
+}
 </style>
