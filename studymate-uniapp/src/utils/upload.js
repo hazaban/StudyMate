@@ -81,6 +81,27 @@ export const uploadUtil = {
   chooseImage,
   compressImage,
 
+  async pasteToFiles(event) {
+    // #ifdef H5
+    const items = event.clipboardData?.items
+    if (!items) return []
+    const files = []
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile()
+        if (file) {
+          const url = URL.createObjectURL(file)
+          files.push(url)
+        }
+      }
+    }
+    return files
+    // #endif
+    // #ifndef H5
+    return []
+    // #endif
+  },
+
   /** Upload a proof image to COS under proofs/{userId}/{date}/ */
   async uploadProof(imagePath, userId) {
     const today = new Date().toISOString().split('T')[0]

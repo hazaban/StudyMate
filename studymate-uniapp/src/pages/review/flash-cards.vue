@@ -247,11 +247,12 @@
                 <image :src="img" mode="aspectFill" class="uploaded-image" />
                 <view class="image-remove" @click="form.question_images.splice(idx, 1)">✕</view>
               </view>
-              <view class="image-add-btn" @click="chooseQuestionImage">
+              <view class="image-add-btn" tabindex="0" @click="chooseQuestionImage" @paste="onPasteQuestionImage">
                 <text class="add-icon">+</text>
-                <text class="add-text">上传</text>
+                <text class="add-text">上传/粘贴</text>
               </view>
             </view>
+            <text class="paste-hint">💡 电脑端：点击上传框后按 Ctrl+V 直接粘贴图片</text>
           </view>
           <view class="form-group">
             <text class="form-label">答案图片（可选）</text>
@@ -260,11 +261,12 @@
                 <image :src="img" mode="aspectFill" class="uploaded-image" />
                 <view class="image-remove" @click="form.answer_images.splice(idx, 1)">✕</view>
               </view>
-              <view class="image-add-btn" @click="chooseAnswerImage">
+              <view class="image-add-btn" tabindex="0" @click="chooseAnswerImage" @paste="onPasteAnswerImage">
                 <text class="add-icon">+</text>
-                <text class="add-text">上传</text>
+                <text class="add-text">上传/粘贴</text>
               </view>
             </view>
+            <text class="paste-hint">💡 电脑端：点击上传框后按 Ctrl+V 直接粘贴图片</text>
           </view>
         </scroll-view>
         <view class="modal-footer">
@@ -584,6 +586,20 @@ function chooseAnswerImage() {
     success: (res) => res.tempFilePaths.forEach(path => form.value.answer_images.push(path))
   })
 }
+async function onPasteQuestionImage(e) {
+  const files = await uploadUtil.pasteToFiles(e)
+  files.forEach(f => form.value.question_images.push(f))
+  if (files.length > 0) {
+    uni.showToast({ title: `已粘贴 ${files.length} 张图片`, icon: 'success' })
+  }
+}
+async function onPasteAnswerImage(e) {
+  const files = await uploadUtil.pasteToFiles(e)
+  files.forEach(f => form.value.answer_images.push(f))
+  if (files.length > 0) {
+    uni.showToast({ title: `已粘贴 ${files.length} 张图片`, icon: 'success' })
+  }
+}
 function previewImage(current, urls) { uni.previewImage({ current, urls }) }
 
 // ── Add ──
@@ -886,7 +902,10 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .image-item { position: relative; width: 80px; height: 80px; }
 .uploaded-image { width: 80px; height: 80px; border-radius: 10px; }
 .image-remove { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: #ef5350; color: #fff; font-size: 12px; display: flex; align-items: center; justify-content: center; }
-.image-add-btn { width: 80px; height: 80px; border-radius: 10px; border: 2px dashed #d0d5d2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: #fafafa; .add-icon { font-size: 24px; color: #999; } .add-text { font-size: 11px; color: #999; } }
+.image-add-btn { width: 80px; height: 80px; border-radius: 10px; border: 2px dashed #d0d5d2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: #fafafa; cursor: pointer; outline: none;
+  &:focus { border-color: $accent; background: #f0f7f4; }
+  .add-icon { font-size: 24px; color: #999; } .add-text { font-size: 11px; color: #999; } }
+.paste-hint { display: block; font-size: 11px; color: $muted; margin-top: 6px; }
 
 /* Export Modal - centered dialog */
 .export-overlay {
