@@ -11,11 +11,15 @@ class PlantCreate(BaseModel):
     subject: str
     type: str = "seed"
     progress: int = 0
+    water_count: int = 0
+    fertilize_count: int = 0
 
 
 class PlantUpdate(BaseModel):
     type: Optional[str] = None
     progress: Optional[int] = None
+    water_count: Optional[int] = None
+    fertilize_count: Optional[int] = None
 
 
 class PlantResponse(BaseModel):
@@ -24,6 +28,8 @@ class PlantResponse(BaseModel):
     type: str
     subject: str
     progress: int
+    water_count: int
+    fertilize_count: int
     created_at: datetime
     updated_at: datetime
 

@@ -11,6 +11,7 @@ from database import get_db, DailyTask, StudyPlan
 from config import SECRET_KEY, ALGORITHM
 from schemas.task import TaskCreate, TaskUpdate, TaskResponse, AITaskGenerateRequest
 from services.ai_service import generate_daily_tasks
+from routes.farm import add_fertilize_count
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
@@ -161,6 +162,8 @@ def complete_task(
 
     db.commit()
     db.refresh(task)
+
+    add_fertilize_count(task.plan_id, task.subject, db)
 
     resp = TaskResponse.model_validate(task)
     if task.repeat_type and task.repeat_type != "none" and task_date:

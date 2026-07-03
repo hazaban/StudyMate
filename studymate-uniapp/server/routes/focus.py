@@ -11,6 +11,7 @@ from jose import jwt
 from database import get_db, FocusRecord, StudyPlan
 from config import SECRET_KEY, ALGORITHM
 from schemas.focus import FocusRecordCreate, FocusRecordUpdate, FocusRecordResponse
+from routes.farm import add_water_count
 
 router = APIRouter(prefix="/api/focus", tags=["focus"])
 
@@ -35,6 +36,10 @@ def create_record(data: FocusRecordCreate, user_id: UUID = Depends(_get_user_id)
     db.add(record)
     db.commit()
     db.refresh(record)
+
+    if data.type == "focus" and data.subject:
+        add_water_count(data.plan_id, data.subject, db)
+
     return FocusRecordResponse.model_validate(record)
 
 

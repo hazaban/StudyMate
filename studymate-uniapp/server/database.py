@@ -153,6 +153,8 @@ class Plant(Base):
     type = Column(String(20), default="seed")        # seed / sprout / growing / mature / harvested
     subject = Column(String(100), nullable=False)
     progress = Column(Integer, default=0)             # 0-100
+    water_count = Column(Integer, default=0)          # 可用浇水次数
+    fertilize_count = Column(Integer, default=0)      # 可用施肥次数
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

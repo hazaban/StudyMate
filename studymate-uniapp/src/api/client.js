@@ -270,8 +270,16 @@ export async function waterPlant(plantId) {
   return request(`/farm/plants/${plantId}/water`, { method: 'POST' })
 }
 
+export async function fertilizePlant(plantId) {
+  return request(`/farm/plants/${plantId}/fertilize`, { method: 'POST' })
+}
+
 export async function harvestPlant(plantId) {
   return request(`/farm/plants/${plantId}/harvest`, { method: 'POST' })
+}
+
+export async function ensureCrop(planId, subject) {
+  return request(`/farm/ensure-crop?plan_id=${planId}&subject=${encodeURIComponent(subject)}`)
 }
 
 // ==================== Focus Records (番茄钟) ====================
