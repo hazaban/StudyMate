@@ -274,9 +274,13 @@
                 <view class="image-remove" @click="form.question_images.splice(idx, 1)">✕</view>
               </view>
               <view class="upload-actions">
+                <view class="upload-action-btn" @click="takeQuestionPhoto">
+                  <text class="action-icon">📷</text>
+                  <text class="action-text">拍照</text>
+                </view>
                 <view class="upload-action-btn" @click="chooseQuestionImage">
-                  <text class="action-icon">📁</text>
-                  <text class="action-text">选择文件</text>
+                  <text class="action-icon">🖼️</text>
+                  <text class="action-text">相册</text>
                 </view>
                 <view
                   class="upload-action-btn paste-btn"
@@ -284,11 +288,11 @@
                   @click="setPasteTarget('add_question')"
                 >
                   <text class="action-icon">📋</text>
-                  <text class="action-text">粘贴图片</text>
+                  <text class="action-text">粘贴</text>
                 </view>
               </view>
             </view>
-            <text class="paste-hint">💡 电脑端：点击「粘贴图片」后按 Ctrl+V 直接粘贴</text>
+            <text class="paste-hint">💡 手机端可拍照或从相册选择，电脑端点击「粘贴」后按 Ctrl+V</text>
           </view>
           <view class="form-group">
             <text class="form-label">答案图片（可选）</text>
@@ -298,9 +302,13 @@
                 <view class="image-remove" @click="form.answer_images.splice(idx, 1)">✕</view>
               </view>
               <view class="upload-actions">
+                <view class="upload-action-btn" @click="takeAnswerPhoto">
+                  <text class="action-icon">📷</text>
+                  <text class="action-text">拍照</text>
+                </view>
                 <view class="upload-action-btn" @click="chooseAnswerImage">
-                  <text class="action-icon">📁</text>
-                  <text class="action-text">选择文件</text>
+                  <text class="action-icon">🖼️</text>
+                  <text class="action-text">相册</text>
                 </view>
                 <view
                   class="upload-action-btn paste-btn"
@@ -308,11 +316,11 @@
                   @click="setPasteTarget('add_answer')"
                 >
                   <text class="action-icon">📋</text>
-                  <text class="action-text">粘贴图片</text>
+                  <text class="action-text">粘贴</text>
                 </view>
               </view>
             </view>
-            <text class="paste-hint">💡 电脑端：点击「粘贴图片」后按 Ctrl+V 直接粘贴</text>
+            <text class="paste-hint">💡 手机端可拍照或从相册选择，电脑端点击「粘贴」后按 Ctrl+V</text>
           </view>
         </scroll-view>
         <view class="modal-footer">
@@ -382,9 +390,13 @@
                 <view class="image-remove" @click="editForm.question_images.splice(idx, 1)">✕</view>
               </view>
               <view class="upload-actions">
+                <view class="upload-action-btn" @click="takeEditQuestionPhoto">
+                  <text class="action-icon">📷</text>
+                  <text class="action-text">拍照</text>
+                </view>
                 <view class="upload-action-btn" @click="chooseEditQuestionImage">
-                  <text class="action-icon">📁</text>
-                  <text class="action-text">选择文件</text>
+                  <text class="action-icon">🖼️</text>
+                  <text class="action-text">相册</text>
                 </view>
                 <view
                   class="upload-action-btn paste-btn"
@@ -392,11 +404,11 @@
                   @click="setPasteTarget('edit_question')"
                 >
                   <text class="action-icon">📋</text>
-                  <text class="action-text">粘贴图片</text>
+                  <text class="action-text">粘贴</text>
                 </view>
               </view>
             </view>
-            <text class="paste-hint">💡 电脑端：点击「粘贴图片」后按 Ctrl+V 直接粘贴</text>
+            <text class="paste-hint">💡 手机端可拍照或从相册选择，电脑端点击「粘贴」后按 Ctrl+V</text>
           </view>
           <view class="form-group">
             <text class="form-label">答案图片（可选）</text>
@@ -406,9 +418,13 @@
                 <view class="image-remove" @click="editForm.answer_images.splice(idx, 1)">✕</view>
               </view>
               <view class="upload-actions">
+                <view class="upload-action-btn" @click="takeEditAnswerPhoto">
+                  <text class="action-icon">📷</text>
+                  <text class="action-text">拍照</text>
+                </view>
                 <view class="upload-action-btn" @click="chooseEditAnswerImage">
-                  <text class="action-icon">📁</text>
-                  <text class="action-text">选择文件</text>
+                  <text class="action-icon">🖼️</text>
+                  <text class="action-text">相册</text>
                 </view>
                 <view
                   class="upload-action-btn paste-btn"
@@ -416,11 +432,11 @@
                   @click="setPasteTarget('edit_answer')"
                 >
                   <text class="action-icon">📋</text>
-                  <text class="action-text">粘贴图片</text>
+                  <text class="action-text">粘贴</text>
                 </view>
               </view>
             </view>
-            <text class="paste-hint">💡 电脑端：点击「粘贴图片」后按 Ctrl+V 直接粘贴</text>
+            <text class="paste-hint">💡 手机端可拍照或从相册选择，电脑端点击「粘贴」后按 Ctrl+V</text>
           </view>
         </scroll-view>
         <view class="modal-footer">
@@ -724,25 +740,49 @@ function goToCards() {
 
 function chooseQuestionImage() {
   uni.chooseImage({
-    count: 9, sizeType: ['compressed'], sourceType: ['album', 'camera'],
+    count: 9, sizeType: ['compressed'], sourceType: ['album'],
     success: (res) => res.tempFilePaths.forEach(path => form.value.question_images.push(path))
   })
 }
 function chooseAnswerImage() {
   uni.chooseImage({
-    count: 9, sizeType: ['compressed'], sourceType: ['album', 'camera'],
+    count: 9, sizeType: ['compressed'], sourceType: ['album'],
+    success: (res) => res.tempFilePaths.forEach(path => form.value.answer_images.push(path))
+  })
+}
+function takeQuestionPhoto() {
+  uni.chooseImage({
+    count: 1, sizeType: ['compressed'], sourceType: ['camera'],
+    success: (res) => res.tempFilePaths.forEach(path => form.value.question_images.push(path))
+  })
+}
+function takeAnswerPhoto() {
+  uni.chooseImage({
+    count: 1, sizeType: ['compressed'], sourceType: ['camera'],
     success: (res) => res.tempFilePaths.forEach(path => form.value.answer_images.push(path))
   })
 }
 function chooseEditQuestionImage() {
   uni.chooseImage({
-    count: 9, sizeType: ['compressed'], sourceType: ['album', 'camera'],
+    count: 9, sizeType: ['compressed'], sourceType: ['album'],
     success: (res) => res.tempFilePaths.forEach(path => editForm.value.question_images.push(path))
   })
 }
 function chooseEditAnswerImage() {
   uni.chooseImage({
-    count: 9, sizeType: ['compressed'], sourceType: ['album', 'camera'],
+    count: 9, sizeType: ['compressed'], sourceType: ['album'],
+    success: (res) => res.tempFilePaths.forEach(path => editForm.value.answer_images.push(path))
+  })
+}
+function takeEditQuestionPhoto() {
+  uni.chooseImage({
+    count: 1, sizeType: ['compressed'], sourceType: ['camera'],
+    success: (res) => res.tempFilePaths.forEach(path => editForm.value.question_images.push(path))
+  })
+}
+function takeEditAnswerPhoto() {
+  uni.chooseImage({
+    count: 1, sizeType: ['compressed'], sourceType: ['camera'],
     success: (res) => res.tempFilePaths.forEach(path => editForm.value.answer_images.push(path))
   })
 }
