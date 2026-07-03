@@ -83,6 +83,20 @@
         "navigationBarTitleText": "个人中心",
         "navigationStyle": "custom"
       }
+    },
+    {
+      "path": "pages/profile/settings",
+      "style": {
+        "navigationBarTitleText": "设置",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/plan/ai-plan",
+      "style": {
+        "navigationBarTitleText": "AI 智能规划",
+        "navigationStyle": "custom"
+      }
     }
   ],
   "globalStyle": {

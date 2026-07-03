@@ -1,6 +1,6 @@
 /** API client for the FastAPI backend. */
 
-const BASE_URL = '/api'
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 function getToken() {
   return uni.getStorageSync('studymate_token') || ''
@@ -118,8 +118,16 @@ export async function deleteTask(id) {
   return request(`/tasks/${id}`, { method: 'DELETE' })
 }
 
-export async function completeTask(id) {
-  return request(`/tasks/${id}/complete`, { method: 'POST' })
+export async function completeTask(id, taskDate) {
+  let url = `/tasks/${id}/complete`
+  if (taskDate) url += `?task_date=${taskDate}`
+  return request(url, { method: 'POST' })
+}
+
+export async function uncompleteTask(id, taskDate) {
+  let url = `/tasks/${id}/uncomplete`
+  if (taskDate) url += `?task_date=${taskDate}`
+  return request(url, { method: 'POST' })
 }
 
 export async function aiGenerateTasks(data) {
@@ -158,6 +166,31 @@ export async function deleteCard(id) {
 
 export async function reviewCard(id, masteryLevel) {
   return request(`/cards/${id}/review?mastery_level=${masteryLevel}`, { method: 'POST' })
+}
+
+export async function getCardSubjects(planId) {
+  return request(`/cards/subjects?plan_id=${planId}`)
+}
+
+export async function getCardTagsBySubject(planId, subject) {
+  let url = `/cards/tags/by-subject?plan_id=${planId}`
+  if (subject) url += `&subject=${encodeURIComponent(subject)}`
+  return request(url)
+}
+
+export async function exportCards(planId, subject, tag) {
+  let url = `/cards/export?plan_id=${planId}`
+  if (subject) url += `&subject=${encodeURIComponent(subject)}`
+  if (tag) url += `&tag=${encodeURIComponent(tag)}`
+  return request(url)
+}
+
+export async function aiAnalyzeSubjectPhase(description, subject) {
+  return request('/ai/syllabus', { method: 'POST', data: { description, subject, image: '' } })
+}
+
+export async function aiAnalyzeSyllabus(imageBase64, subject) {
+  return request('/ai/syllabus', { method: 'POST', data: { image: imageBase64, subject, description: '' } })
 }
 
 export async function aiGenerateCards(content, subject) {
@@ -205,6 +238,24 @@ export async function reviewMistake(id, correct) {
   return request(`/mistakes/${id}/review?correct=${correct}`, { method: 'POST' })
 }
 
+export async function getMistakeSubjects(planId) {
+  return request(`/mistakes/subjects?plan_id=${planId}`)
+}
+
+export async function getMistakeTagsBySubject(planId, subject) {
+  let url = `/mistakes/tags/by-subject?plan_id=${planId}`
+  if (subject) url += `&subject=${encodeURIComponent(subject)}`
+  return request(url)
+}
+
+export async function exportMistakes(planId, subject, tag, difficulty) {
+  let url = `/mistakes/export?plan_id=${planId}`
+  if (subject) url += `&subject=${encodeURIComponent(subject)}`
+  if (tag) url += `&tag=${encodeURIComponent(tag)}`
+  if (difficulty) url += `&difficulty=${encodeURIComponent(difficulty)}`
+  return request(url)
+}
+
 // ==================== Farm ====================
 
 export async function getFarm(planId) {
@@ -219,8 +270,73 @@ export async function waterPlant(plantId) {
   return request(`/farm/plants/${plantId}/water`, { method: 'POST' })
 }
 
+export async function fertilizePlant(plantId) {
+  return request(`/farm/plants/${plantId}/fertilize`, { method: 'POST' })
+}
+
 export async function harvestPlant(plantId) {
   return request(`/farm/plants/${plantId}/harvest`, { method: 'POST' })
+}
+
+export async function ensureCrop(planId, subject) {
+  return request(`/farm/ensure-crop?plan_id=${planId}&subject=${encodeURIComponent(subject)}`)
+}
+
+// ==================== Focus Records (番茄钟) ====================
+
+export async function createFocusRecord(data) {
+  return request('/focus', { method: 'POST', data })
+}
+
+export async function getFocusRecords(planId, startDate, endDate, subject) {
+  let url = `/focus?plan_id=${planId}`
+  if (startDate) url += `&start_date=${startDate}`
+  if (endDate) url += `&end_date=${endDate}`
+  if (subject) url += `&subject=${encodeURIComponent(subject)}`
+  return request(url)
+}
+
+export async function getFocusStats(planId, startDate, endDate) {
+  let url = `/focus/stats?plan_id=${planId}`
+  if (startDate) url += `&start_date=${startDate}`
+  if (endDate) url += `&end_date=${endDate}`
+  return request(url)
+}
+
+export async function getFocusSubjectStats(planId, startDate, endDate) {
+  let url = `/focus/stats/subject?plan_id=${planId}`
+  if (startDate) url += `&start_date=${startDate}`
+  if (endDate) url += `&end_date=${endDate}`
+  return request(url)
+}
+
+export async function getFocusDailyStats(planId, startDate, endDate) {
+  let url = `/focus/stats/daily?plan_id=${planId}`
+  if (startDate) url += `&start_date=${startDate}`
+  if (endDate) url += `&end_date=${endDate}`
+  return request(url)
+}
+
+export async function getFocusWeeklyStats(planId, startDate, endDate) {
+  let url = `/focus/stats/weekly?plan_id=${planId}`
+  if (startDate) url += `&start_date=${startDate}`
+  if (endDate) url += `&end_date=${endDate}`
+  return request(url)
+}
+
+export async function getFocusMonthlyStats(planId, startDate, endDate) {
+  let url = `/focus/stats/monthly?plan_id=${planId}`
+  if (startDate) url += `&start_date=${startDate}`
+  if (endDate) url += `&end_date=${endDate}`
+  return request(url)
+}
+
+export async function updateFocusRecord(id, data) {
+  return request(`/focus/${id}`, { method: 'PUT', data })
+}
+
+export async function deleteFocusRecord(id) {
+  return request(`/focus/${id}`, { method: 'DELETE' })
 }
 
 // ==================== AI ====================

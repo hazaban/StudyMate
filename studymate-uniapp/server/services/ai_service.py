@@ -1,10 +1,13 @@
-"""DeepSeek AI service for plan generation, card generation, and daily review."""
+"""DeepSeek AI service for plan generation, card generation, and daily review.
+Qwen Vision for image-based syllabus analysis."""
 
 import json
+import base64
 import httpx
 from config import (
     DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL,
-    DEEPSEEK_MODEL_FLASH, DEEPSEEK_MODEL_PRO
+    DEEPSEEK_MODEL_FLASH, DEEPSEEK_MODEL_PRO,
+    QWEN_API_KEY, QWEN_BASE_URL, QWEN_VISION_MODEL
 )
 
 
@@ -182,3 +185,86 @@ async def generate_daily_review(
     ]
     result = await _call_deepseek(messages)
     return json.loads(result)
+
+
+async def analyze_syllabus_image(image_data_url: str, subject: str = "", description: str = "") -> dict:
+    """Analyze a syllabus/TOC image using Qwen Vision and return chapter plan.
+
+    Args:
+        image_data_url: Base64 data URL of the image
+        subject: Subject name for context
+        description: User's additional description of learning progress
+    """
+    if not QWEN_API_KEY:
+        return _mock_syllabus_analysis(subject, description)
+
+    prompt = f"""请分析这张教材目录/大纲图片，提取章节结构。科目：{subject or '未知'}。用户补充描述：{description or '无'}。
+
+请提取每一章的章节名称，并根据章节难度和用户描述，为每章建议每天所需的学习时间（分钟/天）和预计天数。
+
+请严格按照以下JSON格式返回，不要包含markdown代码块标记：
+{{
+    "subject": "科目名",
+    "chapters": [
+        {{"name": "章节名", "daily_duration": 每天学习分钟数, "estimated_days": 预计需要天数}},
+        ...
+    ],
+    "total_days": 总预计天数,
+    "suggestion": "整体学习建议"
+}}"""
+
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "image_url", "image_url": {"url": image_data_url}},
+                {"type": "text", "text": prompt}
+            ]
+        }
+    ]
+
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(
+                f"{QWEN_BASE_URL}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {QWEN_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": QWEN_VISION_MODEL,
+                    "messages": messages,
+                    "temperature": 0.3,
+                    "max_tokens": 4096
+                }
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            content = data["choices"][0]["message"]["content"]
+            content = content.strip()
+            if content.startswith("```"):
+                lines = content.split("\n")
+                content = "\n".join(lines[1:]) if len(lines) > 1 else content
+            if content.endswith("```"):
+                content = content[:-3].strip()
+            return json.loads(content)
+    except Exception as e:
+        return {"error": str(e), "chapters": [], "suggestion": "AI分析失败，请重试"}
+
+
+def _mock_syllabus_analysis(subject: str, description: str) -> dict:
+    """Mock syllabus analysis for demo when no Qwen API key."""
+    return {
+        "subject": subject or "数据结构",
+        "chapters": [
+            {"name": "第一章 绪论", "daily_duration": 30, "estimated_days": 2},
+            {"name": "第二章 线性表", "daily_duration": 45, "estimated_days": 5},
+            {"name": "第三章 栈与队列", "daily_duration": 45, "estimated_days": 4},
+            {"name": "第四章 树与二叉树", "daily_duration": 60, "estimated_days": 7},
+            {"name": "第五章 图", "daily_duration": 60, "estimated_days": 6},
+            {"name": "第六章 查找", "daily_duration": 45, "estimated_days": 5},
+            {"name": "第七章 排序", "daily_duration": 45, "estimated_days": 5},
+        ],
+        "total_days": 34,
+        "suggestion": f"根据你的描述「{description or '无'}」，建议重点攻克树与图章节，这两章是考研重点，建议每天至少1小时。"
+    }

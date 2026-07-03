@@ -51,9 +51,21 @@ export const useTaskStore = defineStore('task', {
       }
     },
 
-    async completeTask(id) {
+    async completeTask(id, taskDate) {
       try {
-        const task = await api.completeTask(id)
+        const task = await api.completeTask(id, taskDate)
+        const idx = this.todayTasks.findIndex(t => t.id === id)
+        if (idx !== -1) this.todayTasks[idx] = task
+        this._updateCounts()
+        return { success: true, task }
+      } catch (error) {
+        return { success: false, error: error.message }
+      }
+    },
+
+    async uncompleteTask(id, taskDate) {
+      try {
+        const task = await api.uncompleteTask(id, taskDate)
         const idx = this.todayTasks.findIndex(t => t.id === id)
         if (idx !== -1) this.todayTasks[idx] = task
         this._updateCounts()

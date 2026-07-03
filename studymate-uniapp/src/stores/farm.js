@@ -50,11 +50,46 @@ export const useFarmStore = defineStore('farm', {
       }
     },
 
+    async ensureCrop(planId, subject) {
+      try {
+        const plant = await api.ensureCrop(planId, subject)
+        const idx = this.plants.findIndex(p => p.id === plant.id)
+        if (idx !== -1) this.plants[idx] = plant
+        else this.plants.push(plant)
+        return { success: true, plant }
+      } catch (error) {
+        return { success: false, error: error.message }
+      }
+    },
+
     async waterPlant(plantId) {
       try {
         const plant = await api.waterPlant(plantId)
         const idx = this.plants.findIndex(p => p.id === plantId)
-        if (idx !== -1) this.plants[idx] = plant
+        if (idx !== -1) {
+          this.plants[idx] = plant
+        }
+        this.experience += 5
+        if (this.experience >= this.level * 100) {
+          this.level += 1
+        }
+        return { success: true, plant }
+      } catch (error) {
+        return { success: false, error: error.message }
+      }
+    },
+
+    async fertilizePlant(plantId) {
+      try {
+        const plant = await api.fertilizePlant(plantId)
+        const idx = this.plants.findIndex(p => p.id === plantId)
+        if (idx !== -1) {
+          this.plants[idx] = plant
+        }
+        this.experience += 12
+        if (this.experience >= this.level * 100) {
+          this.level += 1
+        }
         return { success: true, plant }
       } catch (error) {
         return { success: false, error: error.message }
@@ -67,6 +102,10 @@ export const useFarmStore = defineStore('farm', {
         const idx = this.plants.findIndex(p => p.id === plantId)
         if (idx !== -1) this.plants[idx] = plant
         this.coins += 50
+        this.experience += 20
+        if (this.experience >= this.level * 100) {
+          this.level += 1
+        }
         return { success: true, plant }
       } catch (error) {
         return { success: false, error: error.message }

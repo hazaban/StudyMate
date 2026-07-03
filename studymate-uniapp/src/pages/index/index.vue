@@ -67,6 +67,10 @@
         <view class="action-icon">🌱</view>
         <text class="action-text">照顾农场</text>
       </view>
+      <view class="action-card" @click="goToStats">
+        <view class="action-icon">📊</view>
+        <text class="action-text">学习统计</text>
+      </view>
     </view>
 
     <view class="task-preview">
@@ -149,7 +153,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { usePlanStore } from '@/stores/plan'
 import { useTaskStore } from '@/stores/task'
@@ -230,9 +234,6 @@ async function toggleTaskComplete(task) {
     const today = dateUtil.today()
     if (planStore.currentPlan) {
       await taskStore.getTasksByDate(planStore.currentPlan.id, today)
-      if (taskStore.totalCount > 0) {
-        progressPercent.value = Math.round((taskStore.completedCount / taskStore.totalCount) * 100)
-      }
     }
   } catch (e) {
     uni.showToast({ title: '操作失败', icon: 'none' })
@@ -268,6 +269,10 @@ function startPomodoro() {
   uni.navigateTo({ url: '/pages/daily/pomodoro' })
 }
 
+function goToStats() {
+  uni.navigateTo({ url: '/pages/statistics/stats' })
+}
+
 onMounted(async () => {
   currentDate.value = `${dateUtil.format(new Date(), 'YYYY年MM月DD日')} ${dateUtil.getWeekDay(new Date())}`
 
@@ -283,10 +288,16 @@ onMounted(async () => {
 
       daysRemaining.value = dateUtil.getDaysBetween(today, planStore.currentPlan.exam_date)
 
-      if (taskStore.totalCount > 0) {
-        progressPercent.value = Math.round((taskStore.completedCount / taskStore.totalCount) * 100)
-      }
     }
+  }
+})
+
+watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
+  if (newId && newId !== oldId) {
+    const today = dateUtil.today()
+    await taskStore.getTasksByDate(planStore.currentPlan.id, today)
+    await farmStore.getPlantsByPlanId(planStore.currentPlan.id)
+    daysRemaining.value = dateUtil.getDaysBetween(today, planStore.currentPlan.exam_date)
   }
 })
 </script>
@@ -480,25 +491,6 @@ onMounted(async () => {
     margin-bottom: 14px;
   }
   
-  .progress-bar {
-    height: 8px;
-    background: $soft;
-    border-radius: 4px;
-    overflow: hidden;
-    margin-bottom: 8px;
-    
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, $accent, lighten($accent, 8%));
-      border-radius: 4px;
-      transition: width 0.6s ease;
-    }
-  }
-  
-  .progress-text {
-    font-size: 12px;
-    color: $muted;
-  }
 }
 
 .quick-actions {

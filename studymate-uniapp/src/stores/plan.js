@@ -55,14 +55,30 @@ export const usePlanStore = defineStore('plan', {
         const plans = await api.getPlans()
         this.plans = plans
         if (plans.length > 0) {
-          this.currentPlan = plans[0]
-          this.targetScores = plans[0].target_scores || {}
-          this.dailyStudyTime = plans[0].daily_study_time || 0
-          this.weakPoints = plans[0].weak_points || []
+          // Restore last selected plan from storage, otherwise default to first
+          const savedPlanId = uni.getStorageSync('studymate_current_plan_id')
+          const target = savedPlanId
+            ? (plans.find(p => p.id === savedPlanId) || plans[0])
+            : plans[0]
+          this.currentPlan = target
+          this.targetScores = target.target_scores || {}
+          this.dailyStudyTime = target.daily_study_time || 0
+          this.weakPoints = target.weak_points || []
         }
         return { success: true }
       } catch (error) {
         return { success: false, error: error.message }
+      }
+    },
+
+    switchPlan(planId) {
+      const plan = this.plans.find(p => p.id === planId)
+      if (plan) {
+        this.currentPlan = plan
+        this.targetScores = plan.target_scores || {}
+        this.dailyStudyTime = plan.daily_study_time || 0
+        this.weakPoints = plan.weak_points || []
+        uni.setStorageSync('studymate_current_plan_id', planId)
       }
     },
 

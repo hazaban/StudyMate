@@ -11,7 +11,17 @@ from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from config import DATABASE_URL
 
-engine = create_engine(DATABASE_URL, pool_size=10, max_overflow=20)
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    connect_args={
+        "connect_timeout": 10,
+        "sslmode": "prefer"
+    }
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -83,6 +93,8 @@ class DailyTask(Base):
     status = Column(String(20), default="pending")   # pending / doing / completed
     completed_at = Column(DateTime(timezone=True), default=None)
     proof_image_url = Column(Text, default="")
+    repeat_type = Column(String(20), default="none")  # none / daily / weekday / holiday
+    completed_dates = Column(JSON, default=list)       # 循环任务的完成日期列表
     created_at = Column(DateTime(timezone=True), default=utcnow)
 
     plan = relationship("StudyPlan", back_populates="tasks")
@@ -141,6 +153,8 @@ class Plant(Base):
     type = Column(String(20), default="seed")        # seed / sprout / growing / mature / harvested
     subject = Column(String(100), nullable=False)
     progress = Column(Integer, default=0)             # 0-100
+    water_count = Column(Integer, default=0)          # 可用浇水次数
+    fertilize_count = Column(Integer, default=0)      # 可用施肥次数
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -156,6 +170,28 @@ class FarmState(Base):
     experience = Column(Integer, default=0)
     level = Column(Integer, default=1)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class FocusRecord(Base):
+    __tablename__ = "focus_records"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    plan_id = Column(UUID(as_uuid=True), ForeignKey("study_plans.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    date = Column(Date, nullable=False, index=True)
+    type = Column(String(20), default="focus")        # focus / manual / break
+    subject = Column(String(100), default="")
+    task_id = Column(UUID(as_uuid=True), ForeignKey("daily_tasks.id", ondelete="SET NULL"), nullable=True)
+    task_name = Column(String(255), default="")
+    duration = Column(Integer, default=25)              # minutes
+    start_time = Column(DateTime(timezone=True), default=None)
+    end_time = Column(DateTime(timezone=True), default=None)
+    note = Column(Text, default="")
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    plan = relationship("StudyPlan")
+    task = relationship("DailyTask")
 
 
 # ---------------------------------------------------------------------------

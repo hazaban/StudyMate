@@ -14,6 +14,7 @@ class TaskCreate(BaseModel):
     content: str
     duration: int = 25
     status: str = "pending"
+    repeat_type: str = "none"  # none / daily / weekday / holiday
 
 
 class TaskUpdate(BaseModel):
@@ -24,6 +25,7 @@ class TaskUpdate(BaseModel):
     status: Optional[str] = None
     completed_at: Optional[datetime] = None
     proof_image_url: Optional[str] = None
+    repeat_type: Optional[str] = None
 
 
 class TaskResponse(BaseModel):
@@ -37,6 +39,8 @@ class TaskResponse(BaseModel):
     status: str
     completed_at: Optional[datetime]
     proof_image_url: str
+    repeat_type: str
+    completed_dates: list[str] = []
     created_at: datetime
 
     model_config = {"from_attributes": True}

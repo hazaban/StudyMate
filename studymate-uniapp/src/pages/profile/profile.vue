@@ -100,6 +100,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
 import { usePlanStore } from '@/stores/plan'
 import { useCardStore } from '@/stores/card'
@@ -111,6 +112,32 @@ const cardStore = useCardStore()
 const planCount = ref(0)
 const cardCount = ref(0)
 const totalDays = ref(0)
+
+async function loadData() {
+  await userStore.getUserInfo()
+
+  if (!userStore.isLoggedIn || !userStore.user) {
+    planCount.value = 0
+    cardCount.value = 0
+    return
+  }
+
+  const planResult = await planStore.getPlansByUserId()
+  if (planResult.success) {
+    planCount.value = planStore.plans?.length || 0
+  } else {
+    planCount.value = 0
+  }
+
+  if (planStore.currentPlan) {
+    await cardStore.getCardsByPlanId(planStore.currentPlan.id)
+    cardCount.value = cardStore.cards.length
+  } else {
+    cardCount.value = 0
+  }
+
+  totalDays.value = Math.floor(Math.random() * 30) + 1
+}
 
 function goToLogin() {
   uni.navigateTo({ url: '/pages/auth/login' })
@@ -154,19 +181,11 @@ async function handleLogout() {
 }
 
 onMounted(async () => {
-  await userStore.getUserInfo()
-  
-  if (userStore.isLoggedIn && userStore.user) {
-    const planResult = await planStore.getPlansByUserId(userStore.user.id)
-    planCount.value = planResult.data?.length || 0
-    
-    if (planStore.currentPlan) {
-      await cardStore.getCardsByPlanId(planStore.currentPlan.id)
-      cardCount.value = cardStore.cards.length
-    }
-    
-    totalDays.value = Math.floor(Math.random() * 30) + 1
-  }
+  await loadData()
+})
+
+onShow(async () => {
+  await loadData()
 })
 </script>
 

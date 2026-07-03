@@ -103,6 +103,7 @@
           <view class="task-meta">
             <text class="task-subject">{{ task.subject }}</text>
             <text class="task-chapter" v-if="task.chapter">{{ task.chapter }}</text>
+            <text class="task-repeat-tag" v-if="task.repeat_type && task.repeat_type !== 'none'">{{ getRepeatLabel(task.repeat_type) }}</text>
             <text class="task-duration">预计: {{ task.duration }}分钟</text>
             <text class="task-actual" v-if="task.actual_duration > 0">实际: {{ task.actual_duration }}分钟</text>
           </view>
@@ -119,6 +120,27 @@
       <text class="empty-hint">点击上方「添加任务」按钮手动创建任务</text>
     </view>
 
+    <!-- 番茄钟专注记录（历史视图或当天有记录时显示） -->
+    <view class="focus-records-section" v-if="dateFocusRecords.length > 0">
+      <view class="focus-records-header">
+        <text class="focus-records-title">🍅 番茄钟专注记录</text>
+        <text class="focus-records-count">共 {{ dateFocusRecords.length }} 条 · {{ totalFocusMinutes }}分钟</text>
+      </view>
+      <view class="focus-record-item" v-for="(r, idx) in dateFocusRecords" :key="idx">
+        <view class="focus-record-icon">
+          <text class="focus-record-emoji">{{ r.type === 'manual' ? '📝' : '🍅' }}</text>
+        </view>
+        <view class="focus-record-body">
+          <text class="focus-record-task">{{ r.task_name || '专注学习' }}</text>
+          <text class="focus-record-meta">
+            {{ r.subject || '未分类' }} · {{ r.duration }}分钟
+            <text v-if="r.start_time"> · {{ formatTime(r.start_time) }}</text>
+          </text>
+        </view>
+        <text class="focus-record-duration">{{ r.duration }}m</text>
+      </view>
+    </view>
+
     <!-- Add/Edit Task Modal -->
     <view class="modal-overlay" v-if="showAddForm || editingTask" @click="closeForm">
       <view class="modal-content" @click.stop>
@@ -129,8 +151,18 @@
         <scroll-view scroll-y class="modal-body">
           <view class="form-group">
             <text class="form-label">科目</text>
+            <view class="form-label-row">
+              <text class="form-label">科目</text>
+              <text class="form-manage-link" @click="showManageSubjects = true">管理科目</text>
+            </view>
             <view class="subject-grid">
-              <view class="subject-item" v-for="s in subjectOptions" :key="s" :class="{ active: form.subject === s }" @click="form.subject = s">{{ s }}</view>
+              <view
+                class="subject-item"
+                v-for="s in subjectOptions"
+                :key="s"
+                :class="{ active: form.subject === s }"
+                @click="form.subject = s"
+              >{{ s }}</view>
               <view class="subject-item subject-add" @click="showSubjectInput = !showSubjectInput">
                 <text v-if="!showSubjectInput">+ 自定义</text>
                 <text v-else>收起</text>
@@ -172,6 +204,16 @@
             </view>
           </view>
 
+          <view class="form-group">
+            <text class="form-label">循环方式</text>
+            <view class="type-row repeat-row">
+              <view class="type-item" :class="{ active: form.repeat_type === 'none' }" @click="form.repeat_type = 'none'">不循环</view>
+              <view class="type-item" :class="{ active: form.repeat_type === 'daily' }" @click="form.repeat_type = 'daily'">每天</view>
+              <view class="type-item" :class="{ active: form.repeat_type === 'weekday' }" @click="form.repeat_type = 'weekday'">工作日</view>
+              <view class="type-item" :class="{ active: form.repeat_type === 'holiday' }" @click="form.repeat_type = 'holiday'">节假日</view>
+            </view>
+          </view>
+
           <view class="form-group" v-if="editingTask">
             <text class="form-label">实际用时（系统根据番茄钟自动记录）</text>
             <view class="input-wrapper">
@@ -186,16 +228,51 @@
       </view>
     </view>
 
+    <!-- Manage Subjects Modal -->
+    <view class="manage-overlay" v-if="showManageSubjects" @click="showManageSubjects = false">
+      <view class="manage-dialog" @click.stop>
+        <view class="manage-dialog-top">
+          <text class="manage-dialog-title">管理科目</text>
+          <view class="manage-dialog-close" @click="showManageSubjects = false">✕</view>
+        </view>
+        <view class="manage-dialog-body">
+          <view class="manage-item" v-for="s in subjectOptions" :key="s">
+            <view class="manage-item-left">
+              <text class="manage-item-name">{{ s }}</text>
+              <text class="manage-item-badge" v-if="!customSubjectOptions.includes(s)">预设</text>
+              <text class="manage-item-badge manage-custom-badge" v-else>自定义</text>
+            </view>
+            <view
+              class="manage-item-del"
+              v-if="customSubjectOptions.includes(s)"
+              @click="removeSubjectFromManager(s)"
+            >删除</view>
+          </view>
+          <view class="manage-add-row">
+            <input
+              class="manage-add-input"
+              v-model="manageNewSubject"
+              placeholder="输入新科目名称"
+              @confirm="addManageSubject"
+            />
+            <view class="manage-add-btn" @click="addManageSubject">添加</view>
+          </view>
+        </view>
+      </view>
+    </view>
+
     <view class="bottom-space"></view>
   </view>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useTaskStore } from '@/stores/task'
 import { usePlanStore } from '@/stores/plan'
 import { useUserStore } from '@/stores/user'
 import { useFarmStore } from '@/stores/farm'
+import { getFocusRecords } from '@/api/client'
 
 const taskStore = useTaskStore()
 const planStore = usePlanStore()
@@ -216,8 +293,14 @@ const calendarMonth = ref(new Date())  // 当前显示的月份
 const calendarDays = ref([])
 const taskDates = ref(new Set())  // 有任务的日期集合
 
+// 番茄钟记录（历史视图用）
+const dateFocusRecords = ref([])
+
 const allSubjects = ['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络']
 const subjectOptions = ref(JSON.parse(uni.getStorageSync('studymate_subjects') || JSON.stringify(allSubjects)))
+const customSubjectOptions = ref(JSON.parse(uni.getStorageSync('studymate_custom_subjects') || '[]'))
+const showManageSubjects = ref(false)
+const manageNewSubject = ref('')
 
 function addCustomSubject() {
   const name = customSubject.value.trim()
@@ -226,9 +309,43 @@ function addCustomSubject() {
     subjectOptions.value.push(name)
     uni.setStorageSync('studymate_subjects', JSON.stringify(subjectOptions.value))
   }
+  if (!customSubjectOptions.value.includes(name)) {
+    customSubjectOptions.value.push(name)
+    uni.setStorageSync('studymate_custom_subjects', JSON.stringify(customSubjectOptions.value))
+  }
   form.value.subject = name
   customSubject.value = ''
   showSubjectInput.value = false
+}
+
+function addManageSubject() {
+  const name = manageNewSubject.value.trim()
+  if (!name) return
+  if (!subjectOptions.value.includes(name)) {
+    subjectOptions.value.push(name)
+    uni.setStorageSync('studymate_subjects', JSON.stringify(subjectOptions.value))
+  }
+  if (!customSubjectOptions.value.includes(name)) {
+    customSubjectOptions.value.push(name)
+    uni.setStorageSync('studymate_custom_subjects', JSON.stringify(customSubjectOptions.value))
+  }
+  manageNewSubject.value = ''
+}
+
+function removeSubjectFromManager(name) {
+  uni.showModal({
+    title: '删除科目',
+    content: `确定要删除「${name}」吗？`,
+    success: (res) => {
+      if (res.confirm) {
+        customSubjectOptions.value = customSubjectOptions.value.filter(s => s !== name)
+        uni.setStorageSync('studymate_custom_subjects', JSON.stringify(customSubjectOptions.value))
+        subjectOptions.value = subjectOptions.value.filter(s => s !== name)
+        uni.setStorageSync('studymate_subjects', JSON.stringify(subjectOptions.value))
+        if (form.value.subject === name) form.value.subject = subjectOptions.value[0] || ''
+      }
+    }
+  })
 }
 
 const defaultForm = {
@@ -237,7 +354,8 @@ const defaultForm = {
   content: '',
   duration: 25,
   actual_duration: 0,
-  type: 'new_study'
+  type: 'new_study',
+  repeat_type: 'none'
 }
 
 const form = ref({ ...defaultForm })
@@ -282,6 +400,18 @@ const filteredTasks = computed(() => {
   return tasks
 })
 
+const totalFocusMinutes = computed(() => {
+  return dateFocusRecords.value.reduce((s, r) => s + (r.duration || 0), 0)
+})
+
+function formatTime(isoStr) {
+  if (!isoStr) return ''
+  try {
+    const d = new Date(isoStr)
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  } catch (e) { return '' }
+}
+
 const getTypeLabel = (type) => {
   const map = { new_study: '新学', review: '复习', mistake: '错题' }
   return map[type] || type
@@ -292,11 +422,16 @@ const getTypeClass = (type) => {
   return map[type] || ''
 }
 
+const getRepeatLabel = (type) => {
+  const map = { daily: '每天', weekday: '工作日', holiday: '节假日' }
+  return map[type] || ''
+}
+
 async function toggleTask(task) {
   if (task.status === 'completed') {
-    await taskStore.updateTask(task.id, { status: 'pending' })
+    await taskStore.uncompleteTask(task.id, selectedDate.value)
   } else {
-    await taskStore.completeTask(task.id)
+    await taskStore.completeTask(task.id, selectedDate.value)
     // Auto-link to farm: fertilize the crop
     if (planStore.currentPlan) {
       try {
@@ -323,7 +458,8 @@ function editTask(task) {
     content: task.content,
     duration: task.duration,
     actual_duration: task.actual_duration || 0,
-    type: task.type
+    type: task.type,
+    repeat_type: task.repeat_type || 'none'
   }
   showAddForm.value = false
 }
@@ -356,7 +492,8 @@ async function submitForm() {
         subject: form.value.subject,
         chapter: form.value.chapter,
         content: form.value.content,
-        duration: parseInt(form.value.duration) || 25
+        duration: parseInt(form.value.duration) || 25,
+        repeat_type: form.value.repeat_type
       })
       // 新增任务后标记该日期有任务
       taskDates.value.add(selectedDate.value)
@@ -479,6 +616,18 @@ async function loadTasks() {
     saveTaskDatesToStorage()
     generateCalendar()
   }
+  // 加载该日期的番茄钟记录
+  await loadFocusRecords()
+}
+
+async function loadFocusRecords() {
+  if (!planStore.currentPlan) { dateFocusRecords.value = []; return }
+  try {
+    const records = await getFocusRecords(planStore.currentPlan.id, selectedDate.value, selectedDate.value)
+    dateFocusRecords.value = records || []
+  } catch (e) {
+    dateFocusRecords.value = []
+  }
 }
 
 onMounted(async () => {
@@ -489,6 +638,20 @@ onMounted(async () => {
       loadTaskDates()
       await loadTasks()
     }
+  }
+})
+
+// 页面每次显示时刷新数据（从番茄钟页面返回时触发，同步 actual_duration）
+onShow(async () => {
+  if (planStore.currentPlan && userStore.isLoggedIn) {
+    await loadTasks()
+  }
+})
+
+watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
+  if (newId && newId !== oldId) {
+    loadTaskDates()
+    await loadTasks()
   }
 })
 </script>
@@ -662,15 +825,16 @@ onMounted(async () => {
 .task-meta { display: flex; gap: 8px; flex-wrap: wrap; }
 .task-subject { font-size: 12px; color: #2f7d4f; background: #e8f5e9; padding: 2px 8px; border-radius: 8px; }
 .task-chapter { font-size: 12px; color: #6b4ce6; background: #f3f0ff; padding: 2px 8px; border-radius: 8px; }
+.task-repeat-tag { font-size: 12px; color: #e65100; background: #fff3e0; padding: 2px 8px; border-radius: 8px; font-weight: 500; }
 .task-duration, .task-actual { font-size: 12px; color: #999; }
 .task-pomodoro { flex-shrink: 0; .pomodoro-icon { font-size: 24px; } }
 
 .empty { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; .empty-icon { font-size: 48px; margin-bottom: 12px; } .empty-text { font-size: 16px; color: #65746d; margin-bottom: 8px; } .empty-hint { font-size: 13px; color: #999; text-align: center; } }
 
 /* Modal */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: flex-end; }
-.modal-content { background: #fff; border-radius: 24px 24px 0 0; width: 100%; max-height: 85vh; display: flex; flex-direction: column; }
-.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #f0f0f0; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.modal-content { background: #fff; border-radius: 20px; width: 100%; max-width: 440px; max-height: 75vh; display: flex; flex-direction: column; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f0f0f0; }
 .modal-title { font-size: 18px; font-weight: 700; color: #1a1a2e; }
 .modal-close { font-size: 20px; color: #999; padding: 4px; }
 .modal-body { padding: 20px 24px; flex: 1; overflow-y: auto; }
@@ -683,10 +847,109 @@ onMounted(async () => {
 .input-wrapper { border: 1.5px solid #e8ece9; border-radius: 14px; padding: 12px 16px; background: #fafafa; &:focus-within { border-color: #2f7d4f; } }
 .input-field { width: 100%; font-size: 15px; color: #1a1a2e; border: none; outline: none; background: transparent; }
 .textarea-field { width: 100%; min-height: 60px; font-size: 15px; color: #1a1a2e; line-height: 1.6; border: none; outline: none; background: transparent; resize: none; }
+.form-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.form-label-row .form-label { margin-bottom: 0; }
+.form-manage-link {
+  font-size: 12px; color: $accent; padding: 2px 8px; border-radius: 8px;
+  background: rgba($accent, 0.06); font-weight: 500;
+  &:active { background: rgba($accent, 0.15); }
+}
 .subject-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-.subject-item { padding: 8px 16px; border-radius: 20px; font-size: 13px; color: #65746d; background: #f5f7f5; &.active { background: #2f7d4f; color: #fff; } &.subject-add { background: #fff; border: 1.5px dashed #d0d5d2; color: #2f7d4f; } }
+.subject-item { padding: 8px 16px; border-radius: 20px; font-size: 13px; color: #65746d; background: #f5f7f5; display: flex; align-items: center; gap: 4px; &.active { background: #2f7d4f; color: #fff; } &.subject-add { background: #fff; border: 1.5px dashed #d0d5d2; color: #2f7d4f; } }
 .type-row { display: flex; gap: 8px; }
 .type-item { flex: 1; padding: 10px; text-align: center; border-radius: 10px; font-size: 13px; color: #65746d; background: #f5f7f5; &.active { background: #2f7d4f; color: #fff; } }
 
+/* Manage Subjects Modal */
+.manage-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 250;
+  display: flex; align-items: center; justify-content: center; padding: 30px;
+}
+.manage-dialog {
+  background: #fff; border-radius: 20px; width: 100%; max-width: 360px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.15); overflow: hidden;
+}
+.manage-dialog-top {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20px 20px 14px;
+}
+.manage-dialog-title { font-size: 17px; font-weight: 700; color: #1a1a2e; }
+.manage-dialog-close {
+  width: 28px; height: 28px; border-radius: 50%; background: #f5f5f5;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: #999;
+  &:active { background: #e0e0e0; }
+}
+.manage-dialog-body { padding: 0 20px 20px; }
+.manage-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; border-radius: 10px; margin-bottom: 6px;
+  background: #f5f7f5;
+}
+.manage-item-left { display: flex; align-items: center; gap: 8px; }
+.manage-item-name { font-size: 14px; color: #1a1a2e; font-weight: 500; }
+.manage-item-badge {
+  font-size: 10px; padding: 2px 8px; border-radius: 10px;
+  background: #edf7ee; color: #2f7d4f;
+}
+.manage-custom-badge { background: #fff3e0; color: #e65100; }
+.manage-item-del {
+  font-size: 12px; padding: 5px 12px; border-radius: 8px;
+  background: #ffebee; color: #c62828; font-weight: 500;
+  &:active { background: #ffcdd2; }
+}
+.manage-add-row {
+  display: flex; gap: 8px; margin-top: 12px; padding-top: 12px;
+  border-top: 1px solid #e0e0e0;
+}
+.manage-add-input {
+  flex: 1; padding: 10px 12px; border: 1.5px solid #e0e0e0; border-radius: 10px;
+  font-size: 14px; color: #1a1a2e; background: #f5f7f5;
+  height: 44px; line-height: 24px;
+}
+.manage-add-input:focus { border-color: #2f7d4f; }
+.manage-add-btn {
+  padding: 10px 20px; border-radius: 10px; background: #2f7d4f; color: #fff;
+  font-size: 14px; font-weight: 600; white-space: nowrap;
+  &:active { opacity: 0.85; }
+}
+
 .bottom-space { height: 100px; }
+
+/* 番茄钟专注记录 */
+.focus-records-section {
+  margin: 16px 0;
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.focus-records-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px; padding-bottom: 10px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.focus-records-title { font-size: 16px; font-weight: 600; color: #333; }
+.focus-records-count { font-size: 12px; color: #999; }
+.focus-record-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f8f8f8;
+  &:last-child { border-bottom: none; }
+}
+.focus-record-icon {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: #fff3e0; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.focus-record-emoji { font-size: 18px; }
+.focus-record-body { flex: 1; min-width: 0; }
+.focus-record-task {
+  font-size: 14px; color: #333; font-weight: 500;
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.focus-record-meta { font-size: 12px; color: #999; margin-top: 2px; }
+.focus-record-duration {
+  font-size: 14px; font-weight: 600; color: #ef5350;
+  flex-shrink: 0;
+}
 </style>

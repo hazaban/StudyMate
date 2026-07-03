@@ -81,6 +81,72 @@ def list_mistakes(
     )
 
 
+@router.get("/subjects")
+def get_mistake_subjects(
+    plan_id: UUID = Query(...),
+    user_id: UUID = Depends(_get_user_id),
+    db: Session = Depends(get_db)
+):
+    """Get distinct subjects for mistakes under a plan."""
+    plan = db.query(StudyPlan).filter(StudyPlan.id == plan_id, StudyPlan.user_id == user_id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="计划不存在")
+    subjects = db.query(Mistake.subject).filter(Mistake.plan_id == plan_id).distinct().all()
+    return {"subjects": [s[0] for s in subjects]}
+
+
+@router.get("/tags/by-subject")
+def get_mistake_tags_by_subject(
+    plan_id: UUID = Query(...),
+    subject: str = Query(None),
+    user_id: UUID = Depends(_get_user_id),
+    db: Session = Depends(get_db)
+):
+    """Get tags for mistakes, optionally filtered by subject."""
+    plan = db.query(StudyPlan).filter(StudyPlan.id == plan_id, StudyPlan.user_id == user_id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="计划不存在")
+    query = db.query(Mistake.tags).filter(Mistake.plan_id == plan_id)
+    if subject:
+        query = query.filter(Mistake.subject == subject)
+    rows = query.all()
+    tag_set = set()
+    for r in rows:
+        if r[0]:
+            for t in r[0]:
+                tag_set.add(t)
+    return {"tags": sorted(tag_set)}
+
+
+@router.get("/export")
+def export_mistakes(
+    plan_id: UUID = Query(...),
+    subject: str = Query(None),
+    tag: str = Query(None),
+    difficulty: str = Query(None),
+    user_id: UUID = Depends(_get_user_id),
+    db: Session = Depends(get_db)
+):
+    """Export mistakes data (returns full list for client-side export)."""
+    plan = db.query(StudyPlan).filter(StudyPlan.id == plan_id, StudyPlan.user_id == user_id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="计划不存在")
+    query = db.query(Mistake).filter(Mistake.plan_id == plan_id)
+    if subject:
+        query = query.filter(Mistake.subject == subject)
+    if difficulty:
+        query = query.filter(Mistake.difficulty == difficulty)
+    if tag:
+        mistakes = query.order_by(Mistake.created_at.desc()).all()
+        mistakes = [m for m in mistakes if m.tags and tag in (m.tags or [])]
+    else:
+        mistakes = query.order_by(Mistake.created_at.desc()).all()
+    return {
+        "mistakes": [MistakeResponse.model_validate(m).model_dump(mode='json') for m in mistakes],
+        "total": len(mistakes)
+    }
+
+
 @router.get("/{mistake_id}", response_model=MistakeResponse)
 def get_mistake(mistake_id: UUID, user_id: UUID = Depends(_get_user_id), db: Session = Depends(get_db)):
     mistake = db.query(Mistake).join(StudyPlan).filter(
