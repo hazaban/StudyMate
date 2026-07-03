@@ -132,8 +132,12 @@ export async function createCard(data) {
   return request('/cards', { method: 'POST', data })
 }
 
-export async function getCards(planId) {
-  return request(`/cards?plan_id=${planId}`)
+export async function getCards(planId, subject, tag, pending) {
+  let url = `/cards?plan_id=${planId}`
+  if (subject) url += `&subject=${encodeURIComponent(subject)}`
+  if (tag) url += `&tag=${encodeURIComponent(tag)}`
+  if (pending) url += `&pending=1`
+  return request(url)
 }
 
 export async function getPendingCards(planId) {
@@ -169,9 +173,11 @@ export async function createMistake(data) {
   return request('/mistakes', { method: 'POST', data })
 }
 
-export async function getMistakes(planId, subject) {
+export async function getMistakes(planId, subject, tag, pending) {
   let url = `/mistakes?plan_id=${planId}`
   if (subject) url += `&subject=${encodeURIComponent(subject)}`
+  if (tag) url += `&tag=${encodeURIComponent(tag)}`
+  if (pending) url += `&pending=1`
   return request(url)
 }
 
@@ -193,6 +199,10 @@ export async function markMistakeMastered(id) {
 
 export async function retryMistake(id) {
   return request(`/mistakes/${id}/retry`, { method: 'POST' })
+}
+
+export async function reviewMistake(id, correct) {
+  return request(`/mistakes/${id}/review?correct=${correct}`, { method: 'POST' })
 }
 
 // ==================== Farm ====================

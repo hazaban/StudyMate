@@ -1,6 +1,6 @@
 """Pydantic schemas for Mistake."""
 
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 from typing import Optional
 from pydantic import BaseModel
@@ -14,6 +14,8 @@ class MistakeCreate(BaseModel):
     analysis: str = ""
     difficulty: str = "medium"
     image_urls: list[str] = []
+    tags: list[str] = []
+    next_review_date: date = None
 
 
 class MistakeUpdate(BaseModel):
@@ -23,8 +25,11 @@ class MistakeUpdate(BaseModel):
     analysis: Optional[str] = None
     difficulty: Optional[str] = None
     image_urls: Optional[list[str]] = None
+    tags: Optional[list[str]] = None
     error_count: Optional[int] = None
+    correct_count: Optional[int] = None
     mastered: Optional[str] = None
+    next_review_date: Optional[date] = None
 
 
 class MistakeResponse(BaseModel):
@@ -36,8 +41,11 @@ class MistakeResponse(BaseModel):
     subject: str
     difficulty: str
     image_urls: list[str] = []
+    tags: list[str] = []
     error_count: int
+    correct_count: int
     mastered: str
+    next_review_date: date
     created_at: datetime
     updated_at: datetime
 

@@ -43,6 +43,8 @@ def create_card(data: CardCreate, user_id: UUID = Depends(_get_user_id), db: Ses
 def list_cards(
     plan_id: UUID = Query(...),
     subject: str = Query(None),
+    tag: str = Query(None),
+    pending: str = Query(None),  # "1" = only show due today
     user_id: UUID = Depends(_get_user_id),
     db: Session = Depends(get_db)
 ):
@@ -53,8 +55,16 @@ def list_cards(
     query = db.query(FlashCard).filter(FlashCard.plan_id == plan_id)
     if subject:
         query = query.filter(FlashCard.subject == subject)
+    if pending == "1":
+        today = date.today()
+        query = query.filter(FlashCard.next_review_date <= today)
 
     cards = query.order_by(FlashCard.next_review_date.asc()).all()
+
+    # Filter by tag on the Python side (JSON array matching)
+    if tag:
+        cards = [c for c in cards if c.tags and tag in (c.tags or [])]
+
     return CardListResponse(
         cards=[CardResponse.model_validate(c) for c in cards],
         total=len(cards)

@@ -100,6 +100,7 @@ class FlashCard(Base):
     next_review_date = Column(Date, nullable=False, index=True)
     review_count = Column(Integer, default=0)
     image_urls = Column(JSON, default=list)  # list of image URLs
+    tags = Column(JSON, default=list)        # custom tags
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -121,6 +122,7 @@ class Mistake(Base):
     correct_count = Column(Integer, default=0)                 # consecutive correct answers
     mastered = Column(String(1), default="0")                  # '0' or '1'
     next_review_date = Column(Date, nullable=False, index=True)  # next review date (Ebbinghaus)
+    tags = Column(JSON, default=list)                            # custom tags
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
