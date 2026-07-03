@@ -178,6 +178,88 @@ def get_daily_stats(
     ]
 
 
+@router.get("/stats/weekly")
+def get_weekly_stats(
+    plan_id: UUID = Query(...),
+    start_date: date = Query(None),
+    end_date: date = Query(None),
+    user_id: UUID = Depends(_get_user_id),
+    db: Session = Depends(get_db)
+):
+    plan = db.query(StudyPlan).filter(StudyPlan.id == plan_id, StudyPlan.user_id == user_id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="计划不存在")
+
+    query = db.query(FocusRecord).filter(FocusRecord.plan_id == plan_id, FocusRecord.type == "focus")
+    if start_date:
+        query = query.filter(FocusRecord.date >= start_date)
+    if end_date:
+        query = query.filter(FocusRecord.date <= end_date)
+
+    from sqlalchemy import func as sqlfunc
+    week_expr = sqlfunc.extract('week', FocusRecord.date).label('week')
+    year_expr = sqlfunc.extract('year', FocusRecord.date).label('year')
+
+    results = query.with_entities(
+        year_expr,
+        week_expr,
+        func.coalesce(func.sum(FocusRecord.duration), 0).label("minutes"),
+        func.count(FocusRecord.id).label("sessions")
+    ).group_by(year_expr, week_expr).order_by(year_expr.asc(), week_expr.asc()).all()
+
+    return [
+        {
+            "year": int(r.year),
+            "week": int(r.week),
+            "label": f"第{int(r.week)}周",
+            "minutes": int(r.minutes or 0),
+            "sessions": int(r.sessions or 0)
+        }
+        for r in results
+    ]
+
+
+@router.get("/stats/monthly")
+def get_monthly_stats(
+    plan_id: UUID = Query(...),
+    start_date: date = Query(None),
+    end_date: date = Query(None),
+    user_id: UUID = Depends(_get_user_id),
+    db: Session = Depends(get_db)
+):
+    plan = db.query(StudyPlan).filter(StudyPlan.id == plan_id, StudyPlan.user_id == user_id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="计划不存在")
+
+    query = db.query(FocusRecord).filter(FocusRecord.plan_id == plan_id, FocusRecord.type == "focus")
+    if start_date:
+        query = query.filter(FocusRecord.date >= start_date)
+    if end_date:
+        query = query.filter(FocusRecord.date <= end_date)
+
+    from sqlalchemy import func as sqlfunc
+    month_expr = sqlfunc.extract('month', FocusRecord.date).label('month')
+    year_expr = sqlfunc.extract('year', FocusRecord.date).label('year')
+
+    results = query.with_entities(
+        year_expr,
+        month_expr,
+        func.coalesce(func.sum(FocusRecord.duration), 0).label("minutes"),
+        func.count(FocusRecord.id).label("sessions")
+    ).group_by(year_expr, month_expr).order_by(year_expr.asc(), month_expr.asc()).all()
+
+    return [
+        {
+            "year": int(r.year),
+            "month": int(r.month),
+            "label": f"{int(r.month)}月",
+            "minutes": int(r.minutes or 0),
+            "sessions": int(r.sessions or 0)
+        }
+        for r in results
+    ]
+
+
 @router.put("/{record_id}", response_model=FocusRecordResponse)
 def update_record(record_id: UUID, data: FocusRecordUpdate, user_id: UUID = Depends(_get_user_id), db: Session = Depends(get_db)):
     record = db.query(FocusRecord).filter(FocusRecord.id == record_id).first()

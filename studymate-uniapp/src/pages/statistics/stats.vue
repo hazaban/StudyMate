@@ -22,6 +22,9 @@
       <view class="time-tab" :class="{ active: timeRange === 'all' }" @click="timeRange = 'all'">
         <text class="tab-text">全部</text>
       </view>
+      <view class="time-tab custom-tab" :class="{ active: timeRange === 'custom' }" @click="openDateRange">
+        <text class="tab-text">自定义</text>
+      </view>
     </view>
 
     <!-- Overview Cards -->
@@ -111,23 +114,40 @@
       </view>
     </view>
 
-    <!-- Daily Trend Bars -->
+    <!-- Trend Chart -->
     <view class="chart-section">
-      <text class="section-title">📈 每日学习趋势</text>
-      <view class="bar-chart" v-if="dailyTrend.length > 0">
+      <view class="section-header">
+        <text class="section-title">{{ trendTitle }}</text>
+        <text class="range-hint" v-if="timeRange === 'custom'">{{ customStart }} ~ {{ customEnd }}</text>
+      </view>
+      <view class="bar-chart" v-if="trendData.length > 0">
         <view class="chart-y-axis">
           <text class="y-label" v-for="v in yAxisLabels" :key="v">{{ v }}</text>
         </view>
-        <view class="chart-bars-area">
-          <view class="bar-item" v-for="(day, idx) in dailyTrend" :key="idx">
+        <scroll-view scroll-x class="chart-scroll" v-if="trendData.length > 7">
+          <view class="chart-bars-area scrollable">
+            <view class="bar-item" v-for="(item, idx) in trendData" :key="idx">
+              <view class="bar-wrapper">
+                <view
+                  class="bar-fill"
+                  :style="{ height: (item.minutes / yMax * 100) + '%' }"
+                ></view>
+              </view>
+              <text class="bar-label">{{ item.label }}</text>
+              <text class="bar-value">{{ item.minutes }}分</text>
+            </view>
+          </view>
+        </scroll-view>
+        <view class="chart-bars-area" v-else>
+          <view class="bar-item" v-for="(item, idx) in trendData" :key="idx">
             <view class="bar-wrapper">
               <view
                 class="bar-fill"
-                :style="{ height: (day.minutes / yMax * 100) + '%' }"
+                :style="{ height: (item.minutes / yMax * 100) + '%' }"
               ></view>
             </view>
-            <text class="bar-label">{{ day.label }}</text>
-            <text class="bar-value">{{ day.minutes }}分</text>
+            <text class="bar-label">{{ item.label }}</text>
+            <text class="bar-value">{{ item.minutes }}分</text>
           </view>
         </view>
       </view>
@@ -151,6 +171,45 @@
       </view>
     </view>
 
+    <!-- Date Range Picker Modal -->
+    <view class="modal-overlay" v-if="showDatePicker" @click="closeDatePicker">
+      <view class="modal-content" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">选择统计日期范围</text>
+          <view class="modal-close" @click="closeDatePicker">✕</view>
+        </view>
+        <view class="modal-body">
+          <view class="date-picker-row">
+            <view class="date-picker-item" @click="showStartPicker = true">
+              <text class="date-picker-label">开始日期</text>
+              <text class="date-picker-value">{{ customStart }}</text>
+            </view>
+            <text class="date-picker-sep">至</text>
+            <view class="date-picker-item" @click="showEndPicker = true">
+              <text class="date-picker-label">结束日期</text>
+              <text class="date-picker-value">{{ customEnd }}</text>
+            </view>
+          </view>
+          <picker mode="date" :value="customStart" :end="todayStr" @change="onStartChange">
+            <view class="hidden-picker"></view>
+          </picker>
+          <picker mode="date" :value="customEnd" :end="todayStr" @change="onEndChange">
+            <view class="hidden-picker"></view>
+          </picker>
+          <view class="quick-select-row">
+            <view class="quick-btn" @click="setQuickRange(7)">近7天</view>
+            <view class="quick-btn" @click="setQuickRange(14)">近14天</view>
+            <view class="quick-btn" @click="setQuickRange(30)">近30天</view>
+            <view class="quick-btn" @click="setQuickRange(90)">近90天</view>
+          </view>
+        </view>
+        <view class="modal-footer">
+          <view class="cancel-btn" @click="closeDatePicker">取消</view>
+          <view class="submit-btn" @click="confirmDateRange">确认查看</view>
+        </view>
+      </view>
+    </view>
+
     <view class="bottom-space"></view>
   </view>
 </template>
@@ -159,7 +218,14 @@
 import { ref, computed, watch } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { usePlanStore } from '@/stores/plan'
-import { getFocusStats, getFocusSubjectStats, getFocusDailyStats, getFocusRecords } from '@/api/client'
+import {
+  getFocusStats,
+  getFocusSubjectStats,
+  getFocusDailyStats,
+  getFocusWeeklyStats,
+  getFocusMonthlyStats,
+  getFocusRecords
+} from '@/api/client'
 
 const planStore = usePlanStore()
 
@@ -169,7 +235,17 @@ const loading = ref(false)
 const overviewStats = ref({ total_minutes: 0, total_sessions: 0, avg_minutes: 0 })
 const subjectStats = ref([])
 const dailyStats = ref([])
+const weeklyStats = ref([])
+const monthlyStats = ref([])
 const recentRecords = ref([])
+
+const showDatePicker = ref(false)
+const showStartPicker = ref(false)
+const showEndPicker = ref(false)
+const customStart = ref('')
+const customEnd = ref('')
+
+const todayStr = computed(() => new Date().toISOString().split('T')[0])
 
 const COLORS = ['#ef5350', '#5c6bc0', '#66bb6a', '#ffb74d', '#ab47bc', '#26c6da', '#ec407a', '#8d6e63']
 
@@ -223,21 +299,70 @@ const donutSegments = computed(() => {
   })
 })
 
-const dailyTrend = computed(() => {
-  if (dailyStats.value.length === 0) return []
-  return dailyStats.value.map(d => {
-    const date = new Date(d.date)
-    return {
-      label: `${date.getMonth() + 1}/${date.getDate()}`,
-      date: d.date,
+const trendTitle = computed(() => {
+  const map = {
+    today: '📈 今日学习趋势',
+    week: '📈 本周每日学习趋势',
+    month: '📊 本月每周学习趋势',
+    all: '📊 全部每月学习趋势',
+    custom: '📈 学习趋势'
+  }
+  return map[timeRange.value] || '📈 学习趋势'
+})
+
+const trendData = computed(() => {
+  if (timeRange.value === 'today') {
+    if (dailyStats.value.length === 0) return []
+    return dailyStats.value.map(d => ({
+      label: '今日',
       minutes: d.minutes,
       sessions: d.sessions
-    }
-  })
+    }))
+  }
+  if (timeRange.value === 'week') {
+    if (dailyStats.value.length === 0) return []
+    return dailyStats.value.map(d => {
+      const date = new Date(d.date)
+      const days = ['日', '一', '二', '三', '四', '五', '六']
+      return {
+        label: `周${days[date.getDay()]}`,
+        minutes: d.minutes,
+        sessions: d.sessions
+      }
+    })
+  }
+  if (timeRange.value === 'month') {
+    if (weeklyStats.value.length === 0) return []
+    return weeklyStats.value.map(w => ({
+      label: w.label || `第${w.week}周`,
+      minutes: w.minutes,
+      sessions: w.sessions
+    }))
+  }
+  if (timeRange.value === 'all') {
+    if (monthlyStats.value.length === 0) return []
+    return monthlyStats.value.map(m => ({
+      label: m.label || `${m.month}月`,
+      minutes: m.minutes,
+      sessions: m.sessions
+    }))
+  }
+  if (timeRange.value === 'custom') {
+    if (dailyStats.value.length === 0) return []
+    return dailyStats.value.map(d => {
+      const date = new Date(d.date)
+      return {
+        label: `${date.getMonth() + 1}/${date.getDate()}`,
+        minutes: d.minutes,
+        sessions: d.sessions
+      }
+    })
+  }
+  return []
 })
 
 const yMax = computed(() => {
-  const max = Math.max(...dailyTrend.value.map(d => d.minutes), 1)
+  const max = Math.max(...trendData.value.map(d => d.minutes), 1)
   return Math.ceil(max / 60) * 60 || 60
 })
 
@@ -266,6 +391,11 @@ function getDateRange() {
     const d = new Date(today)
     d.setDate(d.getDate() - 29)
     startDate = d.toISOString().split('T')[0]
+  } else if (timeRange.value === 'custom') {
+    startDate = customStart.value
+    const e = new Date(customEnd.value)
+    e.setHours(23, 59, 59, 999)
+    return { startDate, endDate: customEnd.value }
   } else {
     startDate = null
   }
@@ -278,16 +408,37 @@ async function loadStats() {
   loading.value = true
   try {
     const { startDate, endDate } = getDateRange()
-    const [overview, subjectRes, dailyRes, recordsRes] = await Promise.all([
+    const promises = [
       getFocusStats(planId, startDate, endDate),
       getFocusSubjectStats(planId, startDate, endDate),
-      getFocusDailyStats(planId, startDate, endDate),
       getFocusRecords(planId, startDate, endDate)
+    ]
+
+    let trendRes
+    if (timeRange.value === 'month') {
+      trendRes = getFocusWeeklyStats(planId, startDate, endDate)
+    } else if (timeRange.value === 'all') {
+      trendRes = getFocusMonthlyStats(planId, startDate, endDate)
+    } else {
+      trendRes = getFocusDailyStats(planId, startDate, endDate)
+    }
+
+    const [overview, subjectRes, recordsRes, trendDataRes] = await Promise.all([
+      ...promises,
+      trendRes
     ])
+
     overviewStats.value = overview
     subjectStats.value = subjectRes
-    dailyStats.value = dailyRes
     recentRecords.value = (recordsRes || []).slice(0, 15)
+
+    if (timeRange.value === 'month') {
+      weeklyStats.value = trendDataRes
+    } else if (timeRange.value === 'all') {
+      monthlyStats.value = trendDataRes
+    } else {
+      dailyStats.value = trendDataRes
+    }
   } catch (e) {
     console.error('Failed to load stats:', e)
   } finally {
@@ -296,6 +447,48 @@ async function loadStats() {
 }
 
 function goBack() { uni.navigateBack() }
+
+function openDateRange() {
+  const today = new Date()
+  const twoWeeksAgo = new Date(today)
+  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 13)
+  customStart.value = twoWeeksAgo.toISOString().split('T')[0]
+  customEnd.value = today.toISOString().split('T')[0]
+  showDatePicker.value = true
+}
+
+function closeDatePicker() {
+  showDatePicker.value = false
+}
+
+function onStartChange(e) {
+  customStart.value = e.detail.value
+}
+
+function onEndChange(e) {
+  customEnd.value = e.detail.value
+}
+
+function setQuickRange(days) {
+  const today = new Date()
+  customEnd.value = today.toISOString().split('T')[0]
+  const d = new Date(today)
+  d.setDate(d.getDate() - (days - 1))
+  customStart.value = d.toISOString().split('T')[0]
+}
+
+function confirmDateRange() {
+  if (!customStart.value || !customEnd.value) {
+    uni.showToast({ title: '请选择日期范围', icon: 'none' })
+    return
+  }
+  if (new Date(customStart.value) > new Date(customEnd.value)) {
+    uni.showToast({ title: '开始日期不能晚于结束日期', icon: 'none' })
+    return
+  }
+  timeRange.value = 'custom'
+  showDatePicker.value = false
+}
 
 watch(timeRange, () => { loadStats() })
 
@@ -316,11 +509,25 @@ onShow(() => {
 .time-tabs {
   display: flex; background: $bg2; border-radius: 12px; padding: 4px;
   margin-bottom: 16px; border: 1px solid $rule;
+  overflow-x: auto;
+  flex-wrap: nowrap;
 }
 .time-tab {
-  flex: 1; padding: 10px; border-radius: 8px; text-align: center;
+  flex: 1; padding: 10px 6px; border-radius: 8px; text-align: center;
+  min-width: 56px; flex-shrink: 0;
   &.active { background: $accent; .tab-text { color: #fff; } }
   .tab-text { font-size: 14px; color: $muted; }
+}
+.custom-tab {
+  flex: none;
+  padding: 10px 14px;
+  min-width: auto;
+  background: rgba(102, 126, 117, 0.08);
+  .tab-text { font-size: 13px; color: #667e75; }
+  &.active {
+    background: $accent;
+    .tab-text { color: #fff; }
+  }
 }
 
 /* Overview */
@@ -341,6 +548,16 @@ onShow(() => {
 }
 .section-title {
   display: block; font-size: 16px; font-weight: 600; color: $ink; margin-bottom: 16px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  
+  .section-title { margin-bottom: 0; }
+  .range-hint { font-size: 12px; color: $muted; }
 }
 
 /* Donut Chart */
@@ -375,12 +592,31 @@ onShow(() => {
   padding-right: 8px; flex-shrink: 0;
   .y-label { font-size: 10px; color: $muted; }
 }
+.chart-scroll {
+  flex: 1;
+  white-space: nowrap;
+  overflow-x: auto;
+  border-left: 1px solid $rule;
+  border-bottom: 1px solid $rule;
+}
 .chart-bars-area {
   flex: 1; display: flex; justify-content: space-around; align-items: flex-end;
   border-left: 1px solid $rule; border-bottom: 1px solid $rule; padding-left: 8px;
+  min-width: 100%;
+}
+.chart-bars-area.scrollable {
+  border-left: none;
+  border-bottom: none;
+  display: inline-flex;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 0 10px;
+  min-width: auto;
 }
 .bar-item { display: flex; flex-direction: column; align-items: center; min-width: 28px; }
+.chart-bars-area.scrollable .bar-item { min-width: 40px; }
 .bar-wrapper { width: 22px; height: 100px; display: flex; align-items: flex-end; }
+.chart-bars-area.scrollable .bar-wrapper { width: 28px; }
 .bar-fill {
   width: 100%; background: linear-gradient(180deg, $accent 0%, lighten($accent, 15%) 100%);
   border-radius: 4px 4px 0 0; min-height: 2px; transition: height 0.3s ease;
@@ -403,4 +639,97 @@ onShow(() => {
 }
 
 .bottom-space { height: 80px; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.modal-content {
+  width: 85%;
+  max-width: 360px;
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 18px;
+  border-bottom: 1px solid $rule;
+}
+.modal-title { font-size: 16px; font-weight: 600; color: $ink; }
+.modal-close { font-size: 16px; color: $muted; }
+.modal-body {
+  padding: 20px 18px;
+}
+.modal-footer {
+  display: flex;
+  border-top: 1px solid $rule;
+}
+.cancel-btn, .submit-btn {
+  flex: 1;
+  text-align: center;
+  padding: 14px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.cancel-btn { color: $muted; }
+.submit-btn { color: $accent; font-weight: 600; }
+
+.date-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.date-picker-item {
+  flex: 1;
+  background: $bg2;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+  border: 1px solid $rule;
+}
+.date-picker-label {
+  font-size: 12px;
+  color: $muted;
+  display: block;
+  margin-bottom: 4px;
+}
+.date-picker-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: $ink;
+}
+.date-picker-sep {
+  font-size: 14px;
+  color: $muted;
+}
+.hidden-picker {
+  width: 0;
+  height: 0;
+  opacity: 0;
+  position: absolute;
+}
+.quick-select-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.quick-btn {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  background: $bg2;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #667e75;
+  border: 1px solid $rule;
+  
+  &:active {
+    background: rgba(102, 126, 117, 0.15);
+  }
+}
 </style>

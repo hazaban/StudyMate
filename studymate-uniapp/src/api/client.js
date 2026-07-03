@@ -317,6 +317,20 @@ export async function getFocusDailyStats(planId, startDate, endDate) {
   return request(url)
 }
 
+export async function getFocusWeeklyStats(planId, startDate, endDate) {
+  let url = `/focus/stats/weekly?plan_id=${planId}`
+  if (startDate) url += `&start_date=${startDate}`
+  if (endDate) url += `&end_date=${endDate}`
+  return request(url)
+}
+
+export async function getFocusMonthlyStats(planId, startDate, endDate) {
+  let url = `/focus/stats/monthly?plan_id=${planId}`
+  if (startDate) url += `&start_date=${startDate}`
+  if (endDate) url += `&end_date=${endDate}`
+  return request(url)
+}
+
 export async function updateFocusRecord(id, data) {
   return request(`/focus/${id}`, { method: 'PUT', data })
 }
