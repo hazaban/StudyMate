@@ -28,7 +28,7 @@
         <view class="input-group">
           <text class="input-label">考试日期</text>
           <picker mode="date" :value="form.exam_date" @change="onDateChange">
-            <view class="input-field">
+            <view class="input-field input-field-picker">
               {{ form.exam_date || '请选择考试日期' }}
               <text class="picker-arrow">▼</text>
             </view>
@@ -315,9 +315,6 @@ function goBack() {
     font-size: 16px;
     color: $ink;
     background: $bg2;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
     
     &:focus {
       border-color: $accent;
@@ -328,6 +325,12 @@ function goBack() {
       font-size: 12px;
       color: $muted;
     }
+  }
+
+  .input-field-picker {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
   
   .textarea-field {
