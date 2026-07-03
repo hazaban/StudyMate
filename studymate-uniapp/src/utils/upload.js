@@ -92,6 +92,30 @@ export const uploadUtil = {
     return uploadToCOS(imagePath, userId, '', 'avatars/')
   },
 
+  /** Upload flash card question image to COS under cards/{userId}/{date}/question/ */
+  async uploadCardQuestion(imagePath, userId) {
+    const today = new Date().toISOString().split('T')[0]
+    return uploadToCOS(imagePath, userId, today, 'cards/question/')
+  },
+
+  /** Upload flash card answer image to COS under cards/{userId}/{date}/answer/ */
+  async uploadCardAnswer(imagePath, userId) {
+    const today = new Date().toISOString().split('T')[0]
+    return uploadToCOS(imagePath, userId, today, 'cards/answer/')
+  },
+
+  /** Upload mistake question image to COS under mistakes/{userId}/{date}/question/ */
+  async uploadMistakeQuestion(imagePath, userId) {
+    const today = new Date().toISOString().split('T')[0]
+    return uploadToCOS(imagePath, userId, today, 'mistakes/question/')
+  },
+
+  /** Upload mistake answer image to COS under mistakes/{userId}/{date}/answer/ */
+  async uploadMistakeAnswer(imagePath, userId) {
+    const today = new Date().toISOString().split('T')[0]
+    return uploadToCOS(imagePath, userId, today, 'mistakes/answer/')
+  },
+
   /** Low-level: upload with full control over prefix and date */
   uploadToCOS,
 }

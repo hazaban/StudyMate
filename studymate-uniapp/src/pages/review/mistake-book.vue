@@ -442,6 +442,7 @@ import { usePlanStore } from '@/stores/plan'
 import { useUserStore } from '@/stores/user'
 import * as api from '@/api/client'
 import { exportMistakesCSV, exportMistakesExcel, exportMistakesPDF, getDefaultTags, SUBJECT_TAGS } from '@/utils/export'
+import { uploadUtil } from '@/utils/upload'
 
 const planStore = usePlanStore()
 const userStore = useUserStore()
@@ -633,8 +634,26 @@ async function submitMistake() {
   if (!hasA) { uni.showToast({ title: '请输入答案或上传答案图片', icon: 'none' }); return }
   if (!planStore.currentPlan) { uni.showToast({ title: '请先创建学习计划', icon: 'none' }); return }
 
-  uni.showLoading({ title: '保存中...' })
+  uni.showLoading({ title: '上传图片中...' })
   try {
+    const userId = userStore.userInfo?.id || 'guest'
+
+    const qImages = []
+    for (const path of form.value.question_images) {
+      if (path.startsWith('http')) { qImages.push(path); continue }
+      const url = await uploadUtil.uploadMistakeQuestion(path, userId)
+      qImages.push(url)
+    }
+
+    const aImages = []
+    for (const path of form.value.answer_images) {
+      if (path.startsWith('http')) { aImages.push(path); continue }
+      const url = await uploadUtil.uploadMistakeAnswer(path, userId)
+      aImages.push(url)
+    }
+
+    uni.showLoading({ title: '保存中...' })
+
     await api.createMistake({
       plan_id: planStore.currentPlan.id,
       question: form.value.question,
@@ -642,8 +661,8 @@ async function submitMistake() {
       analysis: form.value.analysis,
       subject: form.value.subject,
       difficulty: form.value.difficulty,
-      question_images: form.value.question_images,
-      answer_images: form.value.answer_images,
+      question_images: qImages,
+      answer_images: aImages,
       tags: form.value.tags
     })
     resetForm()

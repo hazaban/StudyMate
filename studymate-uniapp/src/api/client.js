@@ -1,6 +1,6 @@
 /** API client for the FastAPI backend. */
 
-const BASE_URL = '/api'
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 function getToken() {
   return uni.getStorageSync('studymate_token') || ''
