@@ -8,7 +8,7 @@ from datetime import date, timedelta
 from uuid import uuid4
 
 from database import SessionLocal, engine, Base
-from database import User, StudyPlan, DailyTask, FlashCard, Mistake, Plant
+from database import User, StudyPlan, DailyTask, FlashCard, Mistake, Plant, FarmState
 
 # Ensure tables exist
 Base.metadata.create_all(bind=engine)
@@ -108,6 +108,17 @@ plants = [
 for p in plants:
     db.add(p)
 print(f"Created {len(plants)} farm plants")
+
+# ── 7. Create farm state ──
+farm_state = FarmState(
+    id=uuid4(),
+    plan_id=plan_id,
+    coins=120,
+    experience=70,
+    level=2
+)
+db.add(farm_state)
+print("Created farm state: level 2, 120 coins")
 
 db.commit()
 db.close()
