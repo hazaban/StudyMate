@@ -1,3 +1,6 @@
 npm-cache/
 TRAE_AI_*/
 *.log
+__pycache__/
+*.pyc
+.env

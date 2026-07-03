@@ -120,6 +120,9 @@ farm_state = FarmState(
 db.add(farm_state)
 print("Created farm state: level 2, 120 coins")
 
+cards_due_today = sum(1 for c in cards if c.next_review_date <= today)
+mistakes_due_today = sum(1 for m in mistakes if m.next_review_date <= today and m.mastered == '0')
+
 db.commit()
 db.close()
 
@@ -128,6 +131,6 @@ print("   Login:    test@studymate.com")
 print("   Password: 123456")
 print("   Plan:     考研408复习计划")
 print(f"   Tasks:    {len(tasks)} tasks for today")
-print(f"   Cards:    {len(cards)} cards ({sum(1 for c in cards if c.next_review_date <= today)} due today)")
-print(f"   Mistakes: {len(mistakes)} mistakes ({sum(1 for m in mistakes if m.next_review_date <= today and m.mastered == '0')} due today)")
+print(f"   Cards:    {len(cards)} cards ({cards_due_today} due today)")
+print(f"   Mistakes: {len(mistakes)} mistakes ({mistakes_due_today} due today)")
 print(f"   Plants:   {len(plants)} plants")

@@ -14,7 +14,7 @@ function clearToken() {
   uni.removeStorageSync('studymate_token')
 }
 
-async function request(url, options = {}) {
+export async function request(url, options = {}) {
   const token = getToken()
   const headers = {
     'Content-Type': 'application/json',

@@ -249,44 +249,77 @@ studymate-uniapp/
 
 ### 环境要求
 
+- **Docker** + Docker Compose
 - **Node.js** >= 18
 - **Python** >= 3.12
-- **PostgreSQL** >= 16
 - **npm** >= 9
 
 ### 1. 克隆项目
 
 ```bash
 git clone <your-repo-url>
-cd studymate-uniapp
+cd StudyMate
 ```
 
-### 2. 后端部署
-
-#### 2.1 创建 PostgreSQL 数据库
+### 2. 一键启动（推荐）
 
 ```bash
-# 登录 PostgreSQL
-psql -U postgres
+# ① 启动 PostgreSQL（Docker）
+docker compose up -d
 
-# 创建数据库和用户
-CREATE USER studymate WITH PASSWORD 'studymate123';
-CREATE DATABASE studymate OWNER studymate;
-\q
+# ② 安装后端依赖 + 初始化种子数据
+cd studymate-uniapp/server
+pip install -r requirements.txt
+python seed.py
+
+# ③ 启动后端（终端1）
+uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+
+# ④ 启动前端（终端2，回到 studymate-uniapp 目录）
+cd ..
+npm install
+npm run dev:h5
 ```
 
-#### 2.2 配置环境变量
+### 3. 分步详解
+
+#### 3.1 启动 PostgreSQL（Docker）
+
+项目根目录已提供 `docker-compose.yml`，开箱即用：
 
 ```bash
-cd server
+docker compose up -d
+```
+
+| 项目 | 值 |
+|------|-----|
+| 镜像 | `postgres:16-alpine` |
+| 容器名 | `studymate-db` |
+| 端口 | `5433`（避免与本地 PostgreSQL 冲突） |
+| 数据库 | `studymate` |
+| 用户/密码 | `studymate` / `studymate123` |
+| 数据持久化 | Docker volume `pgdata` |
+
+常用命令：
+
+```bash
+docker compose down          # 停止数据库（保留数据）
+docker compose down -v       # 停止并删除数据
+docker compose up -d --build # 重建容器
+```
+
+#### 3.2 配置环境变量
+
+```bash
+cd studymate-uniapp/server
 cp .env.example .env
 ```
 
-编辑 `.env` 文件，配置数据库连接和 API 密钥：
+编辑 `.env`，按需填入 API 密钥（数据库连接已默认指向 Docker 容器）：
 
 ```env
-# 数据库（默认开发配置）
-DATABASE_URL=postgresql://studymate:studymate123@localhost:5432/studymate
+# 数据库（默认指向 Docker PostgreSQL）
+DATABASE_URL=postgresql://studymate:studymate123@localhost:5433/studymate
 
 # JWT 密钥（生产环境务必修改）
 SECRET_KEY=your-secret-key-change-in-production
@@ -297,69 +330,138 @@ DEEPSEEK_API_KEY=sk-your-api-key
 # 腾讯云 COS（可选，不配置则图片上传不可用）
 COS_SECRET_ID=your-secret-id
 COS_SECRET_KEY=your-secret-key
-COS_BUCKET=studymate-1250000000
+COS_BUCKET=your-bucket-1250000000
 COS_REGION=ap-guangzhou
 ```
 
-#### 2.3 安装依赖 & 启动
+#### 3.3 安装依赖 & 初始化种子数据
 
 ```bash
-cd server
-
-# 安装 Python 依赖
 pip install -r requirements.txt
-
-# 运行种子数据（创建测试用户）
 python seed.py
+```
 
-# 启动后端服务
-python main.py
-# 或使用 uvicorn
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+种子数据包含完整的测试内容：
+
+| 板块 | 数量 | 说明 |
+|------|------|------|
+| 用户 | 1 个 | test@studymate.com |
+| 学习计划 | 1 个 | 考研408计算机专业基础综合 |
+| 每日任务 | 6 个 | 3 种类型（新学/复习/错题），4 个科目 |
+| 知识卡片 | 9 个 | 6 张今日到期，3 张未来到期 |
+| 错题 | 5 个 | 3 道今日待复习，1 道已掌握 |
+| 农场植物 | 2 株 | 生长中（70%）和发芽中（30%） |
+| 农场状态 | Lv.2 | 120 金币，70 经验值 |
+
+可随时重新运行 `python seed.py` 重置为初始数据。
+
+#### 3.4 启动后端
+
+```bash
+cd studymate-uniapp/server
+uvicorn main:app --host 0.0.0.0 --port 8001 --reload
 ```
 
 后端启动后访问：
-- API 文档：http://localhost:8000/docs
-- 健康检查：http://localhost:8000/health
 
-### 3. 前端启动
+| 地址 | 说明 |
+|------|------|
+| http://localhost:8001 | API 根路径 |
+| http://localhost:8001/docs | Swagger 交互式 API 文档 |
+| http://localhost:8001/health | 健康检查 |
+
+#### 3.5 启动前端
 
 ```bash
-# 在项目根目录
+cd studymate-uniapp
 npm install
-
-# 启动 H5 开发服务器
 npm run dev:h5
 ```
 
-前端启动后访问 http://localhost:5173 即可看到应用。
+前端启动后访问 **http://localhost:5173** 即可使用。
+
+Vite 已配置 `/api` 代理自动转发到 `localhost:8001`，前后端联通无需额外配置。
 
 **测试账号：**
 - 邮箱：`test@studymate.com`
 - 密码：`123456`
 
-### 4. 种子数据
+### 4. 服务总览
 
-种子数据包含完整的测试内容：
+| 服务 | 地址 |
+|------|------|
+| Docker PostgreSQL | `localhost:5433` |
+| FastAPI 后端 | `http://localhost:8001` |
+| Swagger API 文档 | `http://localhost:8001/docs` |
+| UniApp H5 前端 | `http://localhost:5173` |
 
-| 板块 | 数据量 | 说明 |
-|------|--------|------|
-| 用户 | 1 个 | test@studymate.com |
-| 学习计划 | 1 个 | 考研408计算机专业基础综合 |
-| 每日任务 | 6 个 | 3 种类型（新学/复习/错题），4 个科目 |
-| 知识卡片 | 9 个 | 5 张今日到期，4 张未来到期 |
-| 错题 | 5 个 | 3 道今日待复习，1 道已掌握 |
-| 农场植物 | 2 株 | 生长中（70%）和发芽中（30%） |
-| 农场状态 | Lv.2 | 120 金币，70 经验值 |
+### 5. 常见操作 & 排障
+
+#### 端口占用处理
 
 ```bash
-cd server
-python seed.py
+# ── Windows（PowerShell） ──
+
+# 查看指定端口被哪个进程占用
+netstat -ano | findstr :8001
+netstat -ano | findstr :5173
+netstat -ano | findstr :5433
+
+# 强制结束占用进程（替换为上面查到的 PID）
+taskkill //F //PID <PID>
+
+# 一键清理 8001 和 5173
+netstat -ano | findstr :8001 | ForEach { $p = ($_ -split '\s+')[-1]; taskkill //F //PID $p 2>$null }
+netstat -ano | findstr :5173 | ForEach { $p = ($_ -split '\s+')[-1]; taskkill //F //PID $p 2>$null }
+
+
+# ── macOS / Linux ──
+
+lsof -ti :8001 | xargs kill -9
+lsof -ti :5173 | xargs kill -9
+```
+
+#### 热重载
+
+| 服务 | 行为 |
+|------|------|
+| **后端** (uvicorn `--reload`) | 修改 `server/` 下 `.py` 文件后 **自动重启**，秒级生效 |
+| **前端** (Vite HMR) | 修改 `src/` 下 `.vue` / `.js` / `.scss` 后 **热更新**，浏览器即时刷新，无需手动刷新页面 |
+| **Docker 数据库** | 持久化运行，修改代码无需重启 |
+
+> **提示：** 如果你修改了 `requirements.txt` 或 `.env`，需要手动重启后端（`Ctrl+C` 后重新 `uvicorn ...`）。
+
+#### 重置数据
+
+```bash
+cd studymate-uniapp/server
+python seed.py        # 自动清理旧数据 + 重新创建
+```
+
+#### Docker 常用命令
+
+```bash
+docker compose up -d             # 启动数据库（后台运行）
+docker compose down              # 停止数据库（保留数据卷）
+docker compose down -v           # 停止并删除数据（完全重置数据库）
+docker compose logs -f postgres  # 查看数据库日志
+docker exec -it studymate-db psql -U studymate -d studymate  # 进入数据库命令行
+```
+
+#### 依赖相关
+
+```bash
+# 后端：批量升级到最新兼容版本
+pip install --upgrade fastapi uvicorn sqlalchemy psycopg2-binary pydantic python-dotenv
+
+# 前端：清理缓存后重装
+rm -rf node_modules package-lock.json
+npm install
 ```
 
 ## API 文档
 
-启动后端后，访问 http://localhost:8000/docs 查看完整的 Swagger UI 交互式 API 文档。
+启动后端后，访问 http://localhost:8001/docs 查看完整的 Swagger UI 交互式 API 文档。
 
 ### 主要 API 端点
 

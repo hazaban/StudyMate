@@ -2,11 +2,11 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Header, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from jose import jwt
 
 from config import SECRET_KEY, ALGORITHM
-from services.cos_service import get_sts_credential, generate_upload_url
+from services.cos_service import get_sts_credential, get_post_signature, generate_upload_url
 
 router = APIRouter(prefix="/api/upload", tags=["upload"])
 
@@ -23,9 +23,23 @@ def _get_user_id(authorization: str = Header(None)) -> UUID:
 
 @router.get("/sts")
 async def get_sts(user_id: UUID = Depends(_get_user_id)):
-    """Get STS temporary credential for direct COS upload."""
+    """Get STS temporary credential for SDK-based COS upload."""
     credential = await get_sts_credential(str(user_id))
     return credential
+
+
+@router.post("/signature")
+async def get_signature(
+    key_prefix: str = Query("", description="COS object key prefix"),
+    user_id: UUID = Depends(_get_user_id),
+):
+    """Get COS POST Object policy + signature for form-based upload.
+
+    Returns policy, signature, bucket, and region so the frontend can POST
+    the file directly to COS without streaming through this server.
+    """
+    sig = get_post_signature(str(user_id), key_prefix)
+    return sig
 
 
 @router.post("/presign")
