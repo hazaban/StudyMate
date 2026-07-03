@@ -80,9 +80,9 @@ async def generate_review(
 
 @router.post("/analyze-syllabus")
 async def analyze_syllabus(data: dict, user_id: UUID = Depends(_get_user_id)):
-    """Analyze a syllabus image description and extract structured study plan."""
+    """Analyze a syllabus image (base64) using Qwen Vision model."""
     result = await analyze_syllabus_image(
-        data.get("image_description", ""),
+        data.get("image_base64", data.get("image_description", "")),
         data.get("subject", "")
     )
     return result

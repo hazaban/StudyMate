@@ -22,6 +22,11 @@ DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"
 DEEPSEEK_MODEL_FLASH = "deepseek-chat"
 DEEPSEEK_MODEL_PRO = "deepseek-reasoner"
 
+# Qwen (千问) Vision AI - for syllabus image analysis
+QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
+QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
+QWEN_VISION_MODEL = os.getenv("QWEN_VISION_MODEL", "qwen-vl-plus")
+
 # Tencent COS
 COS_SECRET_ID = os.getenv("COS_SECRET_ID", "")
 COS_SECRET_KEY = os.getenv("COS_SECRET_KEY", "")

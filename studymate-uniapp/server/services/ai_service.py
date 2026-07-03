@@ -4,7 +4,8 @@ import json
 import httpx
 from config import (
     DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL,
-    DEEPSEEK_MODEL_FLASH, DEEPSEEK_MODEL_PRO
+    DEEPSEEK_MODEL_FLASH, DEEPSEEK_MODEL_PRO,
+    QWEN_API_KEY, QWEN_BASE_URL, QWEN_VISION_MODEL
 )
 
 
@@ -184,12 +185,68 @@ async def generate_daily_review(
     return json.loads(result)
 
 
-async def analyze_syllabus_image(image_description: str, subject: str = "") -> dict:
-    """Analyze a syllabus image description and extract structured study plan."""
-    prompt = f"""请根据以下科目大纲描述，生成结构化的学习规划：
+async def analyze_syllabus_image(image_base64: str, subject: str = "") -> dict:
+    """Analyze a syllabus image using Qwen Vision model and extract structured study plan.
+
+    Args:
+        image_base64: Base64 encoded image data (with or without data: prefix)
+        subject: Subject name for context
+    """
+    # Ensure image_base64 has data URI prefix
+    if not image_base64.startswith("data:"):
+        image_base64 = f"data:image/jpeg;base64,{image_base64}"
+
+    prompt_text = f"""请分析这张科目大纲图片，生成结构化的学习规划。
 
 科目：{subject}
-大纲描述：{image_description}
+
+请生成包含以下内容的JSON：
+1. chapters: 章节列表，每个章节包含 name（章节名）、estimated_days（预计天数）、key_points（重点内容数组）
+2. suggested_schedule: 建议学习安排，包含 daily_plan（每日学习计划）
+
+返回JSON格式，不要包含markdown代码块标记。"""
+
+    if QWEN_API_KEY:
+        # Use Qwen Vision model for real image analysis
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt_text},
+                    {"type": "image_url", "image_url": {"url": image_base64}}
+                ]
+            }
+        ]
+        async with httpx.AsyncClient(timeout=90.0) as client:
+            resp = await client.post(
+                f"{QWEN_BASE_URL}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {QWEN_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": QWEN_VISION_MODEL,
+                    "messages": messages,
+                    "temperature": 0.3,
+                    "max_tokens": 4096
+                }
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            result_text = data["choices"][0]["message"]["content"]
+            # Strip markdown code fences if present
+            result_text = result_text.strip()
+            if result_text.startswith("```"):
+                result_text = result_text.split("\n", 1)[1] if "\n" in result_text else result_text[3:]
+            if result_text.endswith("```"):
+                result_text = result_text[:-3]
+            return json.loads(result_text.strip())
+    else:
+        # Fallback: use DeepSeek with text description (mock mode)
+        prompt = f"""请根据以下科目大纲描述，生成结构化的学习规划：
+
+科目：{subject}
+大纲描述：{image_base64 if not image_base64.startswith('data:') else '用户上传了科目大纲图片，但视觉模型未配置，请生成通用规划'}
 
 请生成包含以下内容的JSON：
 1. chapters: 章节列表，每个章节包含 name（章节名）、estimated_days（预计天数）、key_points（重点内容）
@@ -197,12 +254,12 @@ async def analyze_syllabus_image(image_description: str, subject: str = "") -> d
 
 返回JSON格式。"""
 
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": prompt}
-    ]
-    result = await _call_deepseek(messages)
-    return json.loads(result)
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ]
+        result = await _call_deepseek(messages)
+        return json.loads(result)
 
 
 async def analyze_subject_phase(description: str, subject: str = "") -> dict:

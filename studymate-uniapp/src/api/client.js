@@ -237,8 +237,8 @@ export async function aiDailyReview(planId, date) {
   return request(`/ai/review?plan_id=${planId}&task_date=${date}`, { method: 'POST' })
 }
 
-export async function aiAnalyzeSyllabus(imageDescription, subject) {
-  return request('/ai/analyze-syllabus', { method: 'POST', data: { image_description: imageDescription, subject } })
+export async function aiAnalyzeSyllabus(imageBase64, subject) {
+  return request('/ai/analyze-syllabus', { method: 'POST', data: { image_base64: imageBase64, subject } })
 }
 
 export async function aiAnalyzeSubjectPhase(description, subject) {
@@ -253,4 +253,59 @@ export async function getSTSCredential() {
 
 export async function presignUpload(filename) {
   return request(`/upload/presign?filename=${encodeURIComponent(filename)}`, { method: 'POST' })
+}
+
+// ==================== Export ====================
+
+function buildExportUrl(type, format, params) {
+  let url = `/export/${type}/${format}?plan_id=${params.planId}`
+  if (params.subject) url += `&subject=${encodeURIComponent(params.subject)}`
+  if (params.tag) url += `&tag=${encodeURIComponent(params.tag)}`
+  if (params.mastery_level) url += `&mastery_level=${params.mastery_level}`
+  if (params.difficulty) url += `&difficulty=${params.difficulty}`
+  if (params.mastered !== undefined && params.mastered !== null) url += `&mastered=${params.mastered}`
+  if (params.min_errors) url += `&min_errors=${params.min_errors}`
+  return url
+}
+
+export function getExportUrl(type, format, params) {
+  const token = getToken()
+  const url = buildExportUrl(type, format, params)
+  // For H5: return full URL with token as query param for download
+  return `${BASE_URL}${url}&token=${encodeURIComponent(token)}`
+}
+
+export async function downloadExport(type, format, params) {
+  const url = buildExportUrl(type, format, params)
+  const token = getToken()
+  // #ifdef H5
+  // For H5: use window.open to trigger download
+  const fullUrl = `${BASE_URL}${url}`
+  // Create a temporary link element to download with auth header
+  const response = await fetch(fullUrl, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  if (!response.ok) throw new Error('导出失败')
+  const blob = await response.blob()
+  const downloadUrl = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = downloadUrl
+  const ext = format === 'excel' ? 'xlsx' : format
+  a.download = `${type === 'cards' ? 'knowledge_cards' : 'mistakes'}.${ext}`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  window.URL.revokeObjectURL(downloadUrl)
+  // #endif
+  // #ifndef H5
+  // For non-H5: use uni.downloadFile
+  return new Promise((resolve, reject) => {
+    uni.downloadFile({
+      url: `${window.location.origin}${BASE_URL}${url}`,
+      header: { Authorization: `Bearer ${token}` },
+      success: (res) => resolve(res),
+      fail: (err) => reject(err)
+    })
+  })
+  // #endif
 }

@@ -223,6 +223,7 @@ const editingSubjectIndex = ref(-1)
 const editingChapters = ref([])
 const phaseDescription = ref('')
 const syllabusImage = ref('')
+const syllabusImageBase64 = ref('')
 const newSubject = ref({ name: '', target_score: '' })
 
 const editingSubject = computed(() => {
@@ -279,6 +280,7 @@ function editSubjectPhase(idx) {
   editingChapters.value = JSON.parse(JSON.stringify(subj.chapters || []))
   phaseDescription.value = ''
   syllabusImage.value = ''
+  syllabusImageBase64.value = ''
   showSubjectModal.value = true
 }
 
@@ -307,17 +309,51 @@ function chooseSyllabusImage() {
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
     success: (res) => {
-      syllabusImage.value = res.tempFilePaths[0]
+      const tempPath = res.tempFilePaths[0]
+      syllabusImage.value = tempPath
+      // Convert image to base64 for AI analysis
+      // #ifdef H5
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const maxSize = 1024
+        let { width, height } = img
+        if (width > maxSize || height > maxSize) {
+          const ratio = Math.min(maxSize / width, maxSize / height)
+          width = Math.round(width * ratio)
+          height = Math.round(height * ratio)
+        }
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+        syllabusImageBase64.value = canvas.toDataURL('image/jpeg', 0.8)
+      }
+      img.src = tempPath
+      // #endif
+      // #ifndef H5
+      uni.getFileSystemManager().readFile({
+        filePath: tempPath,
+        encoding: 'base64',
+        success: (data) => {
+          syllabusImageBase64.value = `data:image/jpeg;base64,${data.data}`
+        }
+      })
+      // #endif
     }
   })
 }
 
 async function aiAnalyzeSyllabus() {
   if (!syllabusImage.value) return
-  uni.showLoading({ title: 'AI 解析图片中...' })
+  if (!syllabusImageBase64.value) {
+    uni.showToast({ title: '图片正在处理中，请稍等', icon: 'none' })
+    return
+  }
+  uni.showLoading({ title: '千问AI 解析图片中...' })
   try {
-    // For H5/mock: use the image path as description
-    const result = await api.aiAnalyzeSyllabus('科目大纲图片内容', editingSubject.value?.name || '')
+    const result = await api.aiAnalyzeSyllabus(syllabusImageBase64.value, editingSubject.value?.name || '')
     if (result.chapters) {
       editingChapters.value = result.chapters.map(c => ({
         name: c.name,
@@ -326,7 +362,7 @@ async function aiAnalyzeSyllabus() {
     }
     uni.showToast({ title: '解析完成', icon: 'success' })
   } catch (e) {
-    uni.showToast({ title: '解析失败', icon: 'none' })
+    uni.showToast({ title: e.message || '解析失败', icon: 'none' })
   } finally {
     uni.hideLoading()
   }
