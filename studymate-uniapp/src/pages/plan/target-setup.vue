@@ -22,13 +22,15 @@
         
         <view class="input-group">
           <text class="input-label">考试名称</text>
-          <input class="input-field" v-model="form.exam_name" placeholder="如：2026考研计算机" />
+          <view class="input-wrapper">
+            <input class="input-field" v-model="form.exam_name" placeholder="如：2026考研计算机" />
+          </view>
         </view>
 
         <view class="input-group">
           <text class="input-label">考试日期</text>
           <picker mode="date" :value="form.exam_date" @change="onDateChange">
-            <view class="input-field input-field-picker">
+            <view class="input-wrapper input-wrapper-picker">
               {{ form.exam_date || '请选择考试日期' }}
               <text class="picker-arrow">▼</text>
             </view>
@@ -37,7 +39,9 @@
 
         <view class="input-group">
           <text class="input-label">每日学习时间（分钟）</text>
-          <input class="input-field" v-model="form.daily_study_time" placeholder="如：480" type="number" />
+          <view class="input-wrapper">
+            <input class="input-field" v-model="form.daily_study_time" placeholder="如：480" type="number" />
+          </view>
         </view>
       </view>
 
@@ -309,28 +313,38 @@ function goBack() {
   
   .input-field {
     width: 100%;
+    font-size: 16px;
+    color: $ink;
+    border: none;
+    outline: none;
+    background: transparent;
+    padding: 0;
+    line-height: 1.5;
+  }
+
+  .input-wrapper {
+    width: 100%;
     padding: 14px 16px;
     border: 1px solid $rule;
     border-radius: 12px;
-    font-size: 16px;
-    color: $ink;
     background: $bg2;
     
-    &:focus {
+    &:focus-within {
       border-color: $accent;
-      outline: none;
     }
+  }
+
+  .input-wrapper-picker {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 16px;
+    color: $ink;
     
     .picker-arrow {
       font-size: 12px;
       color: $muted;
     }
-  }
-
-  .input-field-picker {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
   }
   
   .textarea-field {
