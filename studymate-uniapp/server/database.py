@@ -118,7 +118,9 @@ class Mistake(Base):
     difficulty = Column(String(20), default="medium")          # easy / medium / hard
     image_urls = Column(JSON, default=list)                    # list of image URLs
     error_count = Column(Integer, default=1)                   # how many times got wrong
+    correct_count = Column(Integer, default=0)                 # consecutive correct answers
     mastered = Column(String(1), default="0")                  # '0' or '1'
+    next_review_date = Column(Date, nullable=False, index=True)  # next review date (Ebbinghaus)
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
