@@ -39,10 +39,10 @@
       </view>
     </view>
 
-    <view class="plan-section" v-if="planStore.hasPlan">
+    <view class="plan-section" v-if="planStore.currentPlan">
       <view class="section-header">
         <text class="section-title">当前计划</text>
-        <text class="section-link" @click="goToPlan">切换计划</text>
+        <text class="section-link" @click="goToPlan">查看详情</text>
       </view>
       <view class="plan-card" @click="goToPlan">
         <text class="plan-name">{{ planStore.currentPlan.exam_name }}</text>
@@ -51,15 +51,6 @@
           <view class="progress-fill" :style="{ width: progressPercent + '%' }"></view>
         </view>
         <text class="progress-text">已完成 {{ progressPercent }}%</text>
-      </view>
-    </view>
-
-    <view class="plan-section" v-else>
-      <view class="create-plan-card" @click="createPlan">
-        <text class="create-icon">📋</text>
-        <text class="create-title">创建学习计划</text>
-        <text class="create-desc">开始制定你的专属学习计划</text>
-        <view class="create-btn">开始创建</view>
       </view>
     </view>
 
@@ -142,10 +133,6 @@ function goToProfile() {
 
 function goToPlan() {
   uni.navigateTo({ url: '/pages/plan/plan-overview' })
-}
-
-function createPlan() {
-  uni.navigateTo({ url: '/pages/plan/target-setup' })
 }
 
 function goToTaskBoard() {
@@ -394,46 +381,6 @@ onMounted(async () => {
   .progress-text {
     font-size: 12px;
     color: $muted;
-  }
-}
-
-.create-plan-card {
-  background: $bg2;
-  border-radius: 18px;
-  padding: 32px 20px;
-  text-align: center;
-  border: 2px dashed $rule;
-  margin-bottom: 20px;
-  
-  .create-icon {
-    font-size: 48px;
-    display: block;
-    margin-bottom: 12px;
-  }
-  
-  .create-title {
-    display: block;
-    font-size: 18px;
-    font-weight: 600;
-    color: $ink;
-    margin-bottom: 6px;
-  }
-  
-  .create-desc {
-    display: block;
-    font-size: 14px;
-    color: $muted;
-    margin-bottom: 16px;
-  }
-  
-  .create-btn {
-    display: inline-block;
-    padding: 10px 28px;
-    background: $accent;
-    color: #fff;
-    border-radius: 25px;
-    font-size: 14px;
-    font-weight: 500;
   }
 }
 

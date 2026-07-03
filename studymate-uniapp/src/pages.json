@@ -45,7 +45,14 @@
     {
       "path": "pages/plan/target-setup",
       "style": {
-        "navigationBarTitleText": "目标设置",
+        "navigationBarTitleText": "制定目标",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/plan/ai-plan",
+      "style": {
+        "navigationBarTitleText": "AI生成计划",
         "navigationStyle": "custom"
       }
     },
@@ -81,6 +88,13 @@
       "path": "pages/profile/profile",
       "style": {
         "navigationBarTitleText": "个人中心",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/settings",
+      "style": {
+        "navigationBarTitleText": "设置",
         "navigationStyle": "custom"
       }
     }
@@ -125,7 +139,7 @@
       },
       {
         "pagePath": "pages/profile/profile",
-        "text": "设置",
+        "text": "我的",
         "iconPath": "static/icons/profile.png",
         "selectedIconPath": "static/icons/profile-active.png"
       }

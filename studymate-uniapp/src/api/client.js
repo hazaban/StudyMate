@@ -254,22 +254,3 @@ export async function getSTSCredential() {
 export async function presignUpload(filename) {
   return request(`/upload/presign?filename=${encodeURIComponent(filename)}`, { method: 'POST' })
 }
-
-// ==================== Export ====================
-
-export function getExportCardsUrl(planId, subject, tag, masteryLevel) {
-  let url = `${BASE_URL}/export/cards/csv?plan_id=${planId}`
-  if (subject) url += `&subject=${encodeURIComponent(subject)}`
-  if (tag) url += `&tag=${encodeURIComponent(tag)}`
-  if (masteryLevel) url += `&mastery_level=${encodeURIComponent(masteryLevel)}`
-  return url
-}
-
-export function getExportMistakesUrl(planId, subject, tag, difficulty, mastered) {
-  let url = `${BASE_URL}/export/mistakes/csv?plan_id=${planId}`
-  if (subject) url += `&subject=${encodeURIComponent(subject)}`
-  if (tag) url += `&tag=${encodeURIComponent(tag)}`
-  if (difficulty) url += `&difficulty=${encodeURIComponent(difficulty)}`
-  if (mastered !== undefined && mastered !== null) url += `&mastered=${mastered}`
-  return url
-}
