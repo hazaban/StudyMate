@@ -108,6 +108,63 @@
       </view>
     </view>
 
+    <!-- FAB -->
+    <view class="fab" @click="showForm = true">
+      <text class="fab-icon">+</text>
+    </view>
+
+    <!-- Add Card Modal -->
+    <view class="modal-overlay" v-if="showForm" @click="showForm = false">
+      <view class="modal-content" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">添加知识卡片</text>
+          <view class="modal-close" @click="showForm = false">✕</view>
+        </view>
+
+        <scroll-view scroll-y class="modal-body">
+          <view class="form-group">
+            <text class="form-label">科目</text>
+            <view class="subject-grid">
+              <view class="subject-item" v-for="s in allSubjects" :key="s" :class="{ active: cardForm.subject === s }" @click="cardForm.subject = s">{{ s }}</view>
+            </view>
+          </view>
+
+          <view class="form-group">
+            <text class="form-label">问题</text>
+            <view class="input-wrapper">
+              <textarea class="textarea-field" v-model="cardForm.question" placeholder="请输入复习问题..." maxlength="2000" />
+            </view>
+          </view>
+
+          <view class="form-group">
+            <text class="form-label">答案</text>
+            <view class="input-wrapper">
+              <textarea class="textarea-field" v-model="cardForm.answer" placeholder="请输入答案..." maxlength="2000" />
+            </view>
+          </view>
+
+          <view class="form-group">
+            <text class="form-label">相关图片（可选，最多3张）</text>
+            <view class="image-upload-area">
+              <view class="image-item" v-for="(img, idx) in cardForm.image_urls" :key="idx">
+                <image :src="img" mode="aspectFill" class="uploaded-image" />
+                <view class="image-remove" @click="removeCardImage(idx)">✕</view>
+              </view>
+              <view class="image-add-btn" v-if="cardForm.image_urls.length < 3" @click="chooseCardImage">
+                <text class="add-icon">+</text>
+                <text class="add-text">图片</text>
+              </view>
+            </view>
+          </view>
+        </scroll-view>
+
+        <view class="modal-footer">
+          <view class="cancel-btn" @click="showForm = false">取消</view>
+          <view class="submit-btn" @click="submitCard">提交</view>
+        </view>
+      </view>
+    </view>
+
     <view class="bottom-space"></view>
   </view>
 </template>
@@ -117,6 +174,7 @@ import { ref, computed } from 'vue'
 import { useCardStore } from '@/stores/card'
 import { usePlanStore } from '@/stores/plan'
 import { useUserStore } from '@/stores/user'
+import * as api from '@/api/client'
 
 const cardStore = useCardStore()
 const planStore = usePlanStore()
@@ -125,7 +183,17 @@ const userStore = useUserStore()
 const reviewMode = ref(false)
 const showAnswer = ref(false)
 const currentCardIndex = ref(0)
+const showForm = ref(false)
 const today = new Date().toISOString().split('T')[0]
+
+const allSubjects = ['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络']
+
+const cardForm = ref({
+  subject: '数据结构',
+  question: '',
+  answer: '',
+  image_urls: []
+})
 
 const formattedDate = computed(() => {
   const d = new Date()
@@ -169,12 +237,67 @@ async function markMastery(level) {
   if (!currentCard.value) return
   await cardStore.markMastery(currentCard.value.id, level)
   showAnswer.value = false
-  
+
   if (currentCardIndex.value < pendingCards.value.length - 1) {
     currentCardIndex.value++
   } else {
     reviewMode.value = false
     uni.showToast({ title: '🎉 复习完成！', icon: 'none' })
+  }
+}
+
+function chooseCardImage() {
+  uni.chooseImage({
+    count: 3 - cardForm.value.image_urls.length,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: (res) => {
+      res.tempFilePaths.forEach(path => {
+        cardForm.value.image_urls.push(path)
+      })
+    }
+  })
+}
+
+function removeCardImage(idx) {
+  cardForm.value.image_urls.splice(idx, 1)
+}
+
+async function submitCard() {
+  if (!cardForm.value.question.trim()) {
+    uni.showToast({ title: '请输入问题', icon: 'none' })
+    return
+  }
+  if (!cardForm.value.answer.trim()) {
+    uni.showToast({ title: '请输入答案', icon: 'none' })
+    return
+  }
+  if (!planStore.currentPlan) {
+    uni.showToast({ title: '请先创建学习计划', icon: 'none' })
+    return
+  }
+
+  uni.showLoading({ title: '保存中...' })
+  try {
+    const data = {
+      plan_id: planStore.currentPlan.id,
+      question: cardForm.value.question,
+      answer: cardForm.value.answer,
+      subject: cardForm.value.subject,
+      mastery_level: 'unmastered',
+      next_review_date: today,
+      image_urls: cardForm.value.image_urls
+    }
+    await cardStore.createCard(data)
+    showForm.value = false
+    cardForm.value = { subject: '数据结构', question: '', answer: '', image_urls: [] }
+    // Reload cards
+    await cardStore.getCardsByPlanId(planStore.currentPlan.id)
+    uni.showToast({ title: '添加成功', icon: 'success' })
+  } catch (e) {
+    uni.showToast({ title: e.message || '保存失败', icon: 'none' })
+  } finally {
+    uni.hideLoading()
   }
 }
 
@@ -479,4 +602,73 @@ onMounted(async () => {
 
 .mt-24 { margin-top: 24px; }
 .bottom-space { height: 100px; }
+
+/* FAB */
+.fab {
+  position: fixed; right: 20px; bottom: 60px; z-index: 50;
+  width: 56px; height: 56px; border-radius: 50%; background: #6b4ce6;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 16px rgba(107,76,230,0.35);
+  transition: all 0.2s;
+  &:active { transform: scale(0.92); }
+  .fab-icon { font-size: 28px; color: #fff; font-weight: 300; }
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100;
+  display: flex; align-items: flex-end;
+}
+.modal-content {
+  background: #fff; border-radius: 24px 24px 0 0; width: 100%; max-height: 85vh;
+  display: flex; flex-direction: column;
+}
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20px 24px; border-bottom: 1px solid #f0f0f0;
+  .modal-title { font-size: 18px; font-weight: 700; color: #1a1a2e; }
+  .modal-close { font-size: 20px; color: #999; padding: 4px; }
+}
+.modal-body { padding: 20px 24px; flex: 1; overflow-y: auto; }
+.modal-footer {
+  display: flex; gap: 12px; padding: 16px 24px; border-top: 1px solid #f0f0f0;
+  .cancel-btn { flex: 1; padding: 14px; text-align: center; border-radius: 14px; font-size: 16px; color: #65746d; background: #f5f7f5; font-weight: 500; }
+  .submit-btn { flex: 2; padding: 14px; text-align: center; border-radius: 14px; font-size: 16px; color: #fff; background: #6b4ce6; font-weight: 600; }
+}
+
+.form-group { margin-bottom: 20px; }
+.form-label { display: block; font-size: 14px; font-weight: 600; color: #1a1a2e; margin-bottom: 8px; }
+
+.subject-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.subject-item {
+  padding: 8px 16px; border-radius: 20px; font-size: 13px; color: #65746d;
+  background: #f5f7f5; transition: all 0.2s;
+  &.active { background: #6b4ce6; color: #fff; }
+}
+
+.input-wrapper {
+  border: 1.5px solid #e8ece9; border-radius: 14px; padding: 12px 16px; background: #fafafa;
+  transition: border-color 0.2s;
+  &:focus-within { border-color: #6b4ce6; }
+}
+.textarea-field {
+  width: 100%; min-height: 80px; font-size: 15px; color: #1a1a2e; line-height: 1.6;
+  border: none; outline: none; background: transparent; resize: none;
+}
+
+.image-upload-area { display: flex; gap: 10px; flex-wrap: wrap; }
+.image-item { position: relative; width: 80px; height: 80px; }
+.uploaded-image { width: 80px; height: 80px; border-radius: 10px; }
+.image-remove {
+  position: absolute; top: -6px; right: -6px; width: 22px; height: 22px;
+  border-radius: 50%; background: #ef5350; color: #fff; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.image-add-btn {
+  width: 80px; height: 80px; border-radius: 10px; border: 2px dashed #d0d5d2;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; background: #fafafa;
+  .add-icon { font-size: 24px; color: #999; }
+  .add-text { font-size: 11px; color: #999; }
+}
 </style>

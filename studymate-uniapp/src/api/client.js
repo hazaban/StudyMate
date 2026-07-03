@@ -163,6 +163,38 @@ export async function aiGenerateCards(content, subject) {
   })
 }
 
+// ==================== Mistakes ====================
+
+export async function createMistake(data) {
+  return request('/mistakes', { method: 'POST', data })
+}
+
+export async function getMistakes(planId, subject) {
+  let url = `/mistakes?plan_id=${planId}`
+  if (subject) url += `&subject=${encodeURIComponent(subject)}`
+  return request(url)
+}
+
+export async function getMistake(id) {
+  return request(`/mistakes/${id}`)
+}
+
+export async function updateMistake(id, data) {
+  return request(`/mistakes/${id}`, { method: 'PUT', data })
+}
+
+export async function deleteMistake(id) {
+  return request(`/mistakes/${id}`, { method: 'DELETE' })
+}
+
+export async function markMistakeMastered(id) {
+  return request(`/mistakes/${id}/master`, { method: 'POST' })
+}
+
+export async function retryMistake(id) {
+  return request(`/mistakes/${id}/retry`, { method: 'POST' })
+}
+
 // ==================== Farm ====================
 
 export async function getFarm(planId) {

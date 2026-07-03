@@ -13,6 +13,7 @@ class CardCreate(BaseModel):
     subject: str
     mastery_level: str = "unmastered"
     next_review_date: date
+    image_urls: list[str] = []
 
 
 class CardUpdate(BaseModel):
@@ -22,6 +23,7 @@ class CardUpdate(BaseModel):
     mastery_level: Optional[str] = None
     next_review_date: Optional[date] = None
     review_count: Optional[int] = None
+    image_urls: Optional[list[str]] = None
 
 
 class CardResponse(BaseModel):
@@ -33,6 +35,7 @@ class CardResponse(BaseModel):
     mastery_level: str
     next_review_date: date
     review_count: int
+    image_urls: list[str] = []
     created_at: datetime
     updated_at: datetime
 

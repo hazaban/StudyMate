@@ -66,6 +66,7 @@ class StudyPlan(Base):
     user = relationship("User", back_populates="plans")
     tasks = relationship("DailyTask", back_populates="plan", cascade="all, delete-orphan")
     cards = relationship("FlashCard", back_populates="plan", cascade="all, delete-orphan")
+    mistakes = relationship("Mistake", back_populates="plan", cascade="all, delete-orphan")
     plants = relationship("Plant", back_populates="plan", cascade="all, delete-orphan")
 
 
@@ -98,10 +99,30 @@ class FlashCard(Base):
     mastery_level = Column(String(20), default="unmastered")  # unmastered / familiar / mastered
     next_review_date = Column(Date, nullable=False, index=True)
     review_count = Column(Integer, default=0)
+    image_urls = Column(JSON, default=list)  # list of image URLs
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     plan = relationship("StudyPlan", back_populates="cards")
+
+
+class Mistake(Base):
+    __tablename__ = "mistakes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    plan_id = Column(UUID(as_uuid=True), ForeignKey("study_plans.id", ondelete="CASCADE"), nullable=False, index=True)
+    question = Column(Text, nullable=False)
+    answer = Column(Text, nullable=False)
+    analysis = Column(Text, default="")
+    subject = Column(String(100), nullable=False)
+    difficulty = Column(String(20), default="medium")          # easy / medium / hard
+    image_urls = Column(JSON, default=list)                    # list of image URLs
+    error_count = Column(Integer, default=1)                   # how many times got wrong
+    mastered = Column(String(1), default="0")                  # '0' or '1'
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    plan = relationship("StudyPlan", back_populates="mistakes")
 
 
 class Plant(Base):
