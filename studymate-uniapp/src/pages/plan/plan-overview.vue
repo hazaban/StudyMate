@@ -10,21 +10,32 @@
       </view>
     </view>
 
-    <!-- Plan Switcher -->
-    <view class="plan-switcher" v-if="planStore.plans.length > 1">
-      <scroll-view scroll-x class="switcher-scroll">
-        <view class="switcher-list">
-          <view
-            class="switcher-item"
-            :class="{ active: planStore.currentPlan?.id === p.id }"
-            v-for="p in planStore.plans"
-            :key="p.id"
-            @click="switchToPlan(p.id)"
-          >
-            <text class="switcher-name">{{ p.exam_name }}</text>
-          </view>
+    <!-- Switch Plan Button -->
+    <view class="switch-section" v-if="planStore.plans.length > 1">
+      <view class="switch-trigger" @click="showPlanSwitcher = !showPlanSwitcher">
+        <text class="switch-label">📋 切换计划</text>
+        <view class="switch-current">
+          <text class="switch-current-name">{{ planStore.currentPlan?.exam_name }}</text>
+          <text class="switch-arrow" :class="{ open: showPlanSwitcher }">▾</text>
         </view>
-      </scroll-view>
+      </view>
+
+      <!-- Plan List Panel -->
+      <view class="switch-panel" v-if="showPlanSwitcher">
+        <view
+          class="switch-plan-item"
+          :class="{ active: planStore.currentPlan?.id === p.id }"
+          v-for="p in planStore.plans"
+          :key="p.id"
+          @click="switchToPlan(p)"
+        >
+          <view class="switch-plan-info">
+            <text class="switch-plan-name">{{ p.exam_name }}</text>
+            <text class="switch-plan-meta">{{ p.study_phase }} · {{ p.exam_date }}</text>
+          </view>
+          <view class="switch-plan-check" v-if="planStore.currentPlan?.id === p.id">✓</view>
+        </view>
+      </view>
     </view>
 
     <view class="plan-card" v-if="planStore.currentPlan">
@@ -83,6 +94,11 @@
             </view>
             <view class="subject-actions">
               <text class="action-link" @click.stop="editSubjectPhase(idx)">编辑阶段规划</text>
+              <text
+                class="action-link apply-link"
+                @click.stop="applyChaptersToTasks(idx)"
+                v-if="subj.chapters && subj.chapters.length > 0"
+              >应用到今日任务</text>
             </view>
           </view>
         </view>
@@ -219,6 +235,7 @@ const userStore = useUserStore()
 
 const showSubjectModal = ref(false)
 const showAddSubject = ref(false)
+const showPlanSwitcher = ref(false)
 const editingSubjectIndex = ref(-1)
 const editingChapters = ref([])
 const phaseDescription = ref('')
@@ -242,8 +259,9 @@ const daysRemaining = computed(() => {
   return dateUtil.getDaysBetween(dateUtil.today(), planStore.currentPlan.exam_date)
 })
 
-function switchToPlan(planId) {
-  planStore.switchPlan(planId)
+function switchToPlan(plan) {
+  planStore.switchPlan(plan.id)
+  showPlanSwitcher.value = false
 }
 
 function goBack() {
@@ -379,6 +397,41 @@ async function saveSubjectPhase() {
   uni.showToast({ title: '保存成功', icon: 'success' })
 }
 
+async function applyChaptersToTasks(subjIdx) {
+  const subj = subjects.value[subjIdx]
+  if (!subj || !subj.chapters || subj.chapters.length === 0) {
+    uni.showToast({ title: '该科目没有章节', icon: 'none' })
+    return
+  }
+  uni.showModal({
+    title: '添加到今日任务',
+    content: `将「${subj.name}」的 ${subj.chapters.length} 个章节添加到今日任务？`,
+    success: async (res) => {
+      if (res.confirm) {
+        uni.showLoading({ title: '添加中...' })
+        const today = new Date().toISOString().split('T')[0]
+        let added = 0
+        for (const ch of subj.chapters) {
+          try {
+            await api.createTask({
+              plan_id: planStore.currentPlan.id,
+              date: today,
+              type: 'new_study',
+              subject: subj.name,
+              content: `${ch.name}`,
+              duration: ch.duration || 30,
+              status: 'pending'
+            })
+            added++
+          } catch (e) { /* skip */ }
+        }
+        uni.hideLoading()
+        uni.showToast({ title: `已添加 ${added} 个任务`, icon: 'success' })
+      }
+    }
+  })
+}
+
 async function deletePlan() {
   if (!planStore.currentPlan) return
 
@@ -437,20 +490,95 @@ onMounted(async () => {
   }
 }
 
-.plan-switcher {
+.switch-section {
   margin-bottom: 16px;
-  .switcher-scroll { white-space: nowrap; }
-  .switcher-list { display: flex; gap: 8px; }
-  .switcher-item {
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 13px;
-    background: $bg2;
-    color: $muted;
-    border: 1px solid $rule;
-    white-space: nowrap;
-    &.active { background: $accent; color: #fff; border-color: $accent; }
-  }
+}
+.switch-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: $bg2;
+  border-radius: 16px;
+  padding: 14px 18px;
+  border: 1px solid $rule;
+  &:active { background: $soft; }
+}
+.switch-label {
+  font-size: 13px;
+  color: $muted;
+  font-weight: 500;
+}
+.switch-current {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.switch-current-name {
+  font-size: 14px;
+  color: $accent;
+  font-weight: 600;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.switch-arrow {
+  font-size: 16px;
+  color: $muted;
+  transition: transform 0.2s;
+  &.open { transform: rotate(180deg); }
+}
+
+.switch-panel {
+  background: $bg2;
+  border-radius: 0 0 16px 16px;
+  border: 1px solid $rule;
+  border-top: none;
+  overflow: hidden;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.switch-plan-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-top: 1px solid $rule;
+  transition: background 0.15s;
+  &:active { background: $soft; }
+  &.active { background: rgba($accent, 0.06); }
+}
+.switch-plan-info {
+  flex: 1;
+  min-width: 0;
+}
+.switch-plan-name {
+  display: block;
+  font-size: 14px;
+  color: $ink;
+  font-weight: 500;
+}
+.switch-plan-meta {
+  display: block;
+  font-size: 11px;
+  color: $muted;
+  margin-top: 2px;
+}
+.switch-plan-check {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: $accent;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-left: 10px;
 }
 
 .plan-card {
@@ -520,8 +648,9 @@ onMounted(async () => {
   .chapters-label { font-size: 12px; color: $muted; display: block; margin-bottom: 6px; }
   .chapter-tags { display: flex; flex-wrap: wrap; gap: 6px; }
   .chapter-tag { font-size: 12px; padding: 6px 10px; background: $bg2; border-radius: 8px; color: $ink; line-height: 1.4; }
-  .subject-actions { margin-top: 8px; }
+  .subject-actions { margin-top: 8px; display: flex; gap: 12px; }
   .action-link { font-size: 12px; color: $accent; }
+  .apply-link { color: #ef5350; font-weight: 500; }
 }
 
 .section-title { display: block; font-size: 14px; color: $muted; margin-bottom: 12px; }

@@ -160,6 +160,31 @@ export async function reviewCard(id, masteryLevel) {
   return request(`/cards/${id}/review?mastery_level=${masteryLevel}`, { method: 'POST' })
 }
 
+export async function getCardSubjects(planId) {
+  return request(`/cards/subjects?plan_id=${planId}`)
+}
+
+export async function getCardTagsBySubject(planId, subject) {
+  let url = `/cards/tags/by-subject?plan_id=${planId}`
+  if (subject) url += `&subject=${encodeURIComponent(subject)}`
+  return request(url)
+}
+
+export async function exportCards(planId, subject, tag) {
+  let url = `/cards/export?plan_id=${planId}`
+  if (subject) url += `&subject=${encodeURIComponent(subject)}`
+  if (tag) url += `&tag=${encodeURIComponent(tag)}`
+  return request(url)
+}
+
+export async function aiAnalyzeSubjectPhase(description, subject) {
+  return request('/ai/syllabus', { method: 'POST', data: { description, subject, image: '' } })
+}
+
+export async function aiAnalyzeSyllabus(imageBase64, subject) {
+  return request('/ai/syllabus', { method: 'POST', data: { image: imageBase64, subject, description: '' } })
+}
+
 export async function aiGenerateCards(content, subject) {
   return request('/cards/ai/generate', {
     method: 'POST',
@@ -203,6 +228,24 @@ export async function retryMistake(id) {
 
 export async function reviewMistake(id, correct) {
   return request(`/mistakes/${id}/review?correct=${correct}`, { method: 'POST' })
+}
+
+export async function getMistakeSubjects(planId) {
+  return request(`/mistakes/subjects?plan_id=${planId}`)
+}
+
+export async function getMistakeTagsBySubject(planId, subject) {
+  let url = `/mistakes/tags/by-subject?plan_id=${planId}`
+  if (subject) url += `&subject=${encodeURIComponent(subject)}`
+  return request(url)
+}
+
+export async function exportMistakes(planId, subject, tag, difficulty) {
+  let url = `/mistakes/export?plan_id=${planId}`
+  if (subject) url += `&subject=${encodeURIComponent(subject)}`
+  if (tag) url += `&tag=${encodeURIComponent(tag)}`
+  if (difficulty) url += `&difficulty=${encodeURIComponent(difficulty)}`
+  return request(url)
 }
 
 // ==================== Farm ====================

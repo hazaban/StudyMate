@@ -93,6 +93,69 @@ def list_pending_cards(
     )
 
 
+@router.get("/subjects")
+def get_card_subjects(
+    plan_id: UUID = Query(...),
+    user_id: UUID = Depends(_get_user_id),
+    db: Session = Depends(get_db)
+):
+    """Get distinct subjects for cards under a plan."""
+    plan = db.query(StudyPlan).filter(StudyPlan.id == plan_id, StudyPlan.user_id == user_id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="计划不存在")
+    subjects = db.query(FlashCard.subject).filter(FlashCard.plan_id == plan_id).distinct().all()
+    return {"subjects": [s[0] for s in subjects]}
+
+
+@router.get("/tags/by-subject")
+def get_card_tags_by_subject(
+    plan_id: UUID = Query(...),
+    subject: str = Query(None),
+    user_id: UUID = Depends(_get_user_id),
+    db: Session = Depends(get_db)
+):
+    """Get tags for cards, optionally filtered by subject."""
+    plan = db.query(StudyPlan).filter(StudyPlan.id == plan_id, StudyPlan.user_id == user_id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="计划不存在")
+    query = db.query(FlashCard.tags).filter(FlashCard.plan_id == plan_id)
+    if subject:
+        query = query.filter(FlashCard.subject == subject)
+    rows = query.all()
+    tag_set = set()
+    for r in rows:
+        if r[0]:
+            for t in r[0]:
+                tag_set.add(t)
+    return {"tags": sorted(tag_set)}
+
+
+@router.get("/export")
+def export_cards(
+    plan_id: UUID = Query(...),
+    subject: str = Query(None),
+    tag: str = Query(None),
+    user_id: UUID = Depends(_get_user_id),
+    db: Session = Depends(get_db)
+):
+    """Export cards data (returns full list for client-side export)."""
+    plan = db.query(StudyPlan).filter(StudyPlan.id == plan_id, StudyPlan.user_id == user_id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="计划不存在")
+    query = db.query(FlashCard).filter(FlashCard.plan_id == plan_id)
+    if subject:
+        query = query.filter(FlashCard.subject == subject)
+    if tag:
+        cards = query.order_by(FlashCard.created_at.desc()).all()
+        cards = [c for c in cards if c.tags and tag in (c.tags or [])]
+    else:
+        cards = query.order_by(FlashCard.created_at.desc()).all()
+    return {
+        "cards": [CardResponse.model_validate(c).model_dump(mode='json') for c in cards],
+        "total": len(cards)
+    }
+
+
 @router.get("/{card_id}", response_model=CardResponse)
 def get_card(card_id: UUID, user_id: UUID = Depends(_get_user_id), db: Session = Depends(get_db)):
     card = db.query(FlashCard).join(StudyPlan).filter(

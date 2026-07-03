@@ -1,8 +1,9 @@
 """AI service routes."""
 
 from uuid import UUID
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from sqlalchemy.orm import Session
 from jose import jwt
 
@@ -10,7 +11,8 @@ from database import get_db, DailyTask, StudyPlan
 from config import SECRET_KEY, ALGORITHM
 from services.ai_service import (
     generate_study_plan, generate_daily_tasks,
-    generate_flash_cards, generate_daily_review
+    generate_flash_cards, generate_daily_review,
+    analyze_syllabus_image
 )
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
@@ -73,5 +75,19 @@ async def generate_review(
         completed_tasks=[t.content for t in tasks if t.status == "completed"],
         planned_time=planned_time,
         actual_time=actual_time
+    )
+    return result
+
+
+@router.post("/syllabus")
+async def analyze_syllabus(request: Request, user_id: UUID = Depends(_get_user_id)):
+    """Analyze a syllabus image using Qwen Vision. Returns chapter-level study plan."""
+    import json as _json
+    body = await request.body()
+    data = _json.loads(body) if body else {}
+    result = await analyze_syllabus_image(
+        data.get("image", ""),
+        data.get("subject", ""),
+        data.get("description", "")
     )
     return result

@@ -10,6 +10,17 @@ from uuid import uuid4
 from database import SessionLocal, engine, Base
 from database import User, StudyPlan, DailyTask, FlashCard, Mistake, Plant, FarmState
 
+# ── Subject → Tags mapping (tags are linked to subjects) ──
+SUBJECT_TAGS = {
+    "数据结构": ["二叉树", "遍历", "哈希表", "排序", "BST", "图", "重点", "公式", "易错", "必考"],
+    "操作系统": ["进程", "线程", "死锁", "存储", "内存", "重点", "必考", "PV操作", "易错"],
+    "计算机网络": ["TCP", "IP", "OSI", "网络", "重点", "必考", "协议", "子网"],
+    "计算机组成原理": ["Cache", "流水线", "存储", "必考", "指令", "CPU"],
+    "数学": ["公式", "易错", "重点", "必考", "计算"],
+    "英语": ["词汇", "语法", "阅读", "重点", "写作"],
+    "政治": ["马原", "毛中特", "史纲", "重点", "必考", "时政"],
+}
+
 # Ensure tables exist
 Base.metadata.create_all(bind=engine)
 
@@ -126,10 +137,10 @@ mistakes_due_today = sum(1 for m in mistakes if m.next_review_date <= today and 
 db.commit()
 db.close()
 
-print("\n✅ Seed data created successfully!")
+print("\n=== Seed data created successfully! ===")
 print("   Login:    test@studymate.com")
 print("   Password: 123456")
-print("   Plan:     考研408复习计划")
+print("   Plan:     kaoyan 408 review plan")
 print(f"   Tasks:    {len(tasks)} tasks for today")
 print(f"   Cards:    {len(cards)} cards ({cards_due_today} due today)")
 print(f"   Mistakes: {len(mistakes)} mistakes ({mistakes_due_today} due today)")
