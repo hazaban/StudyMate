@@ -5,75 +5,163 @@
         <text class="back-icon">←</text>
       </view>
       <text class="title">番茄钟</text>
-      <view class="mode-toggle" @click="showModePicker = !showModePicker">
-        <text class="mode-text">{{ isFreeMode ? '自由专注' : '任务模式' }}</text>
+      <view class="header-placeholder"></view>
+    </view>
+
+    <!-- Mode Tabs -->
+    <view class="mode-tabs">
+      <view class="mode-tab" :class="{ active: pomodoroMode === 'pomodoro' }" @click="switchMode('pomodoro')">
+        <text class="mode-tab-icon">🍅</text>
+        <text class="mode-tab-text">番茄专注</text>
+      </view>
+      <view class="mode-tab" :class="{ active: pomodoroMode === 'focus' }" @click="switchMode('focus')">
+        <text class="mode-tab-icon">🎯</text>
+        <text class="mode-tab-text">自由专注</text>
+      </view>
+    </view>
+
+    <!-- Task Link (Task Mode Only) -->
+    <view class="task-link-section" v-if="pomodoroMode === 'pomodoro'">
+      <view class="section-title">关联任务</view>
+      <view class="task-select" @click="showTaskPicker = true">
+        <view class="task-select-left">
+          <text class="task-select-icon">📋</text>
+          <text class="task-select-label">{{ currentTaskName || '选择今日任务' }}</text>
+        </view>
+        <text class="task-select-arrow">›</text>
       </view>
     </view>
 
     <!-- Timer Circle -->
     <view class="timer-section">
-      <view class="timer-circle" :class="{ running: timerRunning, break: isBreak }">
+      <view class="timer-circle" :style="circleStyle">
         <view class="timer-inner">
           <text class="timer-text">{{ formattedTime }}</text>
-          <text class="timer-label">{{ isBreak ? '休息中' : '专注中' }}</text>
-          <text class="task-label" v-if="currentTaskName">{{ currentTaskName }}</text>
+          <text class="timer-label">{{ statusLabel }}</text>
+          <text class="task-label" v-if="displayTaskName">{{ displayTaskName }}</text>
         </view>
       </view>
 
       <view class="timer-controls">
-        <view class="control-btn reset-btn" @click="resetTimer" v-if="timerRunning || elapsed > 0">
+        <view class="control-btn reset-btn" @click="resetTimer" v-if="isRunning || isPaused || hasProgress">
           <text>重置</text>
         </view>
-        <view class="control-btn start-btn" @click="toggleTimer" :class="{ pause: timerRunning }">
-          <text>{{ timerRunning ? '暂停' : '开始' }}</text>
-        </view>
-        <view class="control-btn skip-btn" @click="skipTimer" v-if="timerRunning">
-          <text>跳过</text>
+        <view class="control-btn start-btn" @click="toggleTimer" :class="{ pause: isRunning }">
+          <text>{{ isRunning ? '暂停' : '开始' }}</text>
         </view>
       </view>
     </view>
 
-    <!-- Mode Picker -->
-    <view class="mode-picker" v-if="showModePicker">
-      <view class="mode-option" :class="{ active: !isFreeMode }" @click="switchMode(false)">
-        <text class="mode-option-icon">📋</text>
-        <view class="mode-option-info">
-          <text class="mode-option-title">任务模式</text>
-          <text class="mode-option-desc">与今日任务挂钩，专注完成指定任务</text>
+    <!-- Time Settings (+/- buttons) -->
+    <view class="settings-section">
+      <view class="section-title">时间设置</view>
+
+      <!-- Pomodoro Mode -->
+      <template v-if="pomodoroMode === 'pomodoro'">
+        <view class="time-setting">
+          <text class="setting-label">专注时长</text>
+          <view class="setting-buttons">
+            <view class="setting-btn" @click="adjustFocusTime(-5)">-</view>
+            <view class="input-wrapper">
+              <input class="setting-input" type="number" v-model="focusTimeInput" @blur="onFocusTimeBlur" />
+            </view>
+            <text class="setting-unit">分钟</text>
+            <view class="setting-btn" @click="adjustFocusTime(5)">+</view>
+          </view>
         </view>
+        <view class="time-setting">
+          <text class="setting-label">短休息</text>
+          <view class="setting-buttons">
+            <view class="setting-btn" @click="adjustBreakTime(-1)">-</view>
+            <view class="input-wrapper">
+              <input class="setting-input" type="number" v-model="breakTimeInput" @blur="onBreakTimeBlur" />
+            </view>
+            <text class="setting-unit">分钟</text>
+            <view class="setting-btn" @click="adjustBreakTime(1)">+</view>
+          </view>
+        </view>
+        <view class="time-setting">
+          <text class="setting-label">长休息</text>
+          <view class="setting-buttons">
+            <view class="setting-btn" @click="adjustLongBreak(-5)">-</view>
+            <view class="input-wrapper">
+              <input class="setting-input" type="number" v-model="longBreakInput" @blur="onLongBreakBlur" />
+            </view>
+            <text class="setting-unit">分钟</text>
+            <view class="setting-btn" @click="adjustLongBreak(5)">+</view>
+          </view>
+        </view>
+      </template>
+
+      <!-- Free Focus Mode -->
+      <template v-else>
+        <view class="time-setting">
+          <text class="setting-label">专注时长</text>
+          <view class="setting-buttons">
+            <view class="setting-btn" @click="adjustFreeFocus(-5)">-</view>
+            <view class="input-wrapper">
+              <input class="setting-input" type="number" v-model="freeFocusInput" @blur="onFreeFocusBlur" />
+            </view>
+            <text class="setting-unit">分钟</text>
+            <view class="setting-btn" @click="adjustFreeFocus(5)">+</view>
+          </view>
+        </view>
+        <view class="time-setting">
+          <text class="setting-label">休息时长</text>
+          <view class="setting-buttons">
+            <view class="setting-btn" @click="adjustFreeBreak(-1)">-</view>
+            <view class="input-wrapper">
+              <input class="setting-input" type="number" v-model="freeBreakInput" @blur="onFreeBreakBlur" />
+            </view>
+            <text class="setting-unit">分钟</text>
+            <view class="setting-btn" @click="adjustFreeBreak(1)">+</view>
+          </view>
+        </view>
+        <view class="free-task-row">
+          <text class="setting-label">任务名称（选填）</text>
+          <input class="free-task-input" v-model="freeTaskName" placeholder="如：复习数据结构" />
+        </view>
+      </template>
+    </view>
+
+    <!-- Stats -->
+    <view class="stats-section">
+      <view class="stat-item">
+        <text class="stat-value">{{ completedPomodoros }}</text>
+        <text class="stat-label">今日番茄</text>
       </view>
-      <view class="mode-option" :class="{ active: isFreeMode }" @click="switchMode(true)">
-        <text class="mode-option-icon">🎯</text>
-        <view class="mode-option-info">
-          <text class="mode-option-title">自由专注</text>
-          <text class="mode-option-desc">不限任务，自由安排学习时间，休息时间可设为0</text>
-        </view>
+      <view class="stat-divider"></view>
+      <view class="stat-item">
+        <text class="stat-value">{{ totalMinutes }}</text>
+        <text class="stat-label">今日时长(分)</text>
       </view>
     </view>
 
-    <!-- Task Link (Task Mode) -->
-    <view class="task-link-section" v-if="!isFreeMode">
-      <view class="section-title">关联任务</view>
-      <view class="task-select" @click="showTaskPicker = true">
-        <text class="task-select-label">{{ currentTaskName || '选择今日任务' }}</text>
-        <text class="task-select-arrow">›</text>
+    <!-- Today's Records -->
+    <view class="history-section">
+      <view class="section-title">今日番茄记录</view>
+      <view class="history-list" v-if="todayRecords.length > 0">
+        <view class="history-item" v-for="(record, idx) in todayRecords" :key="idx">
+          <view class="history-icon">{{ record.type === 'focus' ? '🍅' : '☕' }}</view>
+          <view class="history-info">
+            <view class="history-top">
+              <text class="history-type">{{ record.type === 'focus' ? '专注' : '手动' }}</text>
+              <text class="history-name">{{ record.taskName }}</text>
+            </view>
+            <text class="history-time">{{ record.time }}</text>
+          </view>
+          <view class="history-duration">{{ record.duration }}分钟</view>
+        </view>
       </view>
-    </view>
+      <view class="empty" v-else>
+        <text class="empty-text">暂无记录</text>
+      </view>
 
-    <!-- Free Focus Settings -->
-    <view class="settings-section" v-if="isFreeMode">
-      <view class="section-title">自由专注设置</view>
-      <view class="setting-row">
-        <text class="setting-label">专注时长（分钟）</text>
-        <input class="setting-input" v-model="freeFocusDuration" type="number" placeholder="25" />
-      </view>
-      <view class="setting-row">
-        <text class="setting-label">休息时长（分钟）</text>
-        <input class="setting-input" v-model="freeBreakDuration" type="number" placeholder="0" />
-      </view>
-      <view class="setting-row">
-        <text class="setting-label">任务名称（选填）</text>
-        <input class="setting-input" v-model="freeTaskName" placeholder="如：复习数据结构" />
+      <!-- Manual Record Input -->
+      <view class="manual-row">
+        <input class="manual-input manual-minutes" v-model="manualMinutes" type="number" placeholder="分钟数" />
+        <input class="manual-input manual-task" v-model="manualTaskName" placeholder="任务描述" />
+        <view class="manual-submit" @click="submitManualRecord">添加</view>
       </view>
     </view>
 
@@ -87,11 +175,11 @@
         <view class="modal-body">
           <view class="picker-task" v-for="task in todayTasks" :key="task.id" @click="selectTask(task)">
             <view class="picker-task-info">
-              <text class="picker-task-name">{{ task.subject }} - {{ task.content }}</text>
+              <text class="picker-task-name">{{ task.subject }}{{ task.chapter ? ' - ' + task.chapter : '' }}: {{ task.content }}</text>
               <text class="picker-task-duration">预计: {{ task.duration }}分钟</text>
             </view>
-            <view class="picker-check" :class="{ checked: selectedTaskId === task.id }">
-              <text v-if="selectedTaskId === task.id">✓</text>
+            <view class="picker-check" :class="{ checked: currentTaskId === task.id }">
+              <text v-if="currentTaskId === task.id">✓</text>
             </view>
           </view>
           <view class="empty" v-if="todayTasks.length === 0">
@@ -101,181 +189,294 @@
       </view>
     </view>
 
-    <!-- Timer Settings -->
-    <view class="settings-section">
-      <view class="section-title">计时设置</view>
-      <view class="setting-row">
-        <text class="setting-label">专注时长（分钟）</text>
-        <input class="setting-input" v-model="focusDuration" type="number" />
-      </view>
-      <view class="setting-row" v-if="!isFreeMode">
-        <text class="setting-label">短休息（分钟）</text>
-        <input class="setting-input" v-model="shortBreak" type="number" />
-      </view>
-      <view class="setting-row" v-if="!isFreeMode">
-        <text class="setting-label">长休息（分钟）</text>
-        <input class="setting-input" v-model="longBreak" type="number" />
-      </view>
-    </view>
-
-    <!-- Manual Time Recording -->
-    <view class="manual-section">
-      <view class="section-title">手动记录时间</view>
-      <view class="manual-row">
-        <input class="manual-input" v-model="manualMinutes" type="number" placeholder="分钟数" />
-        <input class="manual-input" v-model="manualTaskName" placeholder="任务描述" />
-        <view class="manual-submit" @click="submitManualRecord">记录</view>
-      </view>
-    </view>
-
-    <!-- Today's Records -->
-    <view class="history-section">
-      <view class="section-title">今日番茄记录</view>
-      <view class="history-list">
-        <view class="history-item" v-for="(record, idx) in todayRecords" :key="idx">
-          <view class="history-left">
-            <text class="history-name">{{ record.taskName }}</text>
-            <text class="history-time">{{ record.time }}</text>
-          </view>
-          <view class="history-duration">{{ record.duration }}分钟</view>
-        </view>
-      </view>
-      <view class="empty" v-if="todayRecords.length === 0">
-        <text class="empty-text">暂无记录</text>
-      </view>
-    </view>
-
     <view class="bottom-space"></view>
   </view>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useTaskStore } from '@/stores/task'
-import { usePlanStore } from '@/stores/plan'
 import { useFarmStore } from '@/stores/farm'
+import { usePlanStore } from '@/stores/plan'
 
 const taskStore = useTaskStore()
-const planStore = usePlanStore()
 const farmStore = useFarmStore()
-
-// Timer state
-const focusDuration = ref(25)
-const shortBreak = ref(5)
-const longBreak = ref(15)
-const freeFocusDuration = ref(25)
-const freeBreakDuration = ref(0)
-const freeTaskName = ref('')
-const timerRunning = ref(false)
-const isBreak = ref(false)
-const elapsed = ref(0)
-const totalDuration = ref(25 * 60)
-const pomodoroCount = ref(0)
-let timerInterval = null
+const planStore = usePlanStore()
 
 // Mode
-const isFreeMode = ref(false)
-const showModePicker = ref(false)
+const pomodoroMode = ref('pomodoro') // 'pomodoro' | 'focus'
 
-// Task link
+// Time settings - pomodoro mode
+const focusTime = ref(25)
+const breakTime = ref(5)
+const longBreakTime = ref(15)
+const focusTimeInput = ref('25')
+const breakTimeInput = ref('5')
+const longBreakInput = ref('15')
+
+// Time settings - free focus mode
+const freeFocusTime = ref(25)
+const freeFocusInput = ref('25')
+const freeBreakTime = ref(0)
+const freeBreakInput = ref('0')
+const freeTaskName = ref('')
+
+// Timer state
+const isRunning = ref(false)
+const isPaused = ref(false)
+const isBreak = ref(false)
+const timeRemaining = ref(25 * 60)
+const completedPomodoros = ref(0)
+const totalMinutes = ref(0)
+const todayRecords = ref([])
+let timerInterval = null
+
+// Task association
+const taskContent = ref('')
+const currentTaskId = ref(null)
 const currentTaskName = ref('')
-const currentTaskId = ref('')
 const showTaskPicker = ref(false)
-const selectedTaskId = ref('')
 
 // Manual record
 const manualMinutes = ref('')
 const manualTaskName = ref('')
 
-// Records - persist to localStorage
-const todayRecords = ref(JSON.parse(uni.getStorageSync('studymate_pomodoro_records') || '[]'))
-
 const today = computed(() => new Date().toISOString().split('T')[0])
+const todayTasks = computed(() => taskStore.todayTasks || [])
 
-const todayTasks = computed(() => {
-  return taskStore.todayTasks || []
+const currentFocusSeconds = computed(() => {
+  return (pomodoroMode.value === 'focus' ? freeFocusTime.value : focusTime.value) * 60
 })
 
+const currentBreakSeconds = computed(() => {
+  if (pomodoroMode.value === 'focus') {
+    return freeBreakTime.value * 60
+  }
+  const useLong = completedPomodoros.value > 0 && completedPomodoros.value % 4 === 0
+  return (useLong ? longBreakTime.value : breakTime.value) * 60
+})
+
+const currentTotalSeconds = computed(() => {
+  return isBreak.value ? currentBreakSeconds.value : currentFocusSeconds.value
+})
+
+const hasProgress = computed(() => timeRemaining.value < currentTotalSeconds.value)
+
 const formattedTime = computed(() => {
-  const remaining = totalDuration.value - elapsed.value
-  const mins = Math.floor(remaining / 60)
-  const secs = remaining % 60
+  const t = Math.max(0, timeRemaining.value)
+  const mins = Math.floor(t / 60)
+  const secs = t % 60
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
 })
 
-function switchMode(free) {
-  isFreeMode.value = free
-  showModePicker.value = false
+const statusLabel = computed(() => {
+  if (isBreak.value) return '休息中'
+  if (isRunning.value) return '专注中'
+  if (isPaused.value) return '已暂停'
+  return '准备专注'
+})
+
+const displayTaskName = computed(() => {
+  if (pomodoroMode.value === 'focus') {
+    return freeTaskName.value.trim()
+  }
+  return currentTaskName.value
+})
+
+const circleStyle = computed(() => {
+  const total = currentTotalSeconds.value
+  const elapsed = Math.max(0, total - timeRemaining.value)
+  const percent = total > 0 ? Math.min(100, (elapsed / total) * 100) : 0
+  const deg = percent * 3.6
+  const color = isBreak.value ? '#66bb6a' : '#ef5350'
+  return {
+    background: `conic-gradient(${color} ${deg}deg, #e8ece9 ${deg}deg)`
+  }
+})
+
+// Sync inputs with refs
+watch(focusTime, (val) => { focusTimeInput.value = String(val) })
+watch(breakTime, (val) => { breakTimeInput.value = String(val) })
+watch(longBreakTime, (val) => { longBreakInput.value = String(val) })
+watch(freeFocusTime, (val) => { freeFocusInput.value = String(val) })
+watch(freeBreakTime, (val) => { freeBreakInput.value = String(val) })
+
+// Persist settings on change
+watch([focusTime, breakTime, longBreakTime, freeFocusTime, freeBreakTime, pomodoroMode], saveSettings)
+
+// +/- adjust handlers (main-branch style)
+function adjustFocusTime(delta) {
+  const newTime = focusTime.value + delta
+  if (newTime >= 5 && newTime <= 60) {
+    focusTime.value = newTime
+    if (!isRunning.value && !isBreak.value) {
+      timeRemaining.value = newTime * 60
+    }
+  }
+}
+
+function adjustBreakTime(delta) {
+  const newTime = breakTime.value + delta
+  if (newTime >= 1 && newTime <= 30) {
+    breakTime.value = newTime
+    if (!isRunning.value && isBreak.value) {
+      timeRemaining.value = newTime * 60
+    }
+  }
+}
+
+function adjustLongBreak(delta) {
+  const newTime = longBreakTime.value + delta
+  if (newTime >= 5 && newTime <= 30) {
+    longBreakTime.value = newTime
+    if (!isRunning.value && isBreak.value) {
+      timeRemaining.value = newTime * 60
+    }
+  }
+}
+
+function adjustFreeFocus(delta) {
+  const newTime = freeFocusTime.value + delta
+  if (newTime >= 5 && newTime <= 120) {
+    freeFocusTime.value = newTime
+    if (!isRunning.value && !isBreak.value) {
+      timeRemaining.value = newTime * 60
+    }
+  }
+}
+
+function adjustFreeBreak(delta) {
+  const newTime = freeBreakTime.value + delta
+  if (newTime >= 0 && newTime <= 30) {
+    freeBreakTime.value = newTime
+    if (!isRunning.value && isBreak.value) {
+      timeRemaining.value = newTime * 60
+    }
+  }
+}
+
+// Input blur handlers - validate & clamp
+function onFocusTimeBlur() {
+  let val = parseInt(focusTimeInput.value)
+  if (isNaN(val)) val = focusTime.value
+  val = Math.max(5, Math.min(60, val))
+  focusTime.value = val
+  focusTimeInput.value = String(val)
+  if (!isRunning.value && !isBreak.value) {
+    timeRemaining.value = val * 60
+  }
+}
+
+function onBreakTimeBlur() {
+  let val = parseInt(breakTimeInput.value)
+  if (isNaN(val)) val = breakTime.value
+  val = Math.max(1, Math.min(30, val))
+  breakTime.value = val
+  breakTimeInput.value = String(val)
+  if (!isRunning.value && isBreak.value) {
+    timeRemaining.value = val * 60
+  }
+}
+
+function onLongBreakBlur() {
+  let val = parseInt(longBreakInput.value)
+  if (isNaN(val)) val = longBreakTime.value
+  val = Math.max(5, Math.min(30, val))
+  longBreakTime.value = val
+  longBreakInput.value = String(val)
+  if (!isRunning.value && isBreak.value) {
+    timeRemaining.value = val * 60
+  }
+}
+
+function onFreeFocusBlur() {
+  let val = parseInt(freeFocusInput.value)
+  if (isNaN(val)) val = freeFocusTime.value
+  val = Math.max(5, Math.min(120, val))
+  freeFocusTime.value = val
+  freeFocusInput.value = String(val)
+  if (!isRunning.value && !isBreak.value) {
+    timeRemaining.value = val * 60
+  }
+}
+
+function onFreeBreakBlur() {
+  let val = parseInt(freeBreakInput.value)
+  if (isNaN(val)) val = freeBreakTime.value
+  val = Math.max(0, Math.min(30, val))
+  freeBreakTime.value = val
+  freeBreakInput.value = String(val)
+  if (!isRunning.value && isBreak.value) {
+    timeRemaining.value = val * 60
+  }
+}
+
+function switchMode(mode) {
+  if (pomodoroMode.value === mode) return
+  pomodoroMode.value = mode
   resetTimer()
 }
 
 function resetTimer() {
-  timerRunning.value = false
+  isRunning.value = false
+  isPaused.value = false
   isBreak.value = false
-  elapsed.value = 0
   if (timerInterval) {
     clearInterval(timerInterval)
     timerInterval = null
   }
-  const dur = isFreeMode.value ? freeFocusDuration.value : focusDuration.value
-  totalDuration.value = parseInt(dur) * 60
+  timeRemaining.value = currentFocusSeconds.value
 }
 
 function toggleTimer() {
-  if (timerRunning.value) {
-    // Pause
-    timerRunning.value = false
+  if (isRunning.value) {
+    isRunning.value = false
+    isPaused.value = true
     if (timerInterval) {
       clearInterval(timerInterval)
       timerInterval = null
     }
   } else {
-    // Start
-    if (elapsed.value === 0) {
-      const dur = isFreeMode.value ? freeFocusDuration.value : focusDuration.value
-      totalDuration.value = parseInt(dur) * 60
-    }
-    timerRunning.value = true
+    isRunning.value = true
+    isPaused.value = false
     timerInterval = setInterval(() => {
-      elapsed.value++
-      if (elapsed.value >= totalDuration.value) {
+      timeRemaining.value--
+      if (timeRemaining.value <= 0) {
         completeSession()
       }
     }, 1000)
   }
 }
 
-function skipTimer() {
-  completeSession()
-}
-
 async function completeSession() {
-  timerRunning.value = false
+  isRunning.value = false
+  isPaused.value = false
   if (timerInterval) {
     clearInterval(timerInterval)
     timerInterval = null
   }
 
-  const sessionDuration = Math.round(elapsed.value / 60)
-  const now = new Date()
-  const timeStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`
-
   if (!isBreak.value) {
-    pomodoroCount.value++
+    // Focus phase complete
+    const sessionDuration = Math.round(currentFocusSeconds.value / 60)
+    completedPomodoros.value++
+    totalMinutes.value += sessionDuration
 
-    // Record session
-    const taskName = isFreeMode.value
-      ? (freeTaskName.value || '自由专注')
+    const taskName = pomodoroMode.value === 'focus'
+      ? (freeTaskName.value.trim() || '自由专注')
       : (currentTaskName.value || '番茄钟专注')
 
+    const now = new Date()
+    const timeStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`
+
     todayRecords.value.unshift({
+      type: 'focus',
       taskName,
       time: timeStr,
       duration: sessionDuration,
       date: today.value
     })
-    // Persist to localStorage
-    uni.setStorageSync('studymate_pomodoro_records', JSON.stringify(todayRecords.value))
+    saveRecords()
 
     // Update task actual_duration if linked
     if (currentTaskId.value) {
@@ -288,21 +489,29 @@ async function completeSession() {
       } catch (e) { /* silent */ }
     }
 
-    // Link to farm: water the crop
-    if (planStore.currentPlan && currentTaskName.value) {
+    // Farm integration: ensure crop & water plant
+    if (planStore.currentPlan) {
       try {
-        // Try to find subject from task name
-        const subject = currentTaskName.value.split(' - ')[0] || currentTaskName.value.split(':')[0] || ''
+        let subject = ''
+        if (pomodoroMode.value === 'focus') {
+          subject = freeTaskName.value.trim()
+        } else {
+          const task = taskStore.todayTasks.find(t => t.id === currentTaskId.value)
+          if (task) {
+            subject = task.subject
+          } else if (currentTaskName.value) {
+            subject = currentTaskName.value.split(':')[0].split(' - ')[0].trim()
+          }
+        }
         if (subject) {
           const crop = await farmStore.ensureCrop(planStore.currentPlan.id, subject)
-          if (crop.plant) {
+          if (crop && crop.plant) {
             await farmStore.waterPlant(crop.plant.id)
           }
         }
       } catch (e) { /* silent */ }
     }
 
-    // Notify
     uni.showToast({ title: `完成 ${sessionDuration} 分钟专注!`, icon: 'success' })
 
     // H5 notification
@@ -311,48 +520,36 @@ async function completeSession() {
     if (reminderEnabled && 'Notification' in window && Notification.permission === 'granted') {
       new Notification('StudyMate - 番茄钟完成', {
         body: `已完成 ${sessionDuration} 分钟专注学习: ${taskName}`,
-        icon: '/static/logo.png',
         tag: 'pomodoro-complete'
       })
     }
     // #endif
 
-    // Start break (except free mode with break=0)
-    if (isFreeMode.value && parseInt(freeBreakDuration.value) === 0) {
-      elapsed.value = 0
-      totalDuration.value = parseInt(freeFocusDuration.value) * 60
-    } else {
+    // Start break (skip when break duration is 0)
+    const breakSeconds = currentBreakSeconds.value
+    if (breakSeconds > 0) {
       isBreak.value = true
-      elapsed.value = 0
-      const breakDur = isFreeMode.value ? freeBreakDuration.value : (pomodoroCount.value % 4 === 0 ? longBreak.value : shortBreak.value)
-      totalDuration.value = parseInt(breakDur) * 60
-      timerRunning.value = true
+      timeRemaining.value = breakSeconds
+      isRunning.value = true
       timerInterval = setInterval(() => {
-        elapsed.value++
-        if (elapsed.value >= totalDuration.value) {
-          // Break complete
-          timerRunning.value = false
-          clearInterval(timerInterval)
-          timerInterval = null
-          isBreak.value = false
-          elapsed.value = 0
-          const dur = isFreeMode.value ? freeFocusDuration.value : focusDuration.value
-          totalDuration.value = parseInt(dur) * 60
-          uni.showToast({ title: '休息结束，继续加油！', icon: 'none' })
+        timeRemaining.value--
+        if (timeRemaining.value <= 0) {
+          completeSession()
         }
       }, 1000)
+    } else {
+      // No break, reset to focus phase
+      timeRemaining.value = currentFocusSeconds.value
     }
   } else {
-    // Break complete
+    // Break phase complete
     isBreak.value = false
-    elapsed.value = 0
-    const dur = isFreeMode.value ? freeFocusDuration.value : focusDuration.value
-    totalDuration.value = parseInt(dur) * 60
+    timeRemaining.value = currentFocusSeconds.value
+    uni.showToast({ title: '休息结束，继续加油！', icon: 'none' })
   }
 }
 
 function selectTask(task) {
-  selectedTaskId.value = task.id
   currentTaskId.value = task.id
   currentTaskName.value = `${task.subject}${task.chapter ? ' - ' + task.chapter : ''}: ${task.content}`
   showTaskPicker.value = false
@@ -369,54 +566,92 @@ function submitManualRecord() {
   const timeStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`
 
   todayRecords.value.unshift({
+    type: 'manual',
     taskName,
     time: timeStr,
     duration: mins,
     date: today.value
   })
-  uni.setStorageSync('studymate_pomodoro_records', JSON.stringify(todayRecords.value))
+  saveRecords()
+  totalMinutes.value += mins
   manualMinutes.value = ''
   manualTaskName.value = ''
   uni.showToast({ title: '记录成功', icon: 'success' })
+}
+
+function saveRecords() {
+  uni.setStorageSync('studymate_pomodoro_records', JSON.stringify(todayRecords.value))
+}
+
+function saveSettings() {
+  uni.setStorageSync('studymate_pomodoro_settings', JSON.stringify({
+    pomodoroMode: pomodoroMode.value,
+    focusTime: focusTime.value,
+    breakTime: breakTime.value,
+    longBreakTime: longBreakTime.value,
+    freeFocusTime: freeFocusTime.value,
+    freeBreakTime: freeBreakTime.value
+  }))
 }
 
 function goBack() {
   uni.navigateBack()
 }
 
-// Load settings from storage
 onMounted(() => {
+  // Load settings from storage
   const saved = uni.getStorageSync('studymate_pomodoro_settings')
   if (saved) {
     try {
       const s = JSON.parse(saved)
-      focusDuration.value = s.focusDuration || 25
-      shortBreak.value = s.shortBreak || 5
-      longBreak.value = s.longBreak || 15
-    } catch (e) {}
+      if (s.focusTime) focusTime.value = s.focusTime
+      if (s.breakTime) breakTime.value = s.breakTime
+      if (s.longBreakTime) longBreakTime.value = s.longBreakTime
+      if (s.freeFocusTime) freeFocusTime.value = s.freeFocusTime
+      if (s.freeBreakTime !== undefined) freeBreakTime.value = s.freeBreakTime
+      if (s.pomodoroMode) pomodoroMode.value = s.pomodoroMode
+    } catch (e) { /* silent */ }
   }
 
-  // Load records and filter by today
+  // Sync input fields
+  focusTimeInput.value = String(focusTime.value)
+  breakTimeInput.value = String(breakTime.value)
+  longBreakInput.value = String(longBreakTime.value)
+  freeFocusInput.value = String(freeFocusTime.value)
+  freeBreakInput.value = String(freeBreakTime.value)
+
+  // Receive URL params (jump from task-board)
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1]
+  const options = currentPage?.options || (currentPage?.$page?.options) || {}
+  if (options.taskContent) {
+    taskContent.value = decodeURIComponent(options.taskContent)
+    currentTaskName.value = taskContent.value
+    // Force task mode when coming from task-board
+    pomodoroMode.value = 'pomodoro'
+  }
+  if (options.taskId) {
+    currentTaskId.value = options.taskId
+  }
+
+  // Load today records
   const allRecords = JSON.parse(uni.getStorageSync('studymate_pomodoro_records') || '[]')
   todayRecords.value = allRecords.filter(r => r.date === today.value)
 
-  totalDuration.value = focusDuration.value * 60
+  // Load today stats
+  completedPomodoros.value = todayRecords.value.filter(r => r.type === 'focus').length
+  totalMinutes.value = todayRecords.value.reduce((sum, r) => sum + (r.duration || 0), 0)
+
+  // Init timer
+  timeRemaining.value = currentFocusSeconds.value
 })
 
-// Save settings
-function saveSettings() {
-  uni.setStorageSync('studymate_pomodoro_settings', JSON.stringify({
-    focusDuration: focusDuration.value,
-    shortBreak: shortBreak.value,
-    longBreak: longBreak.value
-  }))
-}
-
-// Save settings on change
-const stopWatch = () => {}
 onUnmounted(() => {
   saveSettings()
-  if (timerInterval) clearInterval(timerInterval)
+  if (timerInterval) {
+    clearInterval(timerInterval)
+    timerInterval = null
+  }
 })
 </script>
 
@@ -426,40 +661,114 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 40px 0 20px;
-  .back-btn { width: 40px; height: 40px; background: $bg2; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .back-btn, .header-placeholder {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+  }
+  .back-btn {
+    background: $bg2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid $rule;
+  }
   .back-icon { font-size: 20px; color: $ink; }
-  .title { font-size: 20px; font-weight: 600; color: $ink; }
-  .mode-toggle { padding: 8px 16px; background: $soft; border-radius: 20px; }
-  .mode-text { font-size: 13px; color: $accent; font-weight: 500; }
+  .title { font-size: 20px; font-weight: 700; color: $ink; }
+}
+
+.mode-tabs {
+  display: flex;
+  background: $bg2;
+  border-radius: 16px;
+  padding: 6px;
+  margin-bottom: 16px;
+  border: 1px solid $rule;
+  .mode-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px;
+    border-radius: 12px;
+    transition: all 0.2s;
+    .mode-tab-icon { font-size: 16px; }
+    .mode-tab-text { font-size: 14px; color: $muted; font-weight: 500; }
+    &.active {
+      background: $accent;
+      .mode-tab-text { color: #fff; }
+    }
+  }
+}
+
+.task-link-section, .settings-section, .stats-section, .history-section {
+  background: $bg2;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid $rule;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: $ink;
+  margin-bottom: 12px;
+}
+
+.task-select {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: $soft;
+  border-radius: 12px;
+  .task-select-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+  .task-select-icon { font-size: 16px; }
+  .task-select-label { font-size: 14px; color: $ink; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .task-select-arrow { font-size: 20px; color: $muted; }
 }
 
 .timer-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 30px 0;
+  padding: 20px 0 24px;
 }
 
 .timer-circle {
-  width: 220px;
-  height: 220px;
+  width: 240px;
+  height: 240px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
-  border: 6px solid #2f7d4f;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 24px;
-  transition: all 0.3s;
-  &.running { border-color: #2f7d4f; background: linear-gradient(135deg, #c8e6c9, #a5d6a7); }
-  &.break { border-color: #ff9800; background: linear-gradient(135deg, #fff3e0, #ffe0b2); }
+  transition: background 0.3s;
 }
 
 .timer-inner {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: $bg2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  .timer-text { display: block; font-size: 48px; font-weight: 700; color: #1a1a2e; }
-  .timer-label { display: block; font-size: 14px; color: #65746d; margin-top: 4px; }
-  .task-label { display: block; font-size: 12px; color: #2f7d4f; margin-top: 4px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .timer-text { font-size: 48px; font-weight: 700; color: $ink; line-height: 1.1; }
+  .timer-label { font-size: 14px; color: $muted; margin-top: 4px; }
+  .task-label {
+    font-size: 12px;
+    color: $accent;
+    margin-top: 6px;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .timer-controls {
@@ -470,137 +779,209 @@ onUnmounted(() => {
 
 .control-btn {
   padding: 12px 24px;
-  border-radius: 25px;
+  border-radius: 24px;
   font-size: 15px;
-  font-weight: 500;
-  &.reset-btn { background: #f5f7f5; color: #65746d; }
-  &.start-btn { background: #2f7d4f; color: #fff; padding: 14px 36px; &.pause { background: #ff9800; } }
-  &.skip-btn { background: #fff3e0; color: #e65100; }
-}
-
-.mode-picker {
-  background: #fff;
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 16px;
-  border: 1px solid #e8ece9;
-}
-
-.mode-option {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
-  border-radius: 12px;
-  margin-bottom: 8px;
-  &:last-child { margin-bottom: 0; }
-  &.active { background: #e8f5e9; border: 1px solid #2f7d4f; }
-  .mode-option-icon { font-size: 24px; }
-  .mode-option-info { flex: 1; }
-  .mode-option-title { display: block; font-size: 15px; font-weight: 600; color: #1a1a2e; }
-  .mode-option-desc { display: block; font-size: 12px; color: #999; margin-top: 2px; }
-}
-
-.task-link-section, .settings-section, .manual-section, .history-section {
-  background: #fff;
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 16px;
-  border: 1px solid #e8ece9;
-}
-
-.section-title {
-  font-size: 14px;
   font-weight: 600;
-  color: #1a1a2e;
-  margin-bottom: 12px;
-}
-
-.task-select {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  background: #f5f7f5;
-  border-radius: 10px;
-  .task-select-label { font-size: 14px; color: #1a1a2e; }
-  .task-select-arrow { font-size: 20px; color: #999; }
-}
-
-.setting-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-  &:last-child { margin-bottom: 0; }
-  .setting-label { font-size: 14px; color: #65746d; }
-  .setting-input {
-    width: 80px;
-    padding: 8px 12px;
-    border: 1px solid #e8ece9;
-    border-radius: 8px;
-    font-size: 14px;
-    text-align: center;
-    background: #fafafa;
+  &.reset-btn {
+    background: $bg;
+    color: $muted;
+    border: 1px solid $rule;
   }
-}
-
-.manual-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  .manual-input {
-    flex: 1;
-    padding: 10px 12px;
-    border: 1px solid #e8ece9;
-    border-radius: 10px;
-    font-size: 14px;
-    background: #fafafa;
-  }
-  .manual-submit {
-    padding: 10px 16px;
-    background: #2f7d4f;
+  &.start-btn {
+    background: $accent;
     color: #fff;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 500;
-    white-space: nowrap;
+    padding: 14px 40px;
+    &.pause { background: #ef5350; }
   }
+}
+
+.time-setting {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid $rule;
+  &:last-child { border-bottom: none; }
+  .setting-label { font-size: 14px; color: $ink; font-weight: 500; }
+  .setting-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .setting-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: $soft;
+    color: $accent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 600;
+    border: 1px solid $rule;
+    &:active { transform: scale(0.92); background: $accent; color: #fff; }
+  }
+  .setting-unit { font-size: 12px; color: $muted; }
+  .input-wrapper {
+    width: 56px;
+    padding: 6px 4px;
+    border-radius: 10px;
+    background: $bg;
+    border: 1px solid $rule;
+  }
+  .setting-input {
+    width: 100%;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 700;
+    color: $ink;
+  }
+}
+
+.free-task-row {
+  padding: 10px 0;
+  .setting-label { display: block; font-size: 14px; color: $ink; font-weight: 500; margin-bottom: 8px; }
+  .free-task-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid $rule;
+    border-radius: 10px;
+    background: $bg;
+    font-size: 14px;
+    color: $ink;
+  }
+}
+
+.stats-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    .stat-value { font-size: 28px; font-weight: 700; color: $accent; }
+    .stat-label { font-size: 12px; color: $muted; margin-top: 4px; }
+  }
+  .stat-divider { width: 1px; height: 40px; background: $rule; }
 }
 
 .history-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-bottom: 12px;
 }
 
 .history-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 10px;
   padding: 10px 12px;
-  background: #f5f7f5;
-  border-radius: 10px;
-  .history-left { flex: 1; min-width: 0; }
-  .history-name { display: block; font-size: 14px; color: #1a1a2e; }
-  .history-time { display: block; font-size: 11px; color: #999; }
-  .history-duration { font-size: 14px; font-weight: 600; color: #2f7d4f; white-space: nowrap; margin-left: 12px; }
+  background: $bg;
+  border-radius: 12px;
+  .history-icon { font-size: 20px; flex-shrink: 0; }
+  .history-info { flex: 1; min-width: 0; }
+  .history-top { display: flex; align-items: center; gap: 6px; }
+  .history-type {
+    font-size: 12px;
+    color: $accent;
+    background: $soft;
+    padding: 2px 6px;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+  .history-name {
+    font-size: 14px;
+    color: $ink;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .history-time { display: block; font-size: 11px; color: $muted; margin-top: 2px; }
+  .history-duration { font-size: 14px; font-weight: 700; color: $accent; white-space: nowrap; }
 }
 
-.empty { text-align: center; padding: 20px; .empty-text { font-size: 13px; color: #999; } }
+.manual-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid $rule;
+  .manual-input {
+    padding: 10px 12px;
+    border: 1px solid $rule;
+    border-radius: 10px;
+    background: $bg;
+    font-size: 14px;
+    color: $ink;
+  }
+  .manual-minutes { width: 90px; flex-shrink: 0; }
+  .manual-task { flex: 1; min-width: 0; }
+  .manual-submit {
+    padding: 10px 16px;
+    background: $accent;
+    color: #fff;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+}
+
+.empty { text-align: center; padding: 20px; .empty-text { font-size: 13px; color: $muted; } }
 
 /* Task Picker Modal */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: flex-end; }
-.modal-content { background: #fff; border-radius: 24px 24px 0 0; width: 100%; max-height: 60vh; display: flex; flex-direction: column; }
-.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #f0f0f0; }
-.modal-title { font-size: 18px; font-weight: 700; color: #1a1a2e; }
-.modal-close { font-size: 20px; color: #999; padding: 4px; }
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+}
+.modal-content {
+  background: $bg2;
+  border-radius: 24px 24px 0 0;
+  width: 100%;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid $rule;
+  .modal-title { font-size: 18px; font-weight: 700; color: $ink; }
+  .modal-close { font-size: 20px; color: $muted; padding: 4px; }
+}
 .modal-body { padding: 16px 24px; flex: 1; overflow-y: auto; }
-.picker-task { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #f0f0f0; }
-.picker-task-info { flex: 1; }
-.picker-task-name { display: block; font-size: 14px; color: #1a1a2e; }
-.picker-task-duration { display: block; font-size: 12px; color: #999; margin-top: 4px; }
-.picker-check { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #d0d5d2; display: flex; align-items: center; justify-content: center; font-size: 14px; &.checked { background: #2f7d4f; border-color: #2f7d4f; color: #fff; } }
+.picker-task {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid $rule;
+  &:last-child { border-bottom: none; }
+  .picker-task-info { flex: 1; min-width: 0; }
+  .picker-task-name { display: block; font-size: 14px; color: $ink; }
+  .picker-task-duration { display: block; font-size: 12px; color: $muted; margin-top: 4px; }
+  .picker-check {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid $rule;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: transparent;
+    &.checked { background: $accent; border-color: $accent; color: #fff; }
+  }
+}
 
 .bottom-space { height: 100px; }
 </style>

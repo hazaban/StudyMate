@@ -265,7 +265,14 @@ function buildExportUrl(type, format, params) {
   if (params.difficulty) url += `&difficulty=${params.difficulty}`
   if (params.mastered !== undefined && params.mastered !== null) url += `&mastered=${params.mastered}`
   if (params.min_errors) url += `&min_errors=${params.min_errors}`
+  if (params.questions_only) url += `&questions_only=true`
   return url
+}
+
+export async function getExportTags(planId, type, subject) {
+  let url = `/export/tags?plan_id=${planId}&type=${type}`
+  if (subject) url += `&subject=${encodeURIComponent(subject)}`
+  return request(url)
 }
 
 export function getExportUrl(type, format, params) {

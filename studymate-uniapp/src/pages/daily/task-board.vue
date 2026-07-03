@@ -3,7 +3,11 @@
     <view class="header">
       <view class="header-top">
         <view class="header-left">
-          <text class="title">今日任务</text>
+          <view class="view-toggle">
+            <view class="toggle-btn" :class="{ active: viewMode === 'today' }" @click="switchView('today')">今日</view>
+            <view class="toggle-btn" :class="{ active: viewMode === 'history' }" @click="switchView('history')">历史</view>
+          </view>
+          <text class="title">{{ headerTitle }}</text>
           <text class="date">{{ currentDate }}</text>
         </view>
         <view class="header-actions">
@@ -27,6 +31,32 @@
         <view class="progress-item">
           <text class="progress-num">{{ taskStore.totalCount }}</text>
           <text class="progress-label">总任务</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="calendar" v-if="viewMode === 'history'">
+      <view class="cal-header">
+        <view class="cal-arrow" @click="switchMonth(-1)">‹</view>
+        <text class="cal-title">{{ calTitle }}</text>
+        <view class="cal-arrow" @click="switchMonth(1)">›</view>
+      </view>
+      <view class="cal-weekdays">
+        <text class="cal-weekday" v-for="w in ['日','一','二','三','四','五','六']" :key="w">{{w}}</text>
+      </view>
+      <view class="cal-days">
+        <view class="cal-day"
+          v-for="(day, idx) in calendarDays"
+          :key="idx"
+          :class="{
+            other: !day.currentMonth,
+            today: day.isToday,
+            selected: day.dateStr === selectedDate,
+            'has-task': taskDates.has(day.dateStr)
+          }"
+          @click="selectDate(day.dateStr)">
+          <text class="day-num">{{ day.day }}</text>
+          <view class="day-dot" v-if="taskDates.has(day.dateStr)"></view>
         </view>
       </view>
     </view>
@@ -179,6 +209,13 @@ const editingTask = ref(null)
 const showSubjectInput = ref(false)
 const customSubject = ref('')
 
+// 视图模式与日历相关状态
+const viewMode = ref('today')  // 'today' | 'history'
+const selectedDate = ref(formatDate(new Date()))
+const calendarMonth = ref(new Date())  // 当前显示的月份
+const calendarDays = ref([])
+const taskDates = ref(new Set())  // 有任务的日期集合
+
 const allSubjects = ['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络']
 const subjectOptions = ref(JSON.parse(uni.getStorageSync('studymate_subjects') || JSON.stringify(allSubjects)))
 
@@ -205,9 +242,30 @@ const defaultForm = {
 
 const form = ref({ ...defaultForm })
 
-const currentDate = computed(() => {
-  const d = new Date()
+function formatDate(d) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function formatDateLabel(d) {
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${['日','一','二','三','四','五','六'][d.getDay()]}`
+}
+
+const currentDate = computed(() => {
+  if (viewMode.value === 'history') {
+    return formatDateLabel(new Date(selectedDate.value))
+  }
+  return formatDateLabel(new Date())
+})
+
+const headerTitle = computed(() => viewMode.value === 'today' ? '今日任务' : '历史任务')
+
+const calTitle = computed(() => {
+  const y = calendarMonth.value.getFullYear()
+  const m = calendarMonth.value.getMonth() + 1
+  return `${y}年${m}月`
 })
 
 const subjects = computed(() => {
@@ -293,13 +351,17 @@ async function submitForm() {
       }
       await taskStore.createTask({
         plan_id: planStore.currentPlan.id,
-        date: new Date().toISOString().split('T')[0],
+        date: selectedDate.value,
         type: form.value.type,
         subject: form.value.subject,
         chapter: form.value.chapter,
         content: form.value.content,
         duration: parseInt(form.value.duration) || 25
       })
+      // 新增任务后标记该日期有任务
+      taskDates.value.add(selectedDate.value)
+      saveTaskDatesToStorage()
+      generateCalendar()
     }
     closeForm()
     uni.showToast({ title: editingTask.value ? '已更新' : '已添加', icon: 'success' })
@@ -310,13 +372,122 @@ async function submitForm() {
   }
 }
 
+// ============ 日历逻辑 ============
+
+function generateCalendar() {
+  const year = calendarMonth.value.getFullYear()
+  const month = calendarMonth.value.getMonth()
+  const firstWeekday = new Date(year, month, 1).getDay()  // 0-6, Sunday=0
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const today = formatDate(new Date())
+
+  const days = []
+  // 上月补齐
+  for (let i = firstWeekday - 1; i >= 0; i--) {
+    const d = new Date(year, month, -i)
+    days.push({
+      day: d.getDate(),
+      dateStr: formatDate(d),
+      currentMonth: false,
+      isToday: formatDate(d) === today
+    })
+  }
+  // 当月
+  for (let i = 1; i <= daysInMonth; i++) {
+    const d = new Date(year, month, i)
+    days.push({
+      day: i,
+      dateStr: formatDate(d),
+      currentMonth: true,
+      isToday: formatDate(d) === today
+    })
+  }
+  // 下月补齐至完整周
+  const trailingNeeded = (7 - (days.length % 7)) % 7
+  for (let i = 1; i <= trailingNeeded; i++) {
+    const d = new Date(year, month + 1, i)
+    days.push({
+      day: d.getDate(),
+      dateStr: formatDate(d),
+      currentMonth: false,
+      isToday: formatDate(d) === today
+    })
+  }
+  calendarDays.value = days
+}
+
+function switchMonth(delta) {
+  const d = new Date(calendarMonth.value)
+  d.setMonth(d.getMonth() + delta)
+  calendarMonth.value = d
+  generateCalendar()
+  loadTaskDates()
+}
+
+function selectDate(date) {
+  selectedDate.value = date
+  loadTasks()
+}
+
+function getTaskDatesStorageKey() {
+  const planId = planStore.currentPlan?.id
+  return planId ? `studymate_task_dates_${planId}` : null
+}
+
+function saveTaskDatesToStorage() {
+  const key = getTaskDatesStorageKey()
+  if (!key) return
+  uni.setStorageSync(key, JSON.stringify([...taskDates.value]))
+}
+
+function loadTaskDates() {
+  const key = getTaskDatesStorageKey()
+  if (!key) return
+  try {
+    const arr = JSON.parse(uni.getStorageSync(key) || '[]')
+    taskDates.value = new Set(arr)
+  } catch (e) {
+    taskDates.value = new Set()
+  }
+}
+
+async function switchView(mode) {
+  if (viewMode.value === mode) return
+  viewMode.value = mode
+  if (mode === 'history') {
+    loadTaskDates()
+    generateCalendar()
+    await loadTasks()
+  } else {
+    // 切回今日：重置为今天
+    selectedDate.value = formatDate(new Date())
+    calendarMonth.value = new Date()
+    await loadTasks()
+  }
+}
+
+async function loadTasks() {
+  if (!planStore.currentPlan) return
+  const result = await taskStore.getTasksByDate(planStore.currentPlan.id, selectedDate.value)
+  if (result.success) {
+    // 根据当天是否有任务更新缓存
+    if (taskStore.todayTasks.length > 0) {
+      taskDates.value.add(selectedDate.value)
+    } else {
+      taskDates.value.delete(selectedDate.value)
+    }
+    saveTaskDatesToStorage()
+    generateCalendar()
+  }
+}
+
 onMounted(async () => {
   await userStore.getUserInfo()
   if (userStore.isLoggedIn) {
     await planStore.getPlansByUserId()
     if (planStore.currentPlan) {
-      const today = new Date().toISOString().split('T')[0]
-      await taskStore.getTasksByDate(planStore.currentPlan.id, today)
+      loadTaskDates()
+      await loadTasks()
     }
   }
 })
@@ -346,6 +517,29 @@ onMounted(async () => {
   .date { font-size: 14px; color: rgba(255,255,255,0.8); }
 }
 
+.view-toggle {
+  display: inline-flex;
+  background: rgba(255,255,255,0.2);
+  border-radius: 20px;
+  padding: 3px;
+  margin-bottom: 10px;
+  gap: 2px;
+}
+.toggle-btn {
+  padding: 5px 16px;
+  border-radius: 17px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.85);
+  font-weight: 500;
+  transition: all 0.2s;
+  &.active {
+    background: #fff;
+    color: #2f7d4f;
+    font-weight: 600;
+  }
+  &:active { transform: scale(0.96); }
+}
+
 .header-actions {
   display: flex; gap: 8px;
 }
@@ -362,6 +556,85 @@ onMounted(async () => {
 }
 .progress-item { flex: 1; text-align: center; .progress-num { display: block; font-size: 22px; font-weight: 700; color: #fff; } .progress-label { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 2px; } }
 .progress-divider { width: 1px; height: 32px; background: rgba(255,255,255,0.2); }
+
+/* Calendar */
+.calendar {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid #e8ece9;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+}
+.cal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.cal-arrow {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: #2f7d4f;
+  border-radius: 50%;
+  font-weight: 600;
+  &:active { background: #f5f7f5; }
+}
+.cal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+.cal-weekdays {
+  display: flex;
+  margin-bottom: 4px;
+}
+.cal-weekday {
+  flex: 1;
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+  font-weight: 500;
+}
+.cal-days {
+  display: flex;
+  flex-wrap: wrap;
+}
+.cal-day {
+  width: calc(100% / 7);
+  height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  &:active { background: rgba(47, 125, 79, 0.06); border-radius: 8px; }
+}
+.day-num {
+  width: 32px;
+  height: 32px;
+  line-height: 32px;
+  text-align: center;
+  border-radius: 50%;
+  font-size: 14px;
+  color: #1a1a2e;
+}
+.cal-day.other .day-num { color: #ccc; }
+.cal-day.today .day-num { color: #2f7d4f; font-weight: 700; }
+.cal-day.selected .day-num { background: #2f7d4f; color: #fff; font-weight: 600; }
+.cal-day.selected.today .day-num { color: #fff; }
+.day-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #2f7d4f;
+  margin-top: 2px;
+}
+.cal-day.selected .day-dot { background: #fff; }
 
 .tabs { display: flex; margin-bottom: 16px; background: #f5f7f5; border-radius: 12px; padding: 4px; }
 .tab { flex: 1; text-align: center; padding: 10px; border-radius: 10px; transition: all 0.2s;

@@ -445,6 +445,19 @@
               <input class="input-field" type="number" v-model="exportMinErrors" placeholder="留空则不限制" />
             </view>
           </view>
+
+          <!-- Export Content Option -->
+          <view class="form-group">
+            <text class="form-label">导出内容</text>
+            <view class="format-row">
+              <view class="format-item" :class="{ active: !exportQuestionsOnly }" @click="exportQuestionsOnly = false">
+                <text>问题 + 答案</text>
+              </view>
+              <view class="format-item" :class="{ active: exportQuestionsOnly }" @click="exportQuestionsOnly = true">
+                <text>仅问题</text>
+              </view>
+            </view>
+          </view>
         </view>
 
         <view class="modal-footer">
@@ -487,6 +500,8 @@ const exportTag = ref('')
 const exportMastery = ref('')
 const exportDifficulty = ref('')
 const exportMinErrors = ref('')
+const exportQuestionsOnly = ref(false)
+const exportTagOptions = ref(['全部标签'])
 
 const reviewMode = ref(false)
 const reviewShowAnswer = ref(false)
@@ -547,7 +562,6 @@ const allTags = computed(() => {
 const subjectFilterOptions = computed(() => ['全部科目', ...subjectOptions.value])
 
 const exportSubjectOptions = computed(() => ['全部科目', ...subjectOptions.value])
-const exportTagOptions = computed(() => ['全部标签', ...allTags.value])
 
 const filteredCards = computed(() => {
   let result = cards.value
@@ -716,6 +730,18 @@ function onDifficultyFilter(e) {
 function onExportSubject(e) {
   const idx = parseInt(e.detail.value)
   exportSubject.value = idx === 0 ? '' : exportSubjectOptions.value[idx]
+  exportTag.value = ''
+  loadExportTags()
+}
+
+async function loadExportTags() {
+  if (!planStore.currentPlan) return
+  try {
+    const result = await api.getExportTags(planStore.currentPlan.id, activeTab.value, exportSubject.value)
+    exportTagOptions.value = ['全部标签', ...(result.tags || [])]
+  } catch (e) {
+    exportTagOptions.value = ['全部标签', ...allTags.value]
+  }
 }
 
 function onExportTag(e) {
@@ -1038,12 +1064,13 @@ async function toggleMastered(mistake) {
 
 // ==================== Export ====================
 function openExport() {
-  // Initialize export filters from current filters
   exportSubject.value = activeSubject.value
   exportTag.value = activeTag.value
   exportMastery.value = activeMastery.value
   exportDifficulty.value = activeDifficulty.value
   exportMinErrors.value = minErrorCount.value
+  exportQuestionsOnly.value = false
+  loadExportTags()
   showExport.value = true
 }
 
@@ -1056,7 +1083,8 @@ async function doExport() {
   const params = {
     planId: planStore.currentPlan.id,
     subject: exportSubject.value,
-    tag: exportTag.value
+    tag: exportTag.value,
+    questions_only: exportQuestionsOnly.value
   }
 
   if (activeTab.value === 'cards') {

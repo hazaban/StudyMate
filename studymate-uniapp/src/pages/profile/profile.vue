@@ -45,8 +45,14 @@
     </view>
 
     <view class="menu-section">
-      <view class="menu-title">学习管理</view>
+      <view class="menu-title">计划管理</view>
       <view class="menu-list">
+        <view class="menu-item" @click="goToPlanOverview">
+          <text class="menu-icon">📋</text>
+          <text class="menu-text">我的计划</text>
+          <text class="menu-text-sub" v-if="planCount > 0">{{ planCount }}个进行中</text>
+          <text class="menu-arrow">›</text>
+        </view>
         <view class="menu-item" @click="goToTargetSetup">
           <text class="menu-icon">🎯</text>
           <text class="menu-text">新建计划</text>
@@ -57,11 +63,12 @@
           <text class="menu-text">AI 生成计划</text>
           <text class="menu-arrow">›</text>
         </view>
-        <view class="menu-item" @click="goToMistakeBook">
-          <text class="menu-icon">❌</text>
-          <text class="menu-text">错题本</text>
-          <text class="menu-arrow">›</text>
-        </view>
+      </view>
+    </view>
+
+    <view class="menu-section">
+      <view class="menu-title">学习管理</view>
+      <view class="menu-list">
         <view class="menu-item" @click="goToStats">
           <text class="menu-icon">📊</text>
           <text class="menu-text">学习统计</text>
@@ -117,8 +124,8 @@ function goToAIPlan() {
   uni.navigateTo({ url: '/pages/plan/ai-plan' })
 }
 
-function goToMistakeBook() {
-  uni.navigateTo({ url: '/pages/review/mistake-book' })
+function goToPlanOverview() {
+  uni.navigateTo({ url: '/pages/plan/plan-overview' })
 }
 
 function goToStats() {
@@ -337,6 +344,12 @@ onMounted(async () => {
     flex: 1;
     font-size: 16px;
     color: $ink;
+  }
+
+  .menu-text-sub {
+    font-size: 12px;
+    color: $muted;
+    margin-right: 8px;
   }
   
   .menu-arrow {

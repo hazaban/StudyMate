@@ -89,22 +89,31 @@ def _generate_excel(headers: list, rows: list[list], sheet_name: str = "Sheet1")
 
 
 def _generate_pdf(headers: list, rows: list[list], title: str = "Export") -> bytes:
-    """Generate PDF file using reportlab."""
+    """Generate PDF file using reportlab with CJK font support."""
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib.units import mm
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+
+    # Register CJK font for Chinese text support
+    try:
+        pdfmetrics.registerFont(UnicodeCIDFont('STSong-Light'))
+        cjk_font = 'STSong-Light'
+    except Exception:
+        cjk_font = 'Helvetica'
 
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=landscape(A4), topMargin=15*mm, bottomMargin=15*mm)
     styles = getSampleStyleSheet()
-    title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'], fontSize=16, spaceAfter=10)
+    title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'], fontSize=16, spaceAfter=10, fontName=cjk_font)
     elements = [Paragraph(title, title_style), Spacer(1, 5*mm)]
 
-    # Wrap text in paragraphs for table cells
-    cell_style = ParagraphStyle('CellStyle', parent=styles['Normal'], fontSize=8, leading=10)
-    header_style = ParagraphStyle('HeaderStyle', parent=styles['Normal'], fontSize=9, leading=11, textColor=colors.white)
+    # Wrap text in paragraphs for table cells with CJK font
+    cell_style = ParagraphStyle('CellStyle', parent=styles['Normal'], fontSize=8, leading=10, fontName=cjk_font)
+    header_style = ParagraphStyle('HeaderStyle', parent=styles['Normal'], fontSize=9, leading=11, textColor=colors.white, fontName=cjk_font)
 
     pdf_data = [[Paragraph(str(h), header_style) for h in headers]]
     for row in rows:
@@ -116,13 +125,14 @@ def _generate_pdf(headers: list, rows: list[list], title: str = "Export") -> byt
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2F7D4F')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (-1, 0), cjk_font),
         ('FONTSIZE', (0, 0), (-1, 0), 9),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
         ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f8fbf6')),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#edf7ee')]),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('FONTNAME', (0, 1), (-1, -1), cjk_font),
         ('TOPPADDING', (0, 1), (-1, -1), 4),
         ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
     ]))
@@ -167,36 +177,58 @@ def _query_mistakes(db, plan_id, user_id, subject=None, tag=None, difficulty=Non
     return mistakes
 
 
-def _card_rows(cards):
-    headers = ["科目", "问题", "答案", "掌握程度", "复习次数", "标签", "下次复习日期", "创建日期"]
-    mastery_map = {"unmastered": "未掌握", "familiar": "较熟悉", "mastered": "已掌握"}
-    rows = []
-    for c in cards:
-        rows.append([
-            c.subject, c.question, c.answer,
-            mastery_map.get(c.mastery_level, c.mastery_level),
-            str(c.review_count),
-            ", ".join(c.tags or []),
-            str(c.next_review_date) if c.next_review_date else "",
-            str(c.created_at.date()) if c.created_at else ""
-        ])
+def _card_rows(cards, questions_only=False):
+    if questions_only:
+        headers = ["科目", "问题", "掌握程度", "标签"]
+        mastery_map = {"unmastered": "未掌握", "familiar": "较熟悉", "mastered": "已掌握"}
+        rows = []
+        for c in cards:
+            rows.append([
+                c.subject, c.question,
+                mastery_map.get(c.mastery_level, c.mastery_level),
+                ", ".join(c.tags or []),
+            ])
+    else:
+        headers = ["科目", "问题", "答案", "掌握程度", "复习次数", "标签", "下次复习日期", "创建日期"]
+        mastery_map = {"unmastered": "未掌握", "familiar": "较熟悉", "mastered": "已掌握"}
+        rows = []
+        for c in cards:
+            rows.append([
+                c.subject, c.question, c.answer,
+                mastery_map.get(c.mastery_level, c.mastery_level),
+                str(c.review_count),
+                ", ".join(c.tags or []),
+                str(c.next_review_date) if c.next_review_date else "",
+                str(c.created_at.date()) if c.created_at else ""
+            ])
     return headers, rows
 
 
-def _mistake_rows(mistakes):
-    headers = ["科目", "题目", "答案", "错误分析", "难度", "错误次数", "正确次数", "是否掌握", "标签", "下次复习日期", "创建日期"]
+def _mistake_rows(mistakes, questions_only=False):
     diff_map = {"easy": "简单", "medium": "中等", "hard": "困难"}
-    rows = []
-    for m in mistakes:
-        rows.append([
-            m.subject, m.question, m.answer, m.analysis or "",
-            diff_map.get(m.difficulty, m.difficulty),
-            str(m.error_count), str(m.correct_count),
-            "已掌握" if m.mastered == "1" else "未掌握",
-            ", ".join(m.tags or []),
-            str(m.next_review_date) if m.next_review_date else "",
-            str(m.created_at.date()) if m.created_at else ""
-        ])
+    if questions_only:
+        headers = ["科目", "题目", "难度", "错误次数", "标签"]
+        rows = []
+        for m in mistakes:
+            rows.append([
+                m.subject, m.question,
+                diff_map.get(m.difficulty, m.difficulty),
+                str(m.error_count),
+                ", ".join(m.tags or []),
+            ])
+    else:
+        headers = ["科目", "题目", "答案", "错误分析", "难度", "错误次数", "正确次数", "是否掌握", "标签", "下次复习日期", "创建日期"]
+        rows = []
+        for m in mistakes:
+            rows.append([
+                m.subject, m.question, m.answer, m.analysis or "",
+                diff_map.get(m.difficulty, m.difficulty),
+                str(m.error_count), str(m.correct_count),
+                "已掌握" if m.mastered == "1" else "未掌握",
+                ", ".join(m.tags or []),
+                str(m.next_review_date) if m.next_review_date else "",
+                str(m.created_at.date()) if m.created_at else ""
+            ])
     return headers, rows
 
 
@@ -208,11 +240,12 @@ def export_cards_csv(
     subject: str = Query(None),
     tag: str = Query(None),
     mastery_level: str = Query(None),
+    questions_only: bool = Query(False),
     user_id: UUID = Depends(_get_user_id),
     db: Session = Depends(get_db)
 ):
     cards = _query_cards(db, plan_id, user_id, subject, tag, mastery_level)
-    headers, rows = _card_rows(cards)
+    headers, rows = _card_rows(cards, questions_only)
     csv_content = _generate_csv(headers, rows)
     csv_bytes = ("\ufeff" + csv_content).encode("utf-8")
     return StreamingResponse(
@@ -228,11 +261,12 @@ def export_cards_excel(
     subject: str = Query(None),
     tag: str = Query(None),
     mastery_level: str = Query(None),
+    questions_only: bool = Query(False),
     user_id: UUID = Depends(_get_user_id),
     db: Session = Depends(get_db)
 ):
     cards = _query_cards(db, plan_id, user_id, subject, tag, mastery_level)
-    headers, rows = _card_rows(cards)
+    headers, rows = _card_rows(cards, questions_only)
     excel_bytes = _generate_excel(headers, rows, "知识卡片")
     return StreamingResponse(
         BytesIO(excel_bytes),
@@ -247,11 +281,12 @@ def export_cards_pdf(
     subject: str = Query(None),
     tag: str = Query(None),
     mastery_level: str = Query(None),
+    questions_only: bool = Query(False),
     user_id: UUID = Depends(_get_user_id),
     db: Session = Depends(get_db)
 ):
     cards = _query_cards(db, plan_id, user_id, subject, tag, mastery_level)
-    headers, rows = _card_rows(cards)
+    headers, rows = _card_rows(cards, questions_only)
     pdf_bytes = _generate_pdf(headers, rows, "知识卡片导出")
     return StreamingResponse(
         BytesIO(pdf_bytes),
@@ -270,11 +305,12 @@ def export_mistakes_csv(
     difficulty: str = Query(None),
     mastered: str = Query(None),
     min_errors: int = Query(None),
+    questions_only: bool = Query(False),
     user_id: UUID = Depends(_get_user_id),
     db: Session = Depends(get_db)
 ):
     mistakes = _query_mistakes(db, plan_id, user_id, subject, tag, difficulty, mastered, min_errors)
-    headers, rows = _mistake_rows(mistakes)
+    headers, rows = _mistake_rows(mistakes, questions_only)
     csv_content = _generate_csv(headers, rows)
     csv_bytes = ("\ufeff" + csv_content).encode("utf-8")
     return StreamingResponse(
@@ -292,11 +328,12 @@ def export_mistakes_excel(
     difficulty: str = Query(None),
     mastered: str = Query(None),
     min_errors: int = Query(None),
+    questions_only: bool = Query(False),
     user_id: UUID = Depends(_get_user_id),
     db: Session = Depends(get_db)
 ):
     mistakes = _query_mistakes(db, plan_id, user_id, subject, tag, difficulty, mastered, min_errors)
-    headers, rows = _mistake_rows(mistakes)
+    headers, rows = _mistake_rows(mistakes, questions_only)
     excel_bytes = _generate_excel(headers, rows, "错题本")
     return StreamingResponse(
         BytesIO(excel_bytes),
@@ -313,14 +350,66 @@ def export_mistakes_pdf(
     difficulty: str = Query(None),
     mastered: str = Query(None),
     min_errors: int = Query(None),
+    questions_only: bool = Query(False),
     user_id: UUID = Depends(_get_user_id),
     db: Session = Depends(get_db)
 ):
     mistakes = _query_mistakes(db, plan_id, user_id, subject, tag, difficulty, mastered, min_errors)
-    headers, rows = _mistake_rows(mistakes)
+    headers, rows = _mistake_rows(mistakes, questions_only)
     pdf_bytes = _generate_pdf(headers, rows, "错题本导出")
     return StreamingResponse(
         BytesIO(pdf_bytes),
         media_type="application/pdf",
         headers={"Content-Disposition": "attachment; filename=mistakes.pdf"}
     )
+
+
+# ========== Tags & Subjects Query (for export filter cascade) ==========
+
+@router.get("/tags")
+def get_tags_by_subject(
+    plan_id: UUID = Query(...),
+    type: str = Query("cards"),
+    subject: str = Query(None),
+    user_id: UUID = Depends(_get_user_id),
+    db: Session = Depends(get_db)
+):
+    """Get available subjects and tags (cascaded by subject) for export filters."""
+    plan = db.query(StudyPlan).filter(StudyPlan.id == plan_id, StudyPlan.user_id == user_id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="计划不存在")
+
+    result = {"subjects": [], "tags_by_subject": {}}
+
+    if type == "cards":
+        items = db.query(FlashCard).filter(FlashCard.plan_id == plan_id).all()
+        for item in items:
+            subj = item.subject
+            tags = item.tags or []
+            if subj not in result["subjects"]:
+                result["subjects"].append(subj)
+                result["tags_by_subject"][subj] = set()
+            for t in tags:
+                result["tags_by_subject"][subj].add(t)
+    else:
+        items = db.query(Mistake).filter(Mistake.plan_id == plan_id).all()
+        for item in items:
+            subj = item.subject
+            tags = item.tags or []
+            if subj not in result["subjects"]:
+                result["subjects"].append(subj)
+                result["tags_by_subject"][subj] = set()
+            for t in tags:
+                result["tags_by_subject"][subj].add(t)
+
+    if subject and subject in result["tags_by_subject"]:
+        result["tags"] = sorted(list(result["tags_by_subject"].get(subject, set())))
+    else:
+        all_tags = set()
+        for s in result["tags_by_subject"]:
+            all_tags.update(result["tags_by_subject"][s])
+        result["tags"] = sorted(list(all_tags))
+
+    # Convert sets to lists for JSON
+    result["tags_by_subject"] = {k: sorted(list(v)) for k, v in result["tags_by_subject"].items()}
+    return result
