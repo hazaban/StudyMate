@@ -244,29 +244,49 @@
             <text class="form-label">问题图片（可选）</text>
             <view class="image-upload-area">
               <view class="image-item" v-for="(img, idx) in form.question_images" :key="'q'+idx">
-                <image :src="img" mode="aspectFill" class="uploaded-image" />
+                <image :src="img" mode="aspectFill" class="uploaded-image" @click="previewImage(img, form.question_images)" />
                 <view class="image-remove" @click="form.question_images.splice(idx, 1)">✕</view>
               </view>
-              <view class="image-add-btn" tabindex="0" @click="chooseQuestionImage" @paste="onPasteQuestionImage">
-                <text class="add-icon">+</text>
-                <text class="add-text">上传/粘贴</text>
+              <view class="upload-actions">
+                <view class="upload-action-btn" @click="chooseQuestionImage">
+                  <text class="action-icon">📁</text>
+                  <text class="action-text">选择文件</text>
+                </view>
+                <view
+                  class="upload-action-btn paste-btn"
+                  :class="{ active: activePasteTarget === 'add_question' }"
+                  @click="setPasteTarget('add_question')"
+                >
+                  <text class="action-icon">📋</text>
+                  <text class="action-text">粘贴图片</text>
+                </view>
               </view>
             </view>
-            <text class="paste-hint">💡 电脑端：点击上传框后按 Ctrl+V 直接粘贴图片</text>
+            <text class="paste-hint">💡 电脑端：点击「粘贴图片」后按 Ctrl+V 直接粘贴</text>
           </view>
           <view class="form-group">
             <text class="form-label">答案图片（可选）</text>
             <view class="image-upload-area">
               <view class="image-item" v-for="(img, idx) in form.answer_images" :key="'a'+idx">
-                <image :src="img" mode="aspectFill" class="uploaded-image" />
+                <image :src="img" mode="aspectFill" class="uploaded-image" @click="previewImage(img, form.answer_images)" />
                 <view class="image-remove" @click="form.answer_images.splice(idx, 1)">✕</view>
               </view>
-              <view class="image-add-btn" tabindex="0" @click="chooseAnswerImage" @paste="onPasteAnswerImage">
-                <text class="add-icon">+</text>
-                <text class="add-text">上传/粘贴</text>
+              <view class="upload-actions">
+                <view class="upload-action-btn" @click="chooseAnswerImage">
+                  <text class="action-icon">📁</text>
+                  <text class="action-text">选择文件</text>
+                </view>
+                <view
+                  class="upload-action-btn paste-btn"
+                  :class="{ active: activePasteTarget === 'add_answer' }"
+                  @click="setPasteTarget('add_answer')"
+                >
+                  <text class="action-icon">📋</text>
+                  <text class="action-text">粘贴图片</text>
+                </view>
               </view>
             </view>
-            <text class="paste-hint">💡 电脑端：点击上传框后按 Ctrl+V 直接粘贴图片</text>
+            <text class="paste-hint">💡 电脑端：点击「粘贴图片」后按 Ctrl+V 直接粘贴</text>
           </view>
         </scroll-view>
         <view class="modal-footer">
@@ -313,6 +333,54 @@
             <view class="input-wrapper">
               <textarea class="textarea-field" v-model="editForm.answer" placeholder="请输入答案..." maxlength="2000" />
             </view>
+          </view>
+          <view class="form-group">
+            <text class="form-label">问题图片（可选）</text>
+            <view class="image-upload-area">
+              <view class="image-item" v-for="(img, idx) in editForm.question_images" :key="'eq'+idx">
+                <image :src="img" mode="aspectFill" class="uploaded-image" @click="previewImage(img, editForm.question_images)" />
+                <view class="image-remove" @click="editForm.question_images.splice(idx, 1)">✕</view>
+              </view>
+              <view class="upload-actions">
+                <view class="upload-action-btn" @click="chooseEditQuestionImage">
+                  <text class="action-icon">📁</text>
+                  <text class="action-text">选择文件</text>
+                </view>
+                <view
+                  class="upload-action-btn paste-btn"
+                  :class="{ active: activePasteTarget === 'edit_question' }"
+                  @click="setPasteTarget('edit_question')"
+                >
+                  <text class="action-icon">📋</text>
+                  <text class="action-text">粘贴图片</text>
+                </view>
+              </view>
+            </view>
+            <text class="paste-hint">💡 电脑端：点击「粘贴图片」后按 Ctrl+V 直接粘贴</text>
+          </view>
+          <view class="form-group">
+            <text class="form-label">答案图片（可选）</text>
+            <view class="image-upload-area">
+              <view class="image-item" v-for="(img, idx) in editForm.answer_images" :key="'ea'+idx">
+                <image :src="img" mode="aspectFill" class="uploaded-image" @click="previewImage(img, editForm.answer_images)" />
+                <view class="image-remove" @click="editForm.answer_images.splice(idx, 1)">✕</view>
+              </view>
+              <view class="upload-actions">
+                <view class="upload-action-btn" @click="chooseEditAnswerImage">
+                  <text class="action-icon">📁</text>
+                  <text class="action-text">选择文件</text>
+                </view>
+                <view
+                  class="upload-action-btn paste-btn"
+                  :class="{ active: activePasteTarget === 'edit_answer' }"
+                  @click="setPasteTarget('edit_answer')"
+                >
+                  <text class="action-icon">📋</text>
+                  <text class="action-text">粘贴图片</text>
+                </view>
+              </view>
+            </view>
+            <text class="paste-hint">💡 电脑端：点击「粘贴图片」后按 Ctrl+V 直接粘贴</text>
           </view>
         </scroll-view>
         <view class="modal-footer">
@@ -399,7 +467,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { usePlanStore } from '@/stores/plan'
 import { useUserStore } from '@/stores/user'
 import * as api from '@/api/client'
@@ -490,8 +558,48 @@ const editForm = ref({
   subject: '',
   question: '',
   answer: '',
+  question_images: [],
+  answer_images: [],
   tags: []
 })
+
+// Paste target tracking
+const activePasteTarget = ref('')
+
+function setPasteTarget(target) {
+  activePasteTarget.value = target
+  // #ifdef H5
+  uni.showToast({ title: '请按 Ctrl+V 粘贴图片', icon: 'none', duration: 1500 })
+  // #endif
+}
+
+function handleGlobalPaste(e) {
+  if (!activePasteTarget.value) return
+  const items = e.clipboardData?.items
+  if (!items) return
+  const files = []
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile()
+      if (file) {
+        const url = URL.createObjectURL(file)
+        files.push(url)
+      }
+    }
+  }
+  if (files.length === 0) return
+  e.preventDefault()
+  const target = activePasteTarget.value
+  let targetArray = null
+  if (target === 'add_question') targetArray = form.value.question_images
+  else if (target === 'add_answer') targetArray = form.value.answer_images
+  else if (target === 'edit_question') targetArray = editForm.value.question_images
+  else if (target === 'edit_answer') targetArray = editForm.value.answer_images
+  if (targetArray) {
+    files.forEach(f => targetArray.push(f))
+    uni.showToast({ title: `已粘贴 ${files.length} 张图片`, icon: 'success' })
+  }
+}
 
 // Available tags based on selected subject (二级联动)
 const availableTags = computed(() => {
@@ -586,6 +694,18 @@ function chooseAnswerImage() {
     success: (res) => res.tempFilePaths.forEach(path => form.value.answer_images.push(path))
   })
 }
+function chooseEditQuestionImage() {
+  uni.chooseImage({
+    count: 9, sizeType: ['compressed'], sourceType: ['album', 'camera'],
+    success: (res) => res.tempFilePaths.forEach(path => editForm.value.question_images.push(path))
+  })
+}
+function chooseEditAnswerImage() {
+  uni.chooseImage({
+    count: 9, sizeType: ['compressed'], sourceType: ['album', 'camera'],
+    success: (res) => res.tempFilePaths.forEach(path => editForm.value.answer_images.push(path))
+  })
+}
 async function onPasteQuestionImage(e) {
   const files = await uploadUtil.pasteToFiles(e)
   files.forEach(f => form.value.question_images.push(f))
@@ -664,22 +784,47 @@ function openEditCard(card) {
     subject: card.subject,
     question: card.question,
     answer: card.answer,
+    question_images: [...(card.question_images || [])],
+    answer_images: [...(card.answer_images || [])],
     tags: [...(card.tags || [])]
   }
   editTagInput.value = ''
+  activePasteTarget.value = ''
   showEditCard.value = true
 }
 
 async function saveEditCard() {
-  if (!editForm.value.question.trim()) { uni.showToast({ title: '请输入问题', icon: 'none' }); return }
-  if (!editForm.value.answer.trim()) { uni.showToast({ title: '请输入答案', icon: 'none' }); return }
+  const hasQ = editForm.value.question.trim() || editForm.value.question_images.length > 0
+  const hasA = editForm.value.answer.trim() || editForm.value.answer_images.length > 0
+  if (!hasQ) { uni.showToast({ title: '请输入问题或上传问题图片', icon: 'none' }); return }
+  if (!hasA) { uni.showToast({ title: '请输入答案或上传答案图片', icon: 'none' }); return }
 
-  uni.showLoading({ title: '保存中...' })
+  uni.showLoading({ title: '上传图片中...' })
   try {
+    const userId = userStore.userInfo?.id || 'guest'
+
+    const qImages = []
+    for (const path of editForm.value.question_images) {
+      if (path.startsWith('http')) { qImages.push(path); continue }
+      const url = await uploadUtil.uploadCardQuestion(path, userId)
+      qImages.push(url)
+    }
+
+    const aImages = []
+    for (const path of editForm.value.answer_images) {
+      if (path.startsWith('http')) { aImages.push(path); continue }
+      const url = await uploadUtil.uploadCardAnswer(path, userId)
+      aImages.push(url)
+    }
+
+    uni.showLoading({ title: '保存中...' })
+
     await api.updateCard(editingCardId.value, {
       question: editForm.value.question,
       answer: editForm.value.answer,
       subject: editForm.value.subject,
+      question_images: qImages,
+      answer_images: aImages,
       tags: editForm.value.tags
     })
     showEditCard.value = false
@@ -775,6 +920,15 @@ onMounted(async () => {
     await planStore.getPlansByUserId()
     await loadCards()
   }
+  // #ifdef H5
+  document.addEventListener('paste', handleGlobalPaste)
+  // #endif
+})
+
+onUnmounted(() => {
+  // #ifdef H5
+  document.removeEventListener('paste', handleGlobalPaste)
+  // #endif
 })
 
 watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
@@ -902,10 +1056,22 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .image-item { position: relative; width: 80px; height: 80px; }
 .uploaded-image { width: 80px; height: 80px; border-radius: 10px; }
 .image-remove { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: #ef5350; color: #fff; font-size: 12px; display: flex; align-items: center; justify-content: center; }
-.image-add-btn { width: 80px; height: 80px; border-radius: 10px; border: 2px dashed #d0d5d2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: #fafafa; cursor: pointer; outline: none;
-  &:focus { border-color: $accent; background: #f0f7f4; }
-  .add-icon { font-size: 24px; color: #999; } .add-text { font-size: 11px; color: #999; } }
-.paste-hint { display: block; font-size: 11px; color: $muted; margin-top: 6px; }
+.upload-actions { display: flex; gap: 8px; }
+.upload-action-btn {
+  width: 80px; height: 80px; border-radius: 10px;
+  border: 2px dashed #d0d5d2; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px; background: #fafafa;
+  cursor: pointer; transition: all 0.2s;
+  &:active { background: #f0f0f0; border-color: #6b4ce6; }
+  .action-icon { font-size: 20px; }
+  .action-text { font-size: 11px; color: #999; }
+  &.paste-btn.active {
+    border-color: #6b4ce6;
+    background: #f3f0ff;
+    .action-text { color: #6b4ce6; font-weight: 500; }
+  }
+}
+.paste-hint { display: block; font-size: 11px; color: #999; margin-top: 6px; }
 
 /* Export Modal - centered dialog */
 .export-overlay {
