@@ -103,6 +103,7 @@
           <view class="task-meta">
             <text class="task-subject">{{ task.subject }}</text>
             <text class="task-chapter" v-if="task.chapter">{{ task.chapter }}</text>
+            <text class="task-repeat" v-if="task.repeat_type && task.repeat_type !== 'none'">{{ getRepeatLabel(task.repeat_type) }}</text>
             <text class="task-duration">预计: {{ task.duration }}分钟</text>
             <text class="task-actual" v-if="task.actual_duration > 0">实际: {{ task.actual_duration }}分钟</text>
           </view>
@@ -172,6 +173,16 @@
             </view>
           </view>
 
+          <view class="form-group">
+            <text class="form-label">循环方式</text>
+            <view class="type-row repeat-row">
+              <view class="type-item" :class="{ active: form.repeat_type === 'none' }" @click="form.repeat_type = 'none'">不循环</view>
+              <view class="type-item" :class="{ active: form.repeat_type === 'daily' }" @click="form.repeat_type = 'daily'">每天</view>
+              <view class="type-item" :class="{ active: form.repeat_type === 'weekday' }" @click="form.repeat_type = 'weekday'">工作日</view>
+              <view class="type-item" :class="{ active: form.repeat_type === 'holiday' }" @click="form.repeat_type = 'holiday'">节假日</view>
+            </view>
+          </view>
+
           <view class="form-group" v-if="editingTask">
             <text class="form-label">实际用时（系统根据番茄钟自动记录）</text>
             <view class="input-wrapper">
@@ -237,7 +248,8 @@ const defaultForm = {
   content: '',
   duration: 25,
   actual_duration: 0,
-  type: 'new_study'
+  type: 'new_study',
+  repeat_type: 'none'
 }
 
 const form = ref({ ...defaultForm })
@@ -292,11 +304,16 @@ const getTypeClass = (type) => {
   return map[type] || ''
 }
 
+const getRepeatLabel = (repeatType) => {
+  const map = { daily: '🔁 每天', weekday: '🔁 工作日', holiday: '🔁 节假日' }
+  return map[repeatType] || ''
+}
+
 async function toggleTask(task) {
   if (task.status === 'completed') {
     await taskStore.updateTask(task.id, { status: 'pending' })
   } else {
-    await taskStore.completeTask(task.id)
+    await taskStore.completeTask(task.id, selectedDate.value)
     // Auto-link to farm: fertilize the crop
     if (planStore.currentPlan) {
       try {
@@ -323,7 +340,8 @@ function editTask(task) {
     content: task.content,
     duration: task.duration,
     actual_duration: task.actual_duration || 0,
-    type: task.type
+    type: task.type,
+    repeat_type: task.repeat_type || 'none'
   }
   showAddForm.value = false
 }
@@ -343,7 +361,10 @@ async function submitForm() {
   uni.showLoading({ title: '保存中...' })
   try {
     if (editingTask.value) {
-      await taskStore.updateTask(editingTask.value.id, { ...form.value, duration: parseInt(form.value.duration) || 25 })
+      await taskStore.updateTask(editingTask.value.id, {
+        ...form.value,
+        duration: parseInt(form.value.duration) || 25
+      })
     } else {
       if (!planStore.currentPlan) {
         uni.showToast({ title: '请先创建学习计划', icon: 'none' })
@@ -356,7 +377,8 @@ async function submitForm() {
         subject: form.value.subject,
         chapter: form.value.chapter,
         content: form.value.content,
-        duration: parseInt(form.value.duration) || 25
+        duration: parseInt(form.value.duration) || 25,
+        repeat_type: form.value.repeat_type
       })
       // 新增任务后标记该日期有任务
       taskDates.value.add(selectedDate.value)
@@ -663,6 +685,7 @@ onMounted(async () => {
 .task-subject { font-size: 12px; color: #2f7d4f; background: #e8f5e9; padding: 2px 8px; border-radius: 8px; }
 .task-chapter { font-size: 12px; color: #6b4ce6; background: #f3f0ff; padding: 2px 8px; border-radius: 8px; }
 .task-duration, .task-actual { font-size: 12px; color: #999; }
+.task-repeat { font-size: 12px; color: #6b4ce6; background: #f3f0ff; padding: 2px 8px; border-radius: 8px; }
 .task-pomodoro { flex-shrink: 0; .pomodoro-icon { font-size: 24px; } }
 
 .empty { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; .empty-icon { font-size: 48px; margin-bottom: 12px; } .empty-text { font-size: 16px; color: #65746d; margin-bottom: 8px; } .empty-hint { font-size: 13px; color: #999; text-align: center; } }
@@ -687,6 +710,8 @@ onMounted(async () => {
 .subject-item { padding: 8px 16px; border-radius: 20px; font-size: 13px; color: #65746d; background: #f5f7f5; &.active { background: #2f7d4f; color: #fff; } &.subject-add { background: #fff; border: 1.5px dashed #d0d5d2; color: #2f7d4f; } }
 .type-row { display: flex; gap: 8px; }
 .type-item { flex: 1; padding: 10px; text-align: center; border-radius: 10px; font-size: 13px; color: #65746d; background: #f5f7f5; &.active { background: #2f7d4f; color: #fff; } }
+.repeat-row { flex-wrap: wrap; }
+.repeat-row .type-item { font-size: 12px; padding: 8px 6px; }
 
 .bottom-space { height: 100px; }
 </style>

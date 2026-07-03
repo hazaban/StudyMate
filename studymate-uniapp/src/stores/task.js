@@ -51,9 +51,9 @@ export const useTaskStore = defineStore('task', {
       }
     },
 
-    async completeTask(id) {
+    async completeTask(id, date) {
       try {
-        const task = await api.completeTask(id)
+        const task = await api.completeTask(id, date)
         const idx = this.todayTasks.findIndex(t => t.id === id)
         if (idx !== -1) this.todayTasks[idx] = task
         this._updateCounts()

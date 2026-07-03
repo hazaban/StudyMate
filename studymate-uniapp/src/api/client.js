@@ -118,8 +118,9 @@ export async function deleteTask(id) {
   return request(`/tasks/${id}`, { method: 'DELETE' })
 }
 
-export async function completeTask(id) {
-  return request(`/tasks/${id}/complete`, { method: 'POST' })
+export async function completeTask(id, date) {
+  const url = date ? `/tasks/${id}/complete?date=${date}` : `/tasks/${id}/complete`
+  return request(url, { method: 'POST' })
 }
 
 export async function aiGenerateTasks(data) {
