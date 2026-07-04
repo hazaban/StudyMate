@@ -556,8 +556,10 @@ const activeTags = ref([])
 const tagLogic = ref('or') // 'or' = any tag match, 'and' = all tags must match
 
 const defaultSubjects = Object.keys(SUBJECT_TAGS)
-const allSubjects = ref([...defaultSubjects])
-const customSubjects = ref([])
+const savedSubjects = uni.getStorageSync('studymate_subjects')
+const savedCustom = uni.getStorageSync('studymate_custom_subjects')
+const allSubjects = ref(savedSubjects ? JSON.parse(savedSubjects) : [...defaultSubjects])
+const customSubjects = ref(savedCustom ? JSON.parse(savedCustom) : [])
 
 // ── Cards state ──
 const cards = ref([])
@@ -661,20 +663,29 @@ function toggleTag(tag) {
 }
 
 // ── Subject management ──
+function persistSubjects() {
+  uni.setStorageSync('studymate_subjects', JSON.stringify(allSubjects.value))
+  uni.setStorageSync('studymate_custom_subjects', JSON.stringify(customSubjects.value))
+}
 function addManageSubject() {
   const n = manageNewSubject.value.trim()
   if (!n) return
-  if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n) }
+  if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n); persistSubjects() }
   manageNewSubject.value = ''
 }
 function removeSubject(n) {
   uni.showModal({ title: '删除科目', content: `确定要删除「${n}」吗？`, success: r => {
-    if (r.confirm) { customSubjects.value = customSubjects.value.filter(s => s !== n); allSubjects.value = allSubjects.value.filter(s => s !== n); if (activeSubject.value === n) { activeSubject.value = ''; activeTags.value = [] } }
+    if (r.confirm) {
+      customSubjects.value = customSubjects.value.filter(s => s !== n)
+      allSubjects.value = allSubjects.value.filter(s => s !== n)
+      persistSubjects()
+      if (activeSubject.value === n) { activeSubject.value = ''; activeTags.value = [] }
+    }
   }})
 }
 
 // ── Cards functions ──
-function addCardCustomSubject() { const n = customSubject.value.trim(); if (!n) return; if (!allSubjects.value.includes(n)) allSubjects.value.push(n); cardForm.value.subject = n; customSubject.value = ''; showCardSubjectInput.value = false }
+function addCardCustomSubject() { const n = customSubject.value.trim(); if (!n) return; if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n); persistSubjects() }; cardForm.value.subject = n; customSubject.value = ''; showCardSubjectInput.value = false }
 // ── Image upload: 拍照 / 相册 / Ctrl+V 粘贴 ──
 const activePasteTarget = ref('')
 function setPasteTarget(target) {
