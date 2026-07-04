@@ -16,15 +16,12 @@ const SUBJECT_TAGS = {
 function getDefaultTags(subject) { return SUBJECT_TAGS[subject] || [] }
 function formatDate(dateStr) { if (!dateStr) return ''; try { return new Date(dateStr).toLocaleDateString('zh-CN') } catch (e) { return dateStr } }
 
-// ─── Image column builder (for Excel: small inline thumbnails) ───
+// ─── Image column builder: text markers only ───
+// Excel renders the full table correctly with text markers.
+// Full images are retained in the PDF card layout.
 function imgCell(images) {
   if (!images || images.length === 0) return ''
-  return images.map(img => {
-    if (img.startsWith('data:')) return `<img src="${esc(img)}" style="max-width:120px;max-height:80px;margin:2px;border:1px solid #ddd;border-radius:4px;" />`
-    if (img.startsWith('http') || img.startsWith('blob:')) return `<img src="${esc(img)}" style="max-width:120px;max-height:80px;margin:2px;border:1px solid #ddd;border-radius:4px;" />`
-    if (img.startsWith('/')) return `<img src="${esc(img)}" style="max-width:120px;max-height:80px;margin:2px;border:1px solid #ddd;border-radius:4px;" />`
-    return `[图片:${img}]`
-  }).join('')
+  return `[图片×${images.length}]`
 }
 function excelImgCell(images) { return imgCell(images) }
 function imgCSV(images) { return (images || []).join(' | ') }
