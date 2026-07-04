@@ -767,8 +767,8 @@ const filteredMistakes = computed(() => {
   if (activeErrorCount.value === '1') r = r.filter(m => m.error_count === 1)
   else if (activeErrorCount.value === '2') r = r.filter(m => m.error_count === 2)
   else if (activeErrorCount.value === '3+') r = r.filter(m => m.error_count >= 3)
-  if (activeMastered.value === '0') r = r.filter(m => m.mastered === '0')
-  else if (activeMastered.value === '1') r = r.filter(m => m.mastered === '1')
+  if (activeMastered.value === '0') r = r.filter(m => String(m.mastered) === '0')
+  else if (activeMastered.value === '1') r = r.filter(m => String(m.mastered) === '1')
   return r
 })
 const mistakesPageSize = ref(10)
@@ -1097,8 +1097,8 @@ async function doExport(format) {
       if (activeErrorCount.value === '1') d = d.filter(m => m.error_count === 1)
       else if (activeErrorCount.value === '2') d = d.filter(m => m.error_count === 2)
       else if (activeErrorCount.value === '3+') d = d.filter(m => m.error_count >= 3)
-      if (activeMastered.value === '0') d = d.filter(m => m.mastered === '0')
-      else if (activeMastered.value === '1') d = d.filter(m => m.mastered === '1')
+      if (activeMastered.value === '0') d = d.filter(m => String(m.mastered) === '0')
+      else if (activeMastered.value === '1') d = d.filter(m => String(m.mastered) === '1')
       if (!d.length) { uni.showToast({ title: '没有可导出的数据', icon: 'none' }); return }
       d = await sanitizeImages(d)
       if (format === 'csv') exportMistakesCSV(d, opts); else if (format === 'excel') exportMistakesExcel(d, opts); else if (format === 'pdf') exportMistakesPDF(d, opts)
