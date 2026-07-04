@@ -206,8 +206,13 @@ def review_card(card_id: UUID, mastery_level: str = Query(...), user_id: UUID = 
     if not card:
         raise HTTPException(status_code=404, detail="卡片不存在")
 
+    old_level = card.mastery_level
     card.mastery_level = mastery_level
-    card.review_count += 1
+    # Reset review count when level changes (each level has its own interval track)
+    if mastery_level != old_level:
+        card.review_count = 1
+    else:
+        card.review_count += 1
     card.next_review_date = calculate_next_review_date(
         card.next_review_date, mastery_level, card.review_count,
         created_at=card.created_at.date()

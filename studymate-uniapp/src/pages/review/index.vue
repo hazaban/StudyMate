@@ -768,8 +768,10 @@ function getMasteryClass(l) { const m = { unmastered: 'badge-red', familiar: 'ba
 function getNextReviewHint(card) {
   const intervals = { unmastered: [1,1,2,3,5,8,14,21,30], familiar: [3,5,8,14,21,30], mastered: [7,14,30] }
   const levels = intervals[card.mastery_level] || intervals.unmastered
-  const idx = Math.min(card.review_count, levels.length - 1)
-  const days = levels[idx]
+  // Frontend may have stale review_count if level just changed;
+  // the backend has already reset it to 1.  Use level's first interval as conservative guess.
+  const idx = Math.min(card.review_count - 1, levels.length - 1)
+  const days = levels[idx < 0 ? 0 : idx]
   const next = new Date()
   next.setDate(next.getDate() + days)
   return `${days}天后 (${next.getMonth()+1}月${next.getDate()}日)`
