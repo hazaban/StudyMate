@@ -162,41 +162,93 @@ function mistakesToExcel(mistakes, includeAnswer) {
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>错题本导出</title><style>body{font-family:'Microsoft YaHei',sans-serif;padding:10px;}</style></head><body>${html}</body></html>`
 }
 
-// ─── PDF HTML ───
-function cardsToPDFHTML(cards, includeAnswer) {
-  const hasTextQ = cards.some(c => (c.question||'').trim()); const hasImgQ = cards.some(c => (c.question_images||[]).length > 0)
-  const hasTextA = cards.some(c => (c.answer||'').trim()); const hasImgA = cards.some(c => (c.answer_images||[]).length > 0)
-  const headers = ['科目', '标签']; if (hasTextQ) headers.push('问题'); if (hasImgQ) headers.push('问题图片')
-  if (includeAnswer) { if (hasTextA) headers.push('答案'); if (hasImgA) headers.push('答案图片') }
-  headers.push('掌握程度', '复习次数', '下次复习', '创建日期')
-  const rows = cards.map(c => {
-    const r = [c.subject, (c.tags||[]).join('；')]; if (hasTextQ) r.push(c.question); if (hasImgQ) r.push(imgCell(c.question_images))
-    if (includeAnswer) { if (hasTextA) r.push(c.answer); if (hasImgA) r.push(imgCell(c.answer_images)) }
-    r.push(masteryCN(c.mastery_level), c.review_count, formatDate(c.next_review_date), formatDate(c.created_at)); return r
-  })
-  return buildPDFHTML('知识卡片导出', headers, rows)
+// ─── PDF HTML (portrait A4, vertical card layout) ───
+
+function pdfImgCell(images) {
+  if (!images || images.length === 0) return ''
+  const count = images.length
+  const w = count === 1 ? 320 : 200
+  return images.map(img => {
+    const src = img.startsWith('data:') || img.startsWith('http') || img.startsWith('blob:') || img.startsWith('/') ? img : ''
+    if (!src) return `[图片]`
+    return `<img src="${esc(src)}" style="max-width:${w}px;max-height:220px;width:auto;height:auto;margin:4px;border:1px solid #ddd;border-radius:4px;" />`
+  }).join('')
 }
-function mistakesToPDFHTML(mistakes, includeAnswer) {
-  const hasTextQ = mistakes.some(m => (m.question||'').trim()); const hasImgQ = mistakes.some(m => (m.question_images||[]).length > 0)
-  const hasTextA = mistakes.some(m => (m.answer||'').trim()); const hasImgA = mistakes.some(m => (m.answer_images||[]).length > 0)
-  const hasAnalysis = mistakes.some(m => (m.analysis||'').trim())
-  const headers = ['科目', '标签']; if (hasTextQ) headers.push('题目'); if (hasImgQ) headers.push('题目图片')
-  if (includeAnswer) { if (hasTextA) headers.push('正确答案'); if (hasImgA) headers.push('答案图片'); if (hasAnalysis) headers.push('错误分析') }
-  headers.push('难度', '错误次数', '正确次数', '已掌握', '创建日期')
-  const rows = mistakes.map(m => {
-    const r = [m.subject, (m.tags||[]).join('；')]; if (hasTextQ) r.push(m.question); if (hasImgQ) r.push(imgCell(m.question_images))
-    if (includeAnswer) { if (hasTextA) r.push(m.answer); if (hasImgA) r.push(imgCell(m.answer_images)); if (hasAnalysis) r.push(m.analysis||'') }
-    r.push(difficultyCN(m.difficulty), m.error_count, m.correct_count, m.mastered==='1'?'是':'否', formatDate(m.created_at)); return r
-  })
-  return buildPDFHTML('错题本导出', headers, rows)
+
+function buildPDFCardsHTML(cards, includeAnswer) {
+  const rows = cards.map((c, i) => {
+    let html = `<div class="card"><div class="card-header"><span class="card-num">#${i+1}</span><span class="card-subject">${esc(c.subject)}</span><span class="card-tags">${esc((c.tags||[]).join(' · '))}</span></div>`
+    html += `<div class="card-section"><div class="card-label">📍 问题</div>`
+    if ((c.question||'').trim()) html += `<div class="card-text">${esc(c.question)}</div>`
+    if ((c.question_images||[]).length > 0) html += `<div class="card-images">${pdfImgCell(c.question_images)}</div>`
+    html += `</div>`
+    if (includeAnswer) {
+      html += `<div class="card-section"><div class="card-label answer-label">✅ 答案</div>`
+      if ((c.answer||'').trim()) html += `<div class="card-text">${esc(c.answer)}</div>`
+      if ((c.answer_images||[]).length > 0) html += `<div class="card-images">${pdfImgCell(c.answer_images)}</div>`
+      html += `</div>`
+    }
+    html += `<div class="card-meta"><span>${masteryCN(c.mastery_level)}</span><span>第${c.review_count}次复习</span><span>下次: ${formatDate(c.next_review_date)}</span><span>创建: ${formatDate(c.created_at)}</span></div></div>`
+    return html
+  }).join('')
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>知识卡片导出</title>
+<style>@page{size:A4;margin:12mm}body{font-family:'Microsoft YaHei',sans-serif;font-size:13px;color:#1a1a2e;background:#fff;line-height:1.7}
+h2{text-align:center;font-size:20px;margin:0 0 16px;padding-bottom:8px;border-bottom:2px solid #6b4ce6}
+.card{border:1px solid #d9e7dd;border-radius:10px;padding:16px;margin-bottom:14px;page-break-inside:avoid;background:#fafbfa;}
+.card-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.card-num{font-size:12px;color:#999;font-weight:700}
+.card-subject{font-size:14px;font-weight:700;color:#6b4ce6;background:#f3f0ff;padding:3px 12px;border-radius:12px}
+.card-tags{font-size:12px;color:#65746d}
+.card-section{margin-bottom:12px}
+.card-label{font-size:13px;font-weight:700;color:#6b4ce6;margin-bottom:4px}
+.card-label.answer-label{color:#2e7d32}
+.card-text{font-size:14px;color:#1a1a2e;white-space:pre-wrap}
+.card-images{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.card-meta{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#999;padding-top:8px;border-top:1px solid #e8ece9}
+.card-meta span{background:#f5f5f5;padding:2px 8px;border-radius:6px}
+</style><title>知识卡片导出</title></head><body><h2>📚 知识卡片导出 (${cards.length}张)</h2>${rows}</body></html>`
 }
-function buildPDFHTML(title, headers, rows) {
-  const h = headers.map(h => `<th style="background:#333;color:#fff;padding:6px 8px;font-size:11px">${esc(h)}</th>`).join('')
-  const r = rows.map(row => `<tr>${row.map(cell => `<td style="padding:4px 6px;font-size:10px;vertical-align:top">${String(cell)}</td>`).join('')}</tr>`).join('')
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<style>@page{size:A4 landscape;margin:10mm}body{font-family:'Microsoft YaHei',sans-serif;font-size:10px}
-table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc}</style>
-<title>${title}</title></head><body><h3>${title}</h3><table>${h}${r}</table></body></html>`
+
+function buildPDFMistakesHTML(mistakes, includeAnswer) {
+  const rows = mistakes.map((m, i) => {
+    let html = `<div class="card"><div class="card-header"><span class="card-num">#${i+1}</span><span class="card-subject mistake-subj">${esc(m.subject)}</span><span class="card-tags">${esc((m.tags||[]).join(' · '))}</span><span class="card-diff ${m.difficulty}">${difficultyCN(m.difficulty)}</span></div>`
+    html += `<div class="card-section"><div class="card-label mistake-lbl">📍 题目</div>`
+    if ((m.question||'').trim()) html += `<div class="card-text">${esc(m.question)}</div>`
+    if ((m.question_images||[]).length > 0) html += `<div class="card-images">${pdfImgCell(m.question_images)}</div>`
+    html += `</div>`
+    if (includeAnswer) {
+      html += `<div class="card-section"><div class="card-label answer-label">✅ 正确答案</div>`
+      if ((m.answer||'').trim()) html += `<div class="card-text">${esc(m.answer)}</div>`
+      if ((m.answer_images||[]).length > 0) html += `<div class="card-images">${pdfImgCell(m.answer_images)}</div>`
+      html += `</div>`
+      if ((m.analysis||'').trim()) html += `<div class="card-section"><div class="card-label analysis-label">💡 错误分析</div><div class="card-text">${esc(m.analysis)}</div></div>`
+    }
+    html += `<div class="card-meta"><span>错误${m.error_count}次</span><span>正确${m.correct_count}次</span><span>${m.mastered==='1'?'已掌握':'待攻克'}</span><span>创建: ${formatDate(m.created_at)}</span></div></div>`
+    return html
+  }).join('')
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>错题本导出</title>
+<style>@page{size:A4;margin:12mm}body{font-family:'Microsoft YaHei',sans-serif;font-size:13px;color:#1a1a2e;background:#fff;line-height:1.7}
+h2{text-align:center;font-size:20px;margin:0 0 16px;padding-bottom:8px;border-bottom:2px solid #ef5350}
+.card{border:1px solid #ffcdd2;border-radius:10px;padding:16px;margin-bottom:14px;page-break-inside:avoid;background:#fffafa;}
+.card-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.card-num{font-size:12px;color:#999;font-weight:700}
+.card-subject{font-size:14px;font-weight:700;background:#f3f0ff;padding:3px 12px;border-radius:12px}
+.card-subject.mistake-subj{color:#ef5350;background:#ffebee}
+.card-tags{font-size:12px;color:#65746d}
+.card-diff{font-size:11px;padding:2px 8px;border-radius:8px;font-weight:600}
+.card-diff.easy{background:#e8f5e9;color:#2e7d32}
+.card-diff.medium{background:#fff3e0;color:#e65100}
+.card-diff.hard{background:#ffebee;color:#c62828}
+.card-section{margin-bottom:12px}
+.card-label{font-size:13px;font-weight:700;color:#6b4ce6;margin-bottom:4px}
+.card-label.mistake-lbl{color:#ef5350}
+.card-label.answer-label{color:#2e7d32}
+.card-label.analysis-label{color:#65746d}
+.card-text{font-size:14px;color:#1a1a2e;white-space:pre-wrap}
+.card-images{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.card-meta{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#999;padding-top:8px;border-top:1px solid #e8ece9}
+.card-meta span{background:#f5f5f5;padding:2px 8px;border-radius:6px}
+</style><title>错题本导出</title></head><body><h2>📝 错题本导出 (${mistakes.length}道)</h2>${rows}</body></html>`
 }
 
 // ─── Save ───
@@ -223,10 +275,10 @@ function openPrint(html) {
 
 export function exportCardsCSV(cards, opts = {}) { saveFile(cardsToCSV(cards, opts.includeAnswer !== false), '知识卡片.csv') }
 export function exportCardsExcel(cards, opts = {}) { saveFile(cardsToExcel(cards, opts.includeAnswer !== false), '知识卡片.xls', 'text/html;charset=utf-8') }
-export function exportCardsPDF(cards, opts = {}) { openPrint(cardsToPDFHTML(cards, opts.includeAnswer !== false)) }
+export function exportCardsPDF(cards, opts = {}) { openPrint(buildPDFCardsHTML(cards, opts.includeAnswer !== false)) }
 export function exportMistakesCSV(mistakes, opts = {}) { saveFile(mistakesToCSV(mistakes, opts.includeAnswer !== false), '错题本.csv') }
 export function exportMistakesExcel(mistakes, opts = {}) { saveFile(mistakesToExcel(mistakes, opts.includeAnswer !== false), '错题本.xls', 'text/html;charset=utf-8') }
-export function exportMistakesPDF(mistakes, opts = {}) { openPrint(mistakesToPDFHTML(mistakes, opts.includeAnswer !== false)) }
+export function exportMistakesPDF(mistakes, opts = {}) { openPrint(buildPDFMistakesHTML(mistakes, opts.includeAnswer !== false)) }
 export { getDefaultTags, SUBJECT_TAGS }
 
 // ─── Helpers ───
