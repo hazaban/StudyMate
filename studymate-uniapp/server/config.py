@@ -1,4 +1,4 @@
-"""Application configuration. Supports both local dev and cloud (Render/Supabase)."""
+"""Application configuration. Supports local dev and CloudBase / SCF serverless."""
 
 import os
 import warnings
@@ -7,7 +7,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Detection: local vs cloud
-IS_PRODUCTION = bool(os.getenv("RENDER") or os.getenv("IS_PRODUCTION"))
+IS_PRODUCTION = bool(
+    os.getenv("RENDER")
+    or os.getenv("IS_PRODUCTION")
+    or os.getenv("TENCENTCLOUD_RUNENV")
+    or os.getenv("SCF_NAMESPACE")
+    or os.getenv("_SCF_TENCENTCLOUD_SESSIONTOKEN")
+)
 
 # Database
 _DEFAULT_DB = "postgresql://studymate:studymate123@localhost:5432/studymate"
@@ -29,11 +35,27 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440
 # Database SSL — require in cloud, allow plaintext for local Docker PG
 DB_SSLMODE = os.getenv("DB_SSLMODE", "require" if IS_PRODUCTION else "prefer")
 
-# DeepSeek AI
+# Tencent Hunyuan AI (replaces DeepSeek; uses CloudBase free 1B token quota)
+HUNYUAN_API_KEY = os.getenv("HUNYUAN_API_KEY", "")
+HUNYUAN_BASE_URL = os.getenv("HUNYUAN_BASE_URL", "https://api.hunyuan.cloud.tencent.com/v1")
+HUNYUAN_MODEL = os.getenv("HUNYUAN_MODEL", "hunyuan-pro")
+
+# DeepSeek AI (kept for fallback if you have a key)
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
 DEEPSEEK_MODEL_FLASH = "deepseek-chat"
 DEEPSEEK_MODEL_PRO = "deepseek-reasoner"
+
+# Active AI provider: "hunyuan" or "deepseek" or "mock"
+# Priority: HUNYUAN_API_KEY > DEEPSEEK_API_KEY > mock
+AI_PROVIDER = os.getenv("AI_PROVIDER", "")
+if not AI_PROVIDER:
+    if HUNYUAN_API_KEY:
+        AI_PROVIDER = "hunyuan"
+    elif DEEPSEEK_API_KEY:
+        AI_PROVIDER = "deepseek"
+    else:
+        AI_PROVIDER = "mock"
 
 # Qwen Vision AI (for image analysis)
 QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")

@@ -1,12 +1,14 @@
-"""DeepSeek AI service for plan generation, card generation, and daily review.
+"""Tencent Hunyuan AI service for plan generation, card generation, and daily review.
+Falls back to DeepSeek or mock data when Hunyuan is not configured.
 Qwen Vision for image-based syllabus analysis."""
 
 import json
 import base64
 import httpx
 from config import (
-    DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL,
-    DEEPSEEK_MODEL_FLASH, DEEPSEEK_MODEL_PRO,
+    AI_PROVIDER,
+    HUNYUAN_API_KEY, HUNYUAN_BASE_URL, HUNYUAN_MODEL,
+    DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL_FLASH,
     QWEN_API_KEY, QWEN_BASE_URL, QWEN_VISION_MODEL
 )
 
@@ -19,21 +21,30 @@ SYSTEM_PROMPT = """你是 StudyMate 学习星球的 AI 备考助手。你是一�
 
 
 async def _call_deepseek(messages: list[dict], model: str = None, temperature: float = 0.7) -> str:
-    """Call DeepSeek API with chat completions."""
-    if not DEEPSEEK_API_KEY:
-        # Return mock data for demo when no API key
+    """Call AI provider (Hunyuan by default, falls back to DeepSeek or mock)."""
+    if AI_PROVIDER == "mock":
         return _mock_response(messages[-1]["content"])
 
-    model = model or DEEPSEEK_MODEL_FLASH
+    if AI_PROVIDER == "hunyuan" and HUNYUAN_API_KEY:
+        url = f"{HUNYUAN_BASE_URL}/chat/completions"
+        api_key = HUNYUAN_API_KEY
+        use_model = model or HUNYUAN_MODEL
+    elif AI_PROVIDER == "deepseek" and DEEPSEEK_API_KEY:
+        url = f"{DEEPSEEK_BASE_URL}/chat/completions"
+        api_key = DEEPSEEK_API_KEY
+        use_model = model or DEEPSEEK_MODEL_FLASH
+    else:
+        return _mock_response(messages[-1]["content"])
+
     async with httpx.AsyncClient(timeout=60.0) as client:
         resp = await client.post(
-            f"{DEEPSEEK_BASE_URL}/chat/completions",
+            url,
             headers={
-                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json"
             },
             json={
-                "model": model,
+                "model": use_model,
                 "messages": messages,
                 "temperature": temperature,
                 "max_tokens": 4096
