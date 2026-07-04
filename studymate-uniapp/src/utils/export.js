@@ -17,16 +17,15 @@ function getDefaultTags(subject) { return SUBJECT_TAGS[subject] || [] }
 function formatDate(dateStr) { if (!dateStr) return ''; try { return new Date(dateStr).toLocaleDateString('zh-CN') } catch (e) { return dateStr } }
 
 // ─── Image column builder ───
-// Excel: each <img> gets explicit width/height attributes + <a> link to view full-size.
-// This keeps the table cell at a predictable size regardless of base64 string length.
+// Excel: explicit width/height attributes keep cell sizing predictable.
+// Each image is wrapped in a <div> and followed by a <br> to force Edge
+// to flow them vertically inside the cell instead of side-by-floating.
 function imgCell(images) {
   if (!images || images.length === 0) return ''
-  return images.map((img, i) => {
-    if (!img) return ''
-    const src = img.startsWith('data:') || img.startsWith('http') || img.startsWith('blob:') || img.startsWith('/')
-      ? img : ''
-    if (!src) return `[图${i+1}]`
-    return `<a href="${esc(src)}" target="_blank" style="display:inline-block;margin:1px"><img src="${esc(src)}" width="100" height="75" style="object-fit:cover;border:1px solid #ccc;border-radius:4px" /></a>`
+  return images.map(img => {
+    const src = (img && (img.startsWith('data:') || img.startsWith('http') || img.startsWith('blob:') || img.startsWith('/'))) ? img : ''
+    if (!src) return '<div style="font-size:11px;color:#999">[图片]</div>'
+    return `<div style="margin:2px 0"><a href="${esc(src)}" target="_blank"><img src="${esc(src)}" width="160" height="120" style="border:1px solid #ccc;border-radius:4px;display:block" /></a></div>`
   }).join('')
 }
 function excelImgCell(images) { return imgCell(images) }
@@ -112,10 +111,10 @@ function cardsToExcel(cards, includeAnswer) {
     html += `<td style="padding:6px;white-space:nowrap">${esc(c.subject)}</td>`
     html += `<td style="padding:6px;max-width:120px;word-break:break-all">${esc((c.tags||[]).join('；'))}</td>`
     if (hasTextQ) html += `<td style="padding:6px;max-width:200px;word-break:break-all">${esc(c.question)}</td>`
-    if (hasImgQ) html += `<td style="padding:6px;width:115px;white-space:nowrap">${imgCell(c.question_images)}</td>`
+    if (hasImgQ) html += `<td style="padding:6px;width:175px">${imgCell(c.question_images)}</td>`
     if (includeAnswer) {
       if (hasTextA) html += `<td style="padding:6px;max-width:200px;word-break:break-all">${esc(c.answer)}</td>`
-      if (hasImgA) html += `<td style="padding:6px;width:115px;white-space:nowrap">${imgCell(c.answer_images)}</td>`
+      if (hasImgA) html += `<td style="padding:6px;width:175px">${imgCell(c.answer_images)}</td>`
     }
     html += `<td style="padding:6px;text-align:center;white-space:nowrap">${esc(masteryCN(c.mastery_level))}</td>`
     html += `<td style="padding:6px;text-align:center">${c.review_count}</td>`
@@ -149,10 +148,10 @@ function mistakesToExcel(mistakes, includeAnswer) {
     html += `<td style="padding:6px;white-space:nowrap">${esc(m.subject)}</td>`
     html += `<td style="padding:6px;max-width:120px;word-break:break-all">${esc((m.tags||[]).join('；'))}</td>`
     if (hasTextQ) html += `<td style="padding:6px;max-width:200px;word-break:break-all">${esc(m.question)}</td>`
-    if (hasImgQ) html += `<td style="padding:6px;width:115px;white-space:nowrap">${imgCell(m.question_images)}</td>`
+    if (hasImgQ) html += `<td style="padding:6px;width:175px">${imgCell(m.question_images)}</td>`
     if (includeAnswer) {
       if (hasTextA) html += `<td style="padding:6px;max-width:200px;word-break:break-all">${esc(m.answer)}</td>`
-      if (hasImgA) html += `<td style="padding:6px;width:115px;white-space:nowrap">${imgCell(m.answer_images)}</td>`
+      if (hasImgA) html += `<td style="padding:6px;width:175px">${imgCell(m.answer_images)}</td>`
       if (hasAnalysis) html += `<td style="padding:6px;max-width:200px;word-break:break-all">${esc(m.analysis||'')}</td>`
     }
     html += `<td style="padding:6px;text-align:center;white-space:nowrap">${esc(difficultyCN(m.difficulty))}</td>`
