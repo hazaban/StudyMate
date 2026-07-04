@@ -3,13 +3,8 @@
     <view class="header">
       <view class="header-top">
         <view class="header-left">
-          <view class="back-btn" @click="goBack">
-            <text class="back-icon">←</text>
-          </view>
-          <view>
-            <text class="title">学习农场</text>
-            <text class="subtitle">每一份努力，都会种出果实</text>
-          </view>
+          <text class="title">学习农场</text>
+          <text class="subtitle">每一份努力，都会种出果实</text>
         </view>
         <view class="guide-btn" @click="showGuide = true">
           <text class="guide-icon">❓</text>
@@ -321,7 +316,7 @@ async function harvest(plant) {
 }
 
 function goBack() {
-  uni.navigateBack()
+  uni.switchTab({ url: '/pages/index/index' })
 }
 
 async function loadFarm() {
@@ -367,7 +362,6 @@ onShow(async () => {
 }
 
 .header-left {
-  display: flex; align-items: center; gap: 12px;
   .title {
     display: block;
     font-size: 26px;
@@ -379,13 +373,6 @@ onShow(async () => {
     font-size: 14px;
     color: rgba(255,255,255,0.8);
   }
-}
-.back-btn {
-  width: 36px; height: 36px; border-radius: 50%;
-  background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; border: 1px solid rgba(255,255,255,0.3);
-  &:active { transform: scale(0.92); background: rgba(255,255,255,0.35); }
-  .back-icon { font-size: 18px; color: #fff; }
 }
 
 .guide-btn {

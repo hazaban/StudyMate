@@ -695,7 +695,7 @@ function switchMode(mode) {
 }
 
 function goToMistakes() {
-  uni.navigateTo({ url: '/pages/review/mistake-book' })
+  uni.switchTab({ url: '/pages/review/mistake-book' })
 }
 
 function chooseQuestionImage() {

@@ -3,13 +3,8 @@
     <view class="header">
       <view class="header-top">
         <view class="header-left">
-          <view class="back-btn" @click="goBack">
-            <text class="back-icon">←</text>
-          </view>
-          <view>
-            <text class="title">错题本</text>
-            <text class="subtitle">记录每一次错误，让知识不再溜走</text>
-          </view>
+          <text class="title">错题本</text>
+          <text class="subtitle">记录每一次错误，让知识不再溜走</text>
         </view>
         <view class="header-right">
           <view class="export-btn" @click="showExportModal = true">
@@ -740,11 +735,11 @@ function switchMode(mode) {
 }
 
 function goBack() {
-  uni.navigateBack()
+  uni.switchTab({ url: '/pages/review/flash-cards' })
 }
 
 function goToCards() {
-  uni.navigateBack()
+  uni.switchTab({ url: '/pages/review/flash-cards' })
 }
 
 function chooseQuestionImage() {
@@ -1062,16 +1057,8 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;
 }
 .header-left {
-  display: flex; align-items: center; gap: 12px;
   .title { display: block; font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 4px; }
   .subtitle { font-size: 14px; color: rgba(255,255,255,0.8); }
-}
-.back-btn {
-  width: 36px; height: 36px; border-radius: 50%;
-  background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; border: 1px solid rgba(255,255,255,0.3);
-  &:active { transform: scale(0.92); background: rgba(255,255,255,0.35); }
-  .back-icon { font-size: 18px; color: #fff; }
 }
 .header-right { position: relative; }
 .export-btn {

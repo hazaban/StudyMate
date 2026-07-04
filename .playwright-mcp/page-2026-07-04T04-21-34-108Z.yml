@@ -1,0 +1,46 @@
+- generic [ref=e3]:
+  - generic [ref=e302]:
+    - generic [ref=e303]:
+      - generic [ref=e304]:
+        - generic [ref=e305]:
+          - generic [ref=e306]: 学习农场
+          - generic [ref=e307]: 每一份努力，都会种出果实
+        - generic [ref=e308]:
+          - generic [ref=e309]: ❓
+          - generic [ref=e310]: 说明
+      - generic [ref=e311]:
+        - generic [ref=e312]:
+          - generic [ref=e313]: 🪙
+          - generic [ref=e314]: "0"
+          - generic [ref=e315]: 金币
+        - generic [ref=e316]:
+          - generic [ref=e317]: ⭐
+          - generic [ref=e318]: Lv.1
+          - generic [ref=e319]: 0 XP
+        - generic [ref=e320]:
+          - generic [ref=e321]: 🌱
+          - generic [ref=e322]: "0"
+          - generic [ref=e323]: 生长中
+    - generic [ref=e324]:
+      - generic [ref=e325]: 🌍
+      - generic [ref=e326]: 农场还是空的
+      - generic [ref=e327]: 完成番茄钟或任务，自动种下对应科目的植物
+  - generic [ref=e8]:
+    - generic [ref=e11] [cursor=pointer]:
+      - img [ref=e13]
+      - generic [ref=e14]: 首页
+    - generic [ref=e16] [cursor=pointer]:
+      - img [ref=e18]
+      - generic [ref=e19]: 任务
+    - generic [ref=e21] [cursor=pointer]:
+      - img [ref=e23]
+      - generic [ref=e24]: 卡片
+    - generic [ref=e26] [cursor=pointer]:
+      - img [ref=e28]
+      - generic [ref=e29]: 错题
+    - generic [ref=e31] [cursor=pointer]:
+      - img [ref=e33]
+      - generic [ref=e34]: 农场
+    - generic [ref=e36] [cursor=pointer]:
+      - img [ref=e38]
+      - generic [ref=e39]: 我的

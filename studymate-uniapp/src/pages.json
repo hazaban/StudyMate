@@ -29,6 +29,13 @@
       }
     },
     {
+      "path": "pages/review/mistake-book",
+      "style": {
+        "navigationBarTitleText": "错题本",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/auth/login",
       "style": {
         "navigationBarTitleText": "登录",
@@ -60,13 +67,6 @@
       "path": "pages/daily/pomodoro",
       "style": {
         "navigationBarTitleText": "番茄钟",
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/review/mistake-book",
-      "style": {
-        "navigationBarTitleText": "错题本",
         "navigationStyle": "custom"
       }
     },
@@ -127,9 +127,21 @@
       },
       {
         "pagePath": "pages/review/flash-cards",
-        "text": "复习",
+        "text": "卡片",
         "iconPath": "static/icons/card.png",
         "selectedIconPath": "static/icons/card-active.png"
+      },
+      {
+        "pagePath": "pages/review/mistake-book",
+        "text": "错题",
+        "iconPath": "static/icons/card.png",
+        "selectedIconPath": "static/icons/card-active.png"
+      },
+      {
+        "pagePath": "pages/farm/farm",
+        "text": "农场",
+        "iconPath": "static/icons/farm.png",
+        "selectedIconPath": "static/icons/farm-active.png"
       },
       {
         "pagePath": "pages/profile/profile",

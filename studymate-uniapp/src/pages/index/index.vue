@@ -262,7 +262,7 @@ function goToReview() {
 }
 
 function goToFarm() {
-  uni.navigateTo({ url: '/pages/farm/farm' })
+  uni.switchTab({ url: '/pages/farm/farm' })
 }
 
 function startPomodoro() {
