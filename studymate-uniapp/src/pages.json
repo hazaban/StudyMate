@@ -22,16 +22,9 @@
       }
     },
     {
-      "path": "pages/review/flash-cards",
+      "path": "pages/review/index",
       "style": {
-        "navigationBarTitleText": "复习卡片",
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/review/mistake-book",
-      "style": {
-        "navigationBarTitleText": "错题本",
+        "navigationBarTitleText": "复习",
         "navigationStyle": "custom"
       }
     },
@@ -126,7 +119,7 @@
         "selectedIconPath": "static/icons/task-active.png"
       },
       {
-        "pagePath": "pages/review/flash-cards",
+        "pagePath": "pages/review/index",
         "text": "复习",
         "iconPath": "static/icons/card.png",
         "selectedIconPath": "static/icons/card-active.png"

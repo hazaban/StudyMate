@@ -258,7 +258,7 @@ function goToTaskBoard() {
 }
 
 function goToReview() {
-  uni.switchTab({ url: '/pages/review/flash-cards' })
+  uni.switchTab({ url: '/pages/review/index' })
 }
 
 function goToFarm() {
