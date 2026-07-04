@@ -341,8 +341,8 @@
         <scroll-view scroll-x class="filter-scroll">
           <view class="filter-list">
             <view class="filter-item err-item" :class="{ active: activeMastered.length === 0 }" @click="activeMastered = []">全部状态</view>
-            <view class="filter-item err-item err-1" :class="{ active: activeMastered.includes('0') }" @click="toggleMastered('0')">待攻克</view>
-            <view class="filter-item err-item err-2 mastered" :class="{ active: activeMastered.includes('1') }" @click="toggleMastered('1')">已掌握</view>
+            <view class="filter-item err-item err-1" :class="{ active: activeMastered.includes('0') }" @click="toggleMasteredFilter('0')">待攻克</view>
+            <view class="filter-item err-item err-2 mastered" :class="{ active: activeMastered.includes('1') }" @click="toggleMasteredFilter('1')">已掌握</view>
           </view>
         </scroll-view>
       </view>
@@ -742,7 +742,7 @@ const mistakeViewMode = ref('pending')
 const activeErrorCount = ref([])
 function toggleErrorCount(val) { const idx = activeErrorCount.value.indexOf(val); if (idx >= 0) activeErrorCount.value.splice(idx, 1); else activeErrorCount.value.push(val) }
 const activeMastered = ref([])
-function toggleMastered(val) { const idx = activeMastered.value.indexOf(val); if (idx >= 0) activeMastered.value.splice(idx, 1); else activeMastered.value.push(val) }
+function toggleMasteredFilter(val) { const idx = activeMastered.value.indexOf(val); if (idx >= 0) activeMastered.value.splice(idx, 1); else activeMastered.value.push(val) }
 const showMistakeForm = ref(false)
 const mistakeTagInput = ref('')
 const mistakeReviewMode = ref(false)
