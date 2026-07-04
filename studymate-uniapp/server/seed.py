@@ -80,13 +80,13 @@ card408 = [
         answer_images=["https://picsum.photos/seed/a-tree-formula/500/300"]),
     # ── due in future ──
     FlashCard(id=uuid4(), plan_id=pid408, question="快速排序时间复杂度？最好/最坏？", answer="平均O(n log n)，最坏O(n²)。", subject="数据结构", mastery_level="unmastered", next_review_date=today, review_count=0, tags=["排序","公式"]),
-    FlashCard(id=uuid4(), plan_id=pid408, question="死锁四个必要条件？", answer="互斥、请求与保持、不可剥夺、循环等待。", subject="操作系统", mastery_level="familiar", next_review_date=today+timedelta(days=7), review_count=1, tags=["死锁","重点"]),
+    FlashCard(id=uuid4(), plan_id=pid408, question="死锁四个必要条件？", answer="互斥、请求与保持、不可剥夺、循环等待。", subject="操作系统", mastery_level="familiar", next_review_date=today+timedelta(days=3), review_count=1, tags=["死锁","重点"]),
     FlashCard(id=uuid4(), plan_id=pid408, question="OSI七层模型从下到上？", answer="物理层→数据链路层→网络层→传输层→会话层→表示层→应用层。", subject="计算机网络", mastery_level="unmastered", next_review_date=today, review_count=0, tags=["OSI","网络"],
         question_images=["https://picsum.photos/seed/osi-model/550/250"]),
     FlashCard(id=uuid4(), plan_id=pid408, question="流水线的三种冒险？", answer="结构冒险、数据冒险、控制冒险。", subject="计算机组成原理", mastery_level="mastered", next_review_date=today, review_count=3, tags=["流水线","必考"]),
     # ── 纯图片卡片(已掌握) ──
     FlashCard(id=uuid4(), plan_id=pid408, question="", answer="",
-        subject="计算机组成原理", mastery_level="mastered", next_review_date=today+timedelta(days=14), review_count=5, tags=["存储","必考"],
+        subject="计算机组成原理", mastery_level="mastered", next_review_date=today+timedelta(days=30), review_count=5, tags=["存储","必考"],
         question_images=["https://picsum.photos/seed/q-cache-struct/500/300"],
         answer_images=["https://picsum.photos/seed/a-cache-diag/550/280","https://picsum.photos/seed/a-cache-tbl/480/250"]),
 ]
