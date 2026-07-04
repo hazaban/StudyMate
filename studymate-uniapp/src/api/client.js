@@ -27,7 +27,7 @@ export async function request(url, options = {}) {
     method: options.method || 'GET',
     data: options.data,
     header: headers,
-    timeout: options.timeout || 30000
+    timeout: options.timeout || 60000
   })
 
   if (res.statusCode >= 200 && res.statusCode < 300) {

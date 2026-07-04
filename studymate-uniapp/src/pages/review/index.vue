@@ -133,15 +133,18 @@
       </view>
 
       <view v-if="!reviewMode && !reviewComplete">
-        <view class="section-header" v-if="viewMode === 'pending' && filteredCards.length > 0">
+        <view class="section-header" v-if="!loadingCards && viewMode === 'pending' && filteredCards.length > 0">
           <text class="section-title">今日待复习 · {{ filteredCards.length }} 张</text>
           <view class="start-review-btn purple" @click="startCardReview"><text>开始复习</text></view>
         </view>
-        <view class="section-header" v-if="viewMode === 'all'">
+        <view class="section-header" v-if="!loadingCards && viewMode === 'all'">
           <text class="section-title">全部卡片</text>
           <text class="section-count">{{ filteredCards.length }}张</text>
         </view>
-        <view class="empty" v-if="filteredCards.length === 0">
+        <view class="empty" v-if="loadingCards">
+          <text class="empty-icon">⏳</text><text class="empty-text">加载中...</text>
+        </view>
+        <view class="empty" v-else-if="filteredCards.length === 0">
           <text class="empty-icon">📖</text><text class="empty-text">{{ viewMode === 'pending' ? '今天没有需要复习的卡片' : '暂无卡片' }}</text>
           <text class="empty-hint">点击右下角按钮，手动添加知识卡片</text>
         </view>
@@ -380,11 +383,14 @@
       </view>
 
       <view v-if="!mistakeReviewMode && !mistakeReviewComplete">
-        <view class="section-header" v-if="mistakeViewMode === 'pending' && filteredMistakes.length > 0">
+        <view class="section-header" v-if="!loadingMistakes && mistakeViewMode === 'pending' && filteredMistakes.length > 0">
           <text class="section-title">今日待复习 · {{ filteredMistakes.length }} 道</text>
           <view class="start-review-btn red" @click="startMistakeReview"><text>开始复习</text></view>
         </view>
-        <view class="empty" v-if="filteredMistakes.length === 0">
+        <view class="empty" v-if="loadingMistakes">
+          <text class="empty-icon">⏳</text><text class="empty-text">加载中...</text>
+        </view>
+        <view class="empty" v-else-if="filteredMistakes.length === 0">
           <text class="empty-icon">📝</text><text class="empty-text">{{ mistakeViewMode === 'pending' ? '今天没有需要复习的错题' : '暂无错题' }}</text>
           <text class="empty-hint">点击右下角按钮，手动录入错题</text>
         </view>
@@ -638,6 +644,7 @@ async function deleteSubjectFromBackend(name) {
 
 // ── Cards state ──
 const cards = ref([])
+const loadingCards = ref(false)
 const viewMode = ref('pending')
 const activeMastery = ref([])
 function toggleMastery(val) { const idx = activeMastery.value.indexOf(val); if (idx >= 0) activeMastery.value.splice(idx, 1); else activeMastery.value.push(val) }
@@ -738,6 +745,7 @@ const reviewCards = computed(() => filteredCards.value.filter(c => c.next_review
 
 // ── Mistakes state ──
 const mistakes = ref([])
+const loadingMistakes = ref(false)
 const mistakeViewMode = ref('pending')
 const activeErrorCount = ref([])
 function toggleErrorCount(val) { const idx = activeErrorCount.value.indexOf(val); if (idx >= 0) activeErrorCount.value.splice(idx, 1); else activeErrorCount.value.push(val) }
@@ -818,7 +826,7 @@ function switchView(view) {
   else loadMistakes()
 }
 
-function onSubjectChange(s) { activeSubject.value = s; activeTags.value = []; tagLogic.value = 'or'; activeMastery.value = []; activeErrorCount.value = []; activeMastered.value = []; cardsPageSize.value = 10; mistakesPageSize.value = 10 }
+function onSubjectChange(s) { activeSubject.value = s; activeTags.value = []; tagLogic.value = 'or'; activeMastery.value = []; activeErrorCount.value = []; activeMastered.value = []; cardsPageSize.value = 10; mistakesPageSize.value = 10; loadCards(); loadMistakes() }
 function toggleTag(tag) {
   const idx = activeTags.value.indexOf(tag)
   if (idx >= 0) activeTags.value.splice(idx, 1)
@@ -950,7 +958,7 @@ function switchCardMode(m) {
   reviewComplete.value = false
   reviewIndex.value = 0
   cardsPageSize.value = 10
-  activeMastered.value = []
+  activeMastery.value = []
   loadCards()
 }
 function switchMistakeMode(m) {
@@ -959,6 +967,7 @@ function switchMistakeMode(m) {
   mistakeReviewComplete.value = false
   mistakeReviewIndex.value = 0
   mistakesPageSize.value = 10
+  activeErrorCount.value = []
   activeMastered.value = []
   loadMistakes()
 }
@@ -1007,7 +1016,7 @@ async function reviewCardResult(level) {
   else { reviewMode.value = false; reviewComplete.value = true; await loadCards() }
 }
 function exitCardReview() { reviewMode.value = false; reviewComplete.value = false; reviewIndex.value = 0; viewMode.value = 'all'; activeSubject.value = ''; activeTags.value = []; activeMastery.value = []; activeMastered.value = []; loadCards() }
-async function loadCards() { if (!planStore.currentPlan) return; try { const p = viewMode.value === 'pending'; const r = await api.getCards(planStore.currentPlan.id, activeSubject.value || null, null, p); cards.value = r.cards || [] } catch (e) { console.error('loadCards:', e) } }
+async function loadCards() { if (!planStore.currentPlan) return; loadingCards.value = true; try { const p = viewMode.value === 'pending'; const r = await api.getCards(planStore.currentPlan.id, activeSubject.value || null, null, p); cards.value = r.cards || [] } catch (e) { console.error('loadCards:', e); uni.showToast({ title: '卡片加载失败，下拉刷新重试', icon: 'none' }) } finally { loadingCards.value = false } }
 
 // ── Mistakes functions ──
 function parseMistakeTags() { if (!mistakeTagInput.value.trim()) return; const t = mistakeTagInput.value.split(/[,，]/).map(s => s.trim()).filter(Boolean); mistakeForm.value.tags = [...new Set([...mistakeForm.value.tags, ...t])]; mistakeTagInput.value = '' }
@@ -1066,7 +1075,7 @@ async function reviewMistakeResult(correct) {
   else { mistakeReviewMode.value = false; mistakeReviewComplete.value = true; await loadMistakes() }
 }
 function exitMistakeReview() { mistakeReviewMode.value = false; mistakeReviewComplete.value = false; mistakeReviewIndex.value = 0; mistakeViewMode.value = 'all'; activeSubject.value = ''; activeTags.value = []; activeErrorCount.value = []; activeMastered.value = []; loadMistakes() }
-async function loadMistakes() { if (!planStore.currentPlan) return; try { const p = mistakeViewMode.value === 'pending'; const r = await api.getMistakes(planStore.currentPlan.id, activeSubject.value || null, null, p); mistakes.value = r.mistakes || [] } catch (e) { console.error('loadMistakes:', e) } }
+async function loadMistakes() { if (!planStore.currentPlan) return; loadingMistakes.value = true; try { const p = mistakeViewMode.value === 'pending'; const r = await api.getMistakes(planStore.currentPlan.id, activeSubject.value || null, null, p); mistakes.value = r.mistakes || [] } catch (e) { console.error('loadMistakes:', e); uni.showToast({ title: '错题加载失败，下拉刷新重试', icon: 'none' }) } finally { loadingMistakes.value = false } }
 
 // ── Export ──
 async function sanitizeImages(items) {
@@ -1127,7 +1136,7 @@ async function doExport(format) {
 
 onMounted(async () => {
   await userStore.getUserInfo()
-  if (userStore.isLoggedIn) { await planStore.getPlansByUserId(); await loadSubjects(); await loadCards(); await loadMistakes() }
+  if (userStore.isLoggedIn) { await planStore.getPlansByUserId(); await loadSubjects() }
   document.addEventListener('paste', handleGlobalPaste)
 })
 onUnmounted(() => {
