@@ -336,6 +336,17 @@
         </scroll-view>
       </view>
 
+      <!-- Mistake Mastered Filter -->
+      <view class="filter-section">
+        <scroll-view scroll-x class="filter-scroll">
+          <view class="filter-list">
+            <view class="filter-item err-item" :class="{ active: activeMastered === '' }" @click="activeMastered = ''">全部状态</view>
+            <view class="filter-item err-item err-1" :class="{ active: activeMastered === '0' }" @click="activeMastered = '0'">待攻克</view>
+            <view class="filter-item err-item err-2 mastered" :class="{ active: activeMastered === '1' }" @click="activeMastered = '1'">已掌握</view>
+          </view>
+        </scroll-view>
+      </view>
+
       <!-- Mistake Review Mode -->
       <view class="review-card" v-if="mistakeReviewMode && mistakeReviewCards.length > 0">
         <text class="review-counter">{{ mistakeReviewIndex + 1 }} / {{ mistakeReviewCards.length }}</text>
@@ -728,6 +739,7 @@ const reviewCards = computed(() => filteredCards.value.filter(c => c.next_review
 const mistakes = ref([])
 const mistakeViewMode = ref('pending')
 const activeErrorCount = ref('')
+const activeMastered = ref('')
 const showMistakeForm = ref(false)
 const mistakeTagInput = ref('')
 const mistakeReviewMode = ref(false)
@@ -755,6 +767,8 @@ const filteredMistakes = computed(() => {
   if (activeErrorCount.value === '1') r = r.filter(m => m.error_count === 1)
   else if (activeErrorCount.value === '2') r = r.filter(m => m.error_count === 2)
   else if (activeErrorCount.value === '3+') r = r.filter(m => m.error_count >= 3)
+  if (activeMastered.value === '0') r = r.filter(m => m.mastered === '0')
+  else if (activeMastered.value === '1') r = r.filter(m => m.mastered === '1')
   return r
 })
 const mistakesPageSize = ref(10)
@@ -797,7 +811,7 @@ function switchView(view) {
   else loadMistakes()
 }
 
-function onSubjectChange(s) { activeSubject.value = s; activeTags.value = []; tagLogic.value = 'or'; activeMastery.value = ''; activeErrorCount.value = ''; cardsPageSize.value = 10; mistakesPageSize.value = 10 }
+function onSubjectChange(s) { activeSubject.value = s; activeTags.value = []; tagLogic.value = 'or'; activeMastery.value = ''; activeErrorCount.value = ''; activeMastered.value = ''; cardsPageSize.value = 10; mistakesPageSize.value = 10 }
 function toggleTag(tag) {
   const idx = activeTags.value.indexOf(tag)
   if (idx >= 0) activeTags.value.splice(idx, 1)
@@ -929,6 +943,7 @@ function switchCardMode(m) {
   reviewComplete.value = false
   reviewIndex.value = 0
   cardsPageSize.value = 10
+  activeMastered.value = ''
   loadCards()
 }
 function switchMistakeMode(m) {
@@ -937,6 +952,7 @@ function switchMistakeMode(m) {
   mistakeReviewComplete.value = false
   mistakeReviewIndex.value = 0
   mistakesPageSize.value = 10
+  activeMastered.value = ''
   loadMistakes()
 }
 function previewImage(c, u) { uni.previewImage({ current: c, urls: u }) }
@@ -983,7 +999,7 @@ async function reviewCardResult(level) {
   if (reviewIndex.value < reviewCards.value.length - 1) { reviewIndex.value++; reviewShowAnswer.value = false }
   else { reviewMode.value = false; reviewComplete.value = true; await loadCards() }
 }
-function exitCardReview() { reviewMode.value = false; reviewComplete.value = false; reviewIndex.value = 0; viewMode.value = 'all'; activeSubject.value = ''; activeTags.value = []; activeMastery.value = ''; loadCards() }
+function exitCardReview() { reviewMode.value = false; reviewComplete.value = false; reviewIndex.value = 0; viewMode.value = 'all'; activeSubject.value = ''; activeTags.value = []; activeMastery.value = ''; activeMastered.value = ''; loadCards() }
 async function loadCards() { if (!planStore.currentPlan) return; try { const p = viewMode.value === 'pending'; const r = await api.getCards(planStore.currentPlan.id, activeSubject.value || null, null, p); cards.value = r.cards || [] } catch (e) { console.error('loadCards:', e) } }
 
 // ── Mistakes functions ──
@@ -1029,7 +1045,7 @@ async function reviewMistakeResult(correct) {
   if (mistakeReviewIndex.value < mistakeReviewCards.value.length - 1) { mistakeReviewIndex.value++; mistakeShowAnswer.value = false }
   else { mistakeReviewMode.value = false; mistakeReviewComplete.value = true; await loadMistakes() }
 }
-function exitMistakeReview() { mistakeReviewMode.value = false; mistakeReviewComplete.value = false; mistakeReviewIndex.value = 0; mistakeViewMode.value = 'all'; activeSubject.value = ''; activeTags.value = []; activeErrorCount.value = ''; loadMistakes() }
+function exitMistakeReview() { mistakeReviewMode.value = false; mistakeReviewComplete.value = false; mistakeReviewIndex.value = 0; mistakeViewMode.value = 'all'; activeSubject.value = ''; activeTags.value = []; activeErrorCount.value = ''; activeMastered.value = ''; loadMistakes() }
 async function loadMistakes() { if (!planStore.currentPlan) return; try { const p = mistakeViewMode.value === 'pending'; const r = await api.getMistakes(planStore.currentPlan.id, activeSubject.value || null, null, p); mistakes.value = r.mistakes || [] } catch (e) { console.error('loadMistakes:', e) } }
 
 // ── Export ──
@@ -1081,6 +1097,8 @@ async function doExport(format) {
       if (activeErrorCount.value === '1') d = d.filter(m => m.error_count === 1)
       else if (activeErrorCount.value === '2') d = d.filter(m => m.error_count === 2)
       else if (activeErrorCount.value === '3+') d = d.filter(m => m.error_count >= 3)
+      if (activeMastered.value === '0') d = d.filter(m => m.mastered === '0')
+      else if (activeMastered.value === '1') d = d.filter(m => m.mastered === '1')
       if (!d.length) { uni.showToast({ title: '没有可导出的数据', icon: 'none' }); return }
       d = await sanitizeImages(d)
       if (format === 'csv') exportMistakesCSV(d, opts); else if (format === 'excel') exportMistakesExcel(d, opts); else if (format === 'pdf') exportMistakesPDF(d, opts)
@@ -1128,7 +1146,7 @@ watch(() => planStore.currentPlan?.id, async (n, o) => { if (n && n !== o) { awa
 .filter-item { display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 13px; color: #65746d; background: #f5f7f5; white-space: nowrap; transition: all 0.2s; &.active { background: #6b4ce6; color: #fff; } }
 .tag-item { &.active { background: #8b6ef5; } }
 .mastery-item { &.active { background: #6b4ce6; color: #fff; } &.unmastered.active { background: #ef5350; } &.familiar.active { background: #ffb74d; } &.mastered.active { background: #66bb6a; } }
-.err-item { &.active { background: #ef5350; color: #fff; } &.err-1.active { background: #ffb74d; } &.err-2.active { background: #ef5350; } &.err-3.active { background: #c62828; } }
+.err-item { &.active { background: #ef5350; color: #fff; } &.err-1.active { background: #ffb74d; } &.err-2.active { background: #ef5350; } &.err-3.active { background: #c62828; } &.mastered.active { background: #4caf50; } }
 .filter-manage-btn { width: 32px; height: 32px; border-radius: 50%; background: #f5f7f5; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; border: 1px solid #e0e0e0; &:active { background: #e8e0ff; } }
 .tag-logic-btn {
   width: 36px; height: 36px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center;
