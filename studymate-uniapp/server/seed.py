@@ -79,9 +79,9 @@ card408 = [
         question_images=["https://picsum.photos/seed/q-tree-array/600/300","https://picsum.photos/seed/q-tree-detail/450/250"],
         answer_images=["https://picsum.photos/seed/a-tree-formula/500/300"]),
     # ── due in future ──
-    FlashCard(id=uuid4(), plan_id=pid408, question="快速排序时间复杂度？最好/最坏？", answer="平均O(n log n)，最坏O(n²)。", subject="数据结构", mastery_level="unmastered", next_review_date=today+timedelta(days=3), review_count=0, tags=["排序","公式"]),
+    FlashCard(id=uuid4(), plan_id=pid408, question="快速排序时间复杂度？最好/最坏？", answer="平均O(n log n)，最坏O(n²)。", subject="数据结构", mastery_level="unmastered", next_review_date=today, review_count=0, tags=["排序","公式"]),
     FlashCard(id=uuid4(), plan_id=pid408, question="死锁四个必要条件？", answer="互斥、请求与保持、不可剥夺、循环等待。", subject="操作系统", mastery_level="familiar", next_review_date=today+timedelta(days=7), review_count=1, tags=["死锁","重点"]),
-    FlashCard(id=uuid4(), plan_id=pid408, question="OSI七层模型从下到上？", answer="物理层→数据链路层→网络层→传输层→会话层→表示层→应用层。", subject="计算机网络", mastery_level="unmastered", next_review_date=today+timedelta(days=1), review_count=0, tags=["OSI","网络"],
+    FlashCard(id=uuid4(), plan_id=pid408, question="OSI七层模型从下到上？", answer="物理层→数据链路层→网络层→传输层→会话层→表示层→应用层。", subject="计算机网络", mastery_level="unmastered", next_review_date=today, review_count=0, tags=["OSI","网络"],
         question_images=["https://picsum.photos/seed/osi-model/550/250"]),
     FlashCard(id=uuid4(), plan_id=pid408, question="流水线的三种冒险？", answer="结构冒险、数据冒险、控制冒险。", subject="计算机组成原理", mastery_level="mastered", next_review_date=today, review_count=3, tags=["流水线","必考"]),
     # ── 纯图片卡片(已掌握) ──
@@ -96,7 +96,7 @@ cardSoft = [
     FlashCard(id=uuid4(), plan_id=pidSoft, question="数据库三大范式的要求？", answer="1NF:属性不可再分;2NF:消除部分依赖;3NF:消除传递依赖。", subject="数据库", mastery_level="unmastered", next_review_date=today, review_count=0, tags=["范式","重点"]),
     FlashCard(id=uuid4(), plan_id=pidSoft, question="", answer="", subject="UML", mastery_level="familiar", next_review_date=today, review_count=2, tags=["类图","必考"],
         question_images=["https://picsum.photos/seed/q-uml-class/600/350"], answer_images=["https://picsum.photos/seed/a-uml-example/500/300"]),
-    FlashCard(id=uuid4(), plan_id=pidSoft, question="动态规划的核心思想？", answer="将大问题分解为重叠子问题，自底向上求解，用表存储中间结果避免重复计算。", subject="算法", mastery_level="unmastered", next_review_date=today+timedelta(days=2), review_count=0, tags=["DP","公式"]),
+    FlashCard(id=uuid4(), plan_id=pidSoft, question="动态规划的核心思想？", answer="将大问题分解为重叠子问题，自底向上求解，用表存储中间结果避免重复计算。", subject="算法", mastery_level="unmastered", next_review_date=today, review_count=0, tags=["DP","公式"]),
     FlashCard(id=uuid4(), plan_id=pidSoft, question="PV操作中P/V的含义？", answer="P(proberen):申请资源,信号量-1;V(verhogen):释放资源,信号量+1。", subject="操作系统", mastery_level="familiar", next_review_date=today+timedelta(days=5), review_count=1, tags=["PV操作","重点"]),
 ]
 for c in cardSoft: db.add(c)
@@ -111,7 +111,7 @@ mist408 = [
         question_images=["https://picsum.photos/seed/paging-err/550/280"]),
     Mistake(id=uuid4(), plan_id=pid408, question="IPv4私有地址范围？", answer="10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16", analysis="容易漏掉172.16.0.0/12。", subject="计算机网络", difficulty="easy", next_review_date=today, correct_count=1, error_count=1, mastered="0", tags=["IP","必考"]),
     Mistake(id=uuid4(), plan_id=pid408, question="", answer="写回比写直达快但更复杂。写直达每次都写内存，写回只在替换时写回。",
-        analysis="混淆两种策略的适用场景：写回适合CPU-Cache频繁交互。", subject="计算机组成原理", difficulty="medium", next_review_date=today+timedelta(days=1), correct_count=0, error_count=1, mastered="0", tags=["Cache"],
+        analysis="混淆两种策略的适用场景：写回适合CPU-Cache频繁交互。", subject="计算机组成原理", difficulty="medium", next_review_date=today, correct_count=0, error_count=1, mastered="0", tags=["Cache"],
         question_images=["https://picsum.photos/seed/q-cache-write/500/300","https://picsum.photos/seed/q-cache-compare/480/280"]),
     Mistake(id=uuid4(), plan_id=pid408, question="什么是虚拟内存？作用？", answer="将磁盘空间作为内存扩展，使程序可运行超过物理内存的程序。", analysis="把虚拟内存和交换空间混为一谈。", subject="操作系统", difficulty="easy", next_review_date=today+timedelta(days=14), correct_count=3, error_count=1, mastered="1", tags=["内存"]),
 ]
@@ -122,7 +122,7 @@ mistSoft = [
     Mistake(id=uuid4(), plan_id=pidSoft, question="", answer="",
         analysis="看错了题干的约束条件，多对多关系需要转换为关联实体。", subject="UML", difficulty="hard", next_review_date=today, correct_count=1, error_count=4, mastered="0", tags=["类图","易错"],
         question_images=["https://picsum.photos/seed/q-uml-err/600/350"], answer_images=["https://picsum.photos/seed/a-uml-correct/550/300"]),
-    Mistake(id=uuid4(), plan_id=pidSoft, question="动态规划最优子结构的含义？", answer="问题的最优解包含其子问题的最优解，这是DP适用的前提条件。", analysis="把最优子结构和贪心选择性质混淆。", subject="算法", difficulty="medium", next_review_date=today+timedelta(days=3), correct_count=0, error_count=2, mastered="0", tags=["DP","易错"]),
+    Mistake(id=uuid4(), plan_id=pidSoft, question="动态规划最优子结构的含义？", answer="问题的最优解包含其子问题的最优解，这是DP适用的前提条件。", analysis="把最优子结构和贪心选择性质混淆。", subject="算法", difficulty="medium", next_review_date=today, correct_count=0, error_count=2, mastered="0", tags=["DP","易错"]),
     Mistake(id=uuid4(), plan_id=pidSoft, question="读写者问题中写者优先的PV实现要点？", answer="增加互斥信号量wmutex，写者到达后阻塞后续读者。需要计数器记录等待写者数。", analysis="容易忘记写者离开后需要同时唤醒读者和写者。", subject="操作系统", difficulty="hard", next_review_date=today+timedelta(days=7), correct_count=2, error_count=5, mastered="0", tags=["PV操作","重点"]),
 ]
 for m in mistSoft: db.add(m)
