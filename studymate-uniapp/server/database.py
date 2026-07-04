@@ -93,8 +93,6 @@ class DailyTask(Base):
     status = Column(String(20), default="pending")   # pending / doing / completed
     completed_at = Column(DateTime(timezone=True), default=None)
     proof_image_url = Column(Text, default="")
-    repeat_type = Column(String(20), default="none")  # none / daily / weekday / holiday
-    completed_dates = Column(JSON, default=list)       # 循环任务的完成日期列表
     created_at = Column(DateTime(timezone=True), default=utcnow)
 
     plan = relationship("StudyPlan", back_populates="tasks")
@@ -153,8 +151,6 @@ class Plant(Base):
     type = Column(String(20), default="seed")        # seed / sprout / growing / mature / harvested
     subject = Column(String(100), nullable=False)
     progress = Column(Integer, default=0)             # 0-100
-    water_count = Column(Integer, default=0)          # 可用浇水次数
-    fertilize_count = Column(Integer, default=0)      # 可用施肥次数
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

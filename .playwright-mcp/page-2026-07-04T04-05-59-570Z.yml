@@ -1,0 +1,45 @@
+- generic [ref=e3]:
+  - generic [ref=e183]:
+    - generic [ref=e184]:
+      - generic [ref=e185]:
+        - generic [ref=e186]:
+          - generic [ref=e187]:
+            - generic [ref=e188]: 今日
+            - generic [ref=e189]: 历史
+          - generic [ref=e190]: 今日任务
+          - generic [ref=e191]: 2026年7月4日 六
+        - generic [ref=e193]:
+          - generic [ref=e194]: +
+          - generic [ref=e195]: 添加任务
+      - generic [ref=e196]:
+        - generic [ref=e197]:
+          - generic [ref=e198]: "0"
+          - generic [ref=e199]: 已完成
+        - generic [ref=e201]:
+          - generic [ref=e202]: "0"
+          - generic [ref=e203]: 待完成
+        - generic [ref=e205]:
+          - generic [ref=e206]: "0"
+          - generic [ref=e207]: 总任务
+    - generic [ref=e208]:
+      - generic [ref=e210]: 全部
+      - generic [ref=e212]: 待完成
+      - generic [ref=e214]: 已完成
+    - generic [ref=e221]: 全部科目
+    - generic [ref=e222]:
+      - generic [ref=e223]: 📋
+      - generic [ref=e224]: 暂无任务
+      - generic [ref=e225]: 点击上方「添加任务」按钮手动创建任务
+  - generic [ref=e101]:
+    - generic [ref=e104] [cursor=pointer]:
+      - img [ref=e106]
+      - generic [ref=e107]: 首页
+    - generic [ref=e109] [cursor=pointer]:
+      - img [ref=e111]
+      - generic [ref=e112]: 任务
+    - generic [ref=e114] [cursor=pointer]:
+      - img [ref=e116]
+      - generic [ref=e117]: 复习
+    - generic [ref=e119] [cursor=pointer]:
+      - img [ref=e121]
+      - generic [ref=e122]: 我的

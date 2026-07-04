@@ -35,17 +35,17 @@ for email in ["test@studymate.com", "test@example.com"]:
 
 # ── 1. Create test user ──
 user_id = uuid4()
-hashed = bcrypt.hashpw("test123456".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+hashed = bcrypt.hashpw("123456".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 user = User(
     id=user_id,
-    email="test@example.com",
+    email="test@studymate.com",
     nickname="测试学员",
     hashed_password=hashed,
     avatar_url=""
 )
 db.add(user)
 db.flush()
-print(f"Created user: test@example.com / test123456")
+print(f"Created user: test@studymate.com / 123456")
 
 # ── 2. Create study plan ──
 plan_id = uuid4()
@@ -63,6 +63,23 @@ plan = StudyPlan(
 db.add(plan)
 db.flush()
 print("Created study plan: 考研408复习计划")
+
+# ── 2.1 Create second plan for plan-switching test ──
+plan_id_2 = uuid4()
+plan2 = StudyPlan(
+    id=plan_id_2,
+    user_id=user_id,
+    exam_name="软考",
+    exam_date=date.today() + timedelta(days=90),
+    target_scores={"基础知识": 75, "应用技术": 75},
+    daily_study_time=240,
+    weak_points=["数据库设计", "UML建模", "算法设计"],
+    study_phase="基础阶段",
+    notes="利用碎片时间备考软考中级"
+)
+db.add(plan2)
+db.flush()
+print("Created study plan: 软考")
 
 # ── 3. Create tasks ──
 today = date.today()
@@ -120,13 +137,13 @@ print(f"Created {len(mistakes)} mistakes")
 
 # ── 6. Create farm data ──
 plants = [
-    Plant(id=uuid4(), plan_id=plan_id, type="growing", subject="数据结构", progress=70, water_count=5, fertilize_count=2),
-    Plant(id=uuid4(), plan_id=plan_id, type="harvested", subject="数据结构", progress=100, water_count=0, fertilize_count=0),
-    Plant(id=uuid4(), plan_id=plan_id, type="sprout", subject="操作系统", progress=30, water_count=3, fertilize_count=1),
-    Plant(id=uuid4(), plan_id=plan_id, type="seed", subject="计算机网络", progress=0, water_count=4, fertilize_count=1),
-    Plant(id=uuid4(), plan_id=plan_id, type="sprout", subject="英语", progress=25, water_count=6, fertilize_count=3),
-    Plant(id=uuid4(), plan_id=plan_id, type="harvested", subject="英语", progress=100, water_count=0, fertilize_count=0),
-    Plant(id=uuid4(), plan_id=plan_id, type="harvested", subject="政治", progress=100, water_count=0, fertilize_count=0),
+    Plant(id=uuid4(), plan_id=plan_id, type="growing", subject="数据结构", progress=70),
+    Plant(id=uuid4(), plan_id=plan_id, type="harvested", subject="数据结构", progress=100),
+    Plant(id=uuid4(), plan_id=plan_id, type="sprout", subject="操作系统", progress=30),
+    Plant(id=uuid4(), plan_id=plan_id, type="seed", subject="计算机网络", progress=0),
+    Plant(id=uuid4(), plan_id=plan_id, type="sprout", subject="英语", progress=25),
+    Plant(id=uuid4(), plan_id=plan_id, type="harvested", subject="英语", progress=100),
+    Plant(id=uuid4(), plan_id=plan_id, type="harvested", subject="政治", progress=100),
 ]
 for p in plants:
     db.add(p)
@@ -198,8 +215,8 @@ db.commit()
 db.close()
 
 print("\n=== Seed data created successfully! ===")
-print("   Login:    test@example.com")
-print("   Password: test123456")
+print("   Login:    test@studymate.com")
+print("   Password: 123456")
 print("   Plan:     kaoyan 408 review plan")
 print(f"   Tasks:    {len(tasks)} tasks for today")
 print(f"   Cards:    {len(cards)} cards ({cards_due_today} due today)")
