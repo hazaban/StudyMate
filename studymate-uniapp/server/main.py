@@ -26,10 +26,15 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=False if CORS_ORIGINS == ["*"] else True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Handle OPTIONS preflight explicitly (needed for Vercel Python serverless)
+@app.options("/{path:path}")
+async def options_handler(path: str):
+    return {"message": "ok"}
 
 # Register routers
 app.include_router(auth.router)
