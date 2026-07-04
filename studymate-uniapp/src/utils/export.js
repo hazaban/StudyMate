@@ -94,11 +94,11 @@ function mistakesToCSV(mistakes, includeAnswer) {
 // ─── Excel image helper (compact, fits in table cell) ───
 function excelImgCell(images) {
   if (!images || images.length === 0) return ''
-  return images.map(img => {
+  return `<div style="display:flex;flex-direction:column;gap:4px;">` + images.map(img => {
     const src = (img && (img.startsWith('data:') || img.startsWith('http') || img.startsWith('blob:') || img.startsWith('/'))) ? img : ''
     if (!src) return ''
-    return `<img src="${esc(src)}" style="max-width:160px;max-height:100px;display:block;margin:2px 0;border:1px solid #ddd;border-radius:4px;" />`
-  }).join('')
+    return `<img src="${esc(src)}" style="max-width:200px;max-height:150px;display:block;border:1px solid #ddd;border-radius:4px;" />`
+  }).join('') + `</div>`
 }
 
 // ─── Cards Excel ───
@@ -130,7 +130,7 @@ function cardsToExcel(cards, includeAnswer) {
     html += `</tr>`
   }
   html += `</table>`
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>知识卡片导出</title><style>body{font-family:'Microsoft YaHei',sans-serif;padding:10px;}img{display:inline-block;}</style></head><body>${html}</body></html>`
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>知识卡片导出</title><style>body{font-family:'Microsoft YaHei',sans-serif;padding:10px;}td img{display:block;}</style></head><body>${html}</body></html>`
 }
 
 // ─── Mistakes Excel ───
@@ -169,7 +169,7 @@ function mistakesToExcel(mistakes, includeAnswer) {
     html += `</tr>`
   }
   html += `</table>`
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>错题本导出</title><style>body{font-family:'Microsoft YaHei',sans-serif;padding:10px;}img{display:inline-block;}</style></head><body>${html}</body></html>`
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>错题本导出</title><style>body{font-family:'Microsoft YaHei',sans-serif;padding:10px;}td img{display:block;}</style></head><body>${html}</body></html>`
 }
 
 // ─── PDF HTML (portrait A4, vertical card layout) ───
