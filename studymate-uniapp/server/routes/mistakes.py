@@ -201,19 +201,18 @@ def review_mistake(mistake_id: UUID, correct: bool = Query(...), user_id: UUID =
 
     if correct:
         mistake.correct_count += 1
-        # Map correct_count to review interval using Ebbinghaus curve
-        intervals = [1, 3, 7, 14, 30]  # Ebbinghaus: 1/3/7/14/30 days
+        intervals = [1, 3, 7, 14, 30]
         idx = min(mistake.correct_count - 1, len(intervals) - 1)
         next_date = today + timedelta(days=intervals[idx])
-        # Never allow next_review_date before creation date
         created = mistake.created_at.date() if mistake.created_at else today
         if next_date < created:
             next_date = created + timedelta(days=1)
         mistake.next_review_date = next_date
 
-        # Mark mastered after 2+ consecutive correct answers
-        if mistake.correct_count >= 2:
+        # Auto mastered after 3 consecutive correct answers, fix at 30-day review
+        if mistake.correct_count >= 3:
             mistake.mastered = "1"
+            mistake.next_review_date = today + timedelta(days=30)
     else:
         mistake.correct_count = 0
         mistake.error_count += 1
