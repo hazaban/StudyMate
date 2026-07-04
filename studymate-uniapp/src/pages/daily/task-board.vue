@@ -297,55 +297,37 @@ const taskDates = ref(new Set())  // 有任务的日期集合
 const dateFocusRecords = ref([])
 
 const allSubjects = ['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络']
-const subjectOptions = ref(JSON.parse(uni.getStorageSync('studymate_subjects') || JSON.stringify(allSubjects)))
-const customSubjectOptions = ref(JSON.parse(uni.getStorageSync('studymate_custom_subjects') || '[]'))
+const subjectOptions = ref([...allSubjects])
+const customSubjectOptions = ref([])
 const showManageSubjects = ref(false)
 const manageNewSubject = ref('')
 
+async function loadTaskSubjects() {
+  try { const res = await api.getUserSubjects(); const saved = res.subjects || []; customSubjectOptions.value = saved.filter(s => !allSubjects.includes(s)); subjectOptions.value = [...allSubjects]; saved.forEach(s => { if (!subjectOptions.value.includes(s)) subjectOptions.value.push(s) }) } catch (e) { /* offline */ }
+}
 function addCustomSubject() {
   const name = customSubject.value.trim()
   if (!name) return
-  if (!subjectOptions.value.includes(name)) {
-    subjectOptions.value.push(name)
-    uni.setStorageSync('studymate_subjects', JSON.stringify(subjectOptions.value))
-  }
-  if (!customSubjectOptions.value.includes(name)) {
-    customSubjectOptions.value.push(name)
-    uni.setStorageSync('studymate_custom_subjects', JSON.stringify(customSubjectOptions.value))
-  }
-  form.value.subject = name
-  customSubject.value = ''
-  showSubjectInput.value = false
+  if (!subjectOptions.value.includes(name)) { subjectOptions.value.push(name) }
+  if (!customSubjectOptions.value.includes(name)) { customSubjectOptions.value.push(name); api.addUserSubject(name).catch(()=>{}) }
+  form.value.subject = name; customSubject.value = ''; showSubjectInput.value = false
 }
-
 function addManageSubject() {
   const name = manageNewSubject.value.trim()
   if (!name) return
-  if (!subjectOptions.value.includes(name)) {
-    subjectOptions.value.push(name)
-    uni.setStorageSync('studymate_subjects', JSON.stringify(subjectOptions.value))
-  }
-  if (!customSubjectOptions.value.includes(name)) {
-    customSubjectOptions.value.push(name)
-    uni.setStorageSync('studymate_custom_subjects', JSON.stringify(customSubjectOptions.value))
-  }
+  if (!subjectOptions.value.includes(name)) { subjectOptions.value.push(name) }
+  if (!customSubjectOptions.value.includes(name)) { customSubjectOptions.value.push(name); api.addUserSubject(name).catch(()=>{}) }
   manageNewSubject.value = ''
 }
-
 function removeSubjectFromManager(name) {
-  uni.showModal({
-    title: '删除科目',
-    content: `确定要删除「${name}」吗？`,
-    success: (res) => {
-      if (res.confirm) {
-        customSubjectOptions.value = customSubjectOptions.value.filter(s => s !== name)
-        uni.setStorageSync('studymate_custom_subjects', JSON.stringify(customSubjectOptions.value))
-        subjectOptions.value = subjectOptions.value.filter(s => s !== name)
-        uni.setStorageSync('studymate_subjects', JSON.stringify(subjectOptions.value))
-        if (form.value.subject === name) form.value.subject = subjectOptions.value[0] || ''
-      }
+  uni.showModal({ title: '删除科目', content: `确定要删除「${name}」吗？`, success: (res) => {
+    if (res.confirm) {
+      customSubjectOptions.value = customSubjectOptions.value.filter(s => s !== name)
+      subjectOptions.value = subjectOptions.value.filter(s => s !== name)
+      api.removeUserSubject(name).catch(()=>{})
+      if (form.value.subject === name) form.value.subject = subjectOptions.value[0] || ''
     }
-  })
+  }})
 }
 
 const defaultForm = {
@@ -634,6 +616,7 @@ onMounted(async () => {
   await userStore.getUserInfo()
   if (userStore.isLoggedIn) {
     await planStore.getPlansByUserId()
+    await loadTaskSubjects()
     if (planStore.currentPlan) {
       loadTaskDates()
       await loadTasks()

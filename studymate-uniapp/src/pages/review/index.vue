@@ -591,10 +591,26 @@ const activeTags = ref([])
 const tagLogic = ref('or') // 'or' = any tag match, 'and' = all tags must match
 
 const defaultSubjects = Object.keys(SUBJECT_TAGS)
-const savedSubjects = uni.getStorageSync('studymate_subjects')
-const savedCustom = uni.getStorageSync('studymate_custom_subjects')
-const allSubjects = ref(savedSubjects ? JSON.parse(savedSubjects) : [...defaultSubjects])
-const customSubjects = ref(savedCustom ? JSON.parse(savedCustom) : [])
+const allSubjects = ref([...defaultSubjects])
+const customSubjects = ref([])
+
+async function loadSubjects() {
+  if (!userStore.isLoggedIn) return
+  try {
+    const res = await api.getUserSubjects()
+    const saved = res.subjects || []
+    customSubjects.value = saved.filter(s => !defaultSubjects.includes(s))
+    // Merge: defaults first, then custom
+    allSubjects.value = [...defaultSubjects]
+    saved.forEach(s => { if (!allSubjects.value.includes(s)) allSubjects.value.push(s) })
+  } catch (e) { /* offline: keep defaults */ }
+}
+async function saveSubjectToBackend(name) {
+  try { await api.addUserSubject(name) } catch (e) { /* ignore */ }
+}
+async function deleteSubjectFromBackend(name) {
+  try { await api.removeUserSubject(name) } catch (e) { /* ignore */ }
+}
 
 // ── Cards state ──
 const cards = ref([])
@@ -669,13 +685,13 @@ function toggleEditMistakeTag(tag) {
 function addMistakeCustomSubject() {
   const n = customMistakeSubject.value.trim()
   if (!n) return
-  if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n); persistSubjects() }
+  if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n); saveSubjectToBackend(n) }
   mistakeForm.value.subject = n; customMistakeSubject.value = ''; showMistakeSubjectInput.value = false
 }
 function addEditMistakeCustomSubject() {
   const n = customEditMistakeSubject.value.trim()
   if (!n) return
-  if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n); persistSubjects() }
+  if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n); saveSubjectToBackend(n) }
   editMistakeForm.value.subject = n; customEditMistakeSubject.value = ''; showEditMistakeSubjectInput.value = false
 }
 
@@ -750,14 +766,10 @@ function toggleTag(tag) {
 }
 
 // ── Subject management ──
-function persistSubjects() {
-  uni.setStorageSync('studymate_subjects', JSON.stringify(allSubjects.value))
-  uni.setStorageSync('studymate_custom_subjects', JSON.stringify(customSubjects.value))
-}
 function addManageSubject() {
   const n = manageNewSubject.value.trim()
   if (!n) return
-  if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n); persistSubjects() }
+  if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n); saveSubjectToBackend(n) }
   manageNewSubject.value = ''
 }
 function removeSubject(n) {
@@ -765,14 +777,14 @@ function removeSubject(n) {
     if (r.confirm) {
       customSubjects.value = customSubjects.value.filter(s => s !== n)
       allSubjects.value = allSubjects.value.filter(s => s !== n)
-      persistSubjects()
+      deleteSubjectFromBackend(n)
       if (activeSubject.value === n) { activeSubject.value = ''; activeTags.value = [] }
     }
   }})
 }
 
 // ── Cards functions ──
-function addCardCustomSubject() { const n = customSubject.value.trim(); if (!n) return; if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n); persistSubjects() }; cardForm.value.subject = n; customSubject.value = ''; showCardSubjectInput.value = false }
+function addCardCustomSubject() { const n = customSubject.value.trim(); if (!n) return; if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n); saveSubjectToBackend(n) }; cardForm.value.subject = n; customSubject.value = ''; showCardSubjectInput.value = false }
 // ── Image upload: 拍照 / 相册 / Ctrl+V 粘贴 ──
 const activePasteTarget = ref('')
 function setPasteTarget(target) {
@@ -1001,7 +1013,7 @@ async function doExport(format) {
 
 onMounted(async () => {
   await userStore.getUserInfo()
-  if (userStore.isLoggedIn) { await planStore.getPlansByUserId(); await loadCards(); await loadMistakes() }
+  if (userStore.isLoggedIn) { await planStore.getPlansByUserId(); await loadSubjects(); await loadCards(); await loadMistakes() }
   document.addEventListener('paste', handleGlobalPaste)
 })
 onUnmounted(() => {

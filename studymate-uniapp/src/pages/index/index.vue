@@ -154,6 +154,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
 import { usePlanStore } from '@/stores/plan'
 import { useTaskStore } from '@/stores/task'
@@ -171,33 +172,40 @@ const daysRemaining = ref(0)
 const progressPercent = ref(0)
 const streakDays = ref(0)
 
-function computeStreak() {
-  // Collect all active days from pomodoro records AND task completions
-  const activeDays = new Set()
-
-  // From pomodoro records
-  const allRecords = JSON.parse(uni.getStorageSync('studymate_pomodoro_records') || '[]')
-  allRecords.forEach(r => { if (r.date && (r.type === 'focus' || r.duration > 0)) activeDays.add(r.date) })
-
-  // From today's tasks (completed ones counted for today)
-  if (taskStore.completedCount > 0) {
-    activeDays.add(dateUtil.today())
-  }
-
-  // Walk backwards from today, count consecutive active days
-  let count = 0
-  const today = new Date()
-  for (let i = 0; i < 365; i++) {
-    const d = new Date(today)
-    d.setDate(d.getDate() - i)
-    const ds = d.toISOString().split('T')[0]
-    if (activeDays.has(ds)) {
-      count++
-    } else {
-      break  // streak broken
+async function computeStreak() {
+  try {
+    // Collect active days from backend FocusRecords across ALL plans
+    const activeDays = new Set()
+    for (const p of planStore.plans) {
+      try {
+        const res = await api.getFocusRecords(p.id, null, null, null)
+        const records = Array.isArray(res) ? res : (res.records || res.data || [])
+        records.forEach(r => { if (r.date) activeDays.add(r.date) })
+      } catch (e) { /* skip */ }
     }
+
+    // Also count today if there's any completed task
+    if (taskStore.completedCount > 0) {
+      activeDays.add(dateUtil.today())
+    }
+
+    // Walk backwards from today, count consecutive active days
+    let count = 0
+    const today = new Date()
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(today)
+      d.setDate(d.getDate() - i)
+      const ds = d.toISOString().split('T')[0]
+      if (activeDays.has(ds)) {
+        count++
+      } else {
+        break
+      }
+    }
+    streakDays.value = count
+  } catch (e) {
+    streakDays.value = 0
   }
-  streakDays.value = count
 }
 
 const showTaskForm = ref(false)
@@ -249,7 +257,7 @@ async function saveTask() {
     if (planStore.currentPlan) {
       await taskStore.getTasksByDate(planStore.currentPlan.id, today)
     }
-    computeStreak()
+    await computeStreak()
   } catch (e) {
     uni.showToast({ title: '保存失败', icon: 'none' })
   }
@@ -266,7 +274,7 @@ async function toggleTaskComplete(task) {
     if (planStore.currentPlan) {
       await taskStore.getTasksByDate(planStore.currentPlan.id, today)
     }
-    computeStreak()
+    await computeStreak()
   } catch (e) {
     uni.showToast({ title: '操作失败', icon: 'none' })
   }
@@ -319,8 +327,15 @@ onMounted(async () => {
       await farmStore.getPlantsByPlanId(planStore.currentPlan.id)
 
       daysRemaining.value = dateUtil.getDaysBetween(today, planStore.currentPlan.exam_date)
-      computeStreak()
+      await computeStreak()
     }
+  }
+})
+
+// Refresh streak when returning from other pages (e.g. after pomodoro)
+onShow(async () => {
+  if (planStore.currentPlan) {
+    await computeStreak()
   }
 })
 
@@ -330,7 +345,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
     await taskStore.getTasksByDate(planStore.currentPlan.id, today)
     await farmStore.getPlantsByPlanId(planStore.currentPlan.id)
     daysRemaining.value = dateUtil.getDaysBetween(today, planStore.currentPlan.exam_date)
-    computeStreak()
+    await computeStreak()
   }
 })
 </script>

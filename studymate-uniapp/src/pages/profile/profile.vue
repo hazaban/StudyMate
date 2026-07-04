@@ -103,11 +103,10 @@ import { ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
 import { usePlanStore } from '@/stores/plan'
-import { useCardStore } from '@/stores/card'
+import * as api from '@/api/client'
 
 const userStore = useUserStore()
 const planStore = usePlanStore()
-const cardStore = useCardStore()
 
 const planCount = ref(0)
 const cardCount = ref(0)
@@ -119,24 +118,43 @@ async function loadData() {
   if (!userStore.isLoggedIn || !userStore.user) {
     planCount.value = 0
     cardCount.value = 0
+    totalDays.value = 0
     return
   }
 
   const planResult = await planStore.getPlansByUserId()
   if (planResult.success) {
     planCount.value = planStore.plans?.length || 0
+
+    // Sum cards across ALL plans
+    let totalCards = 0
+    for (const p of planStore.plans) {
+      try {
+        const r = await api.getCards(p.id, null, null, false)
+        totalCards += (r.cards || []).length
+      } catch (e) { /* skip */ }
+    }
+    cardCount.value = totalCards
   } else {
     planCount.value = 0
-  }
-
-  if (planStore.currentPlan) {
-    await cardStore.getCardsByPlanId(planStore.currentPlan.id)
-    cardCount.value = cardStore.cards.length
-  } else {
     cardCount.value = 0
   }
 
-  totalDays.value = Math.floor(Math.random() * 30) + 1
+  // Learning days: unique dates from backend FocusRecords across ALL plans
+  try {
+    const allDates = new Set()
+    for (const p of planStore.plans) {
+      try {
+        const res = await api.getFocusRecords(p.id, null, null, null)
+        // API returns list[FocusRecordResponse] directly (an array)
+        const records = Array.isArray(res) ? res : (res.records || res.data || [])
+        records.forEach(r => { if (r.date) allDates.add(r.date) })
+      } catch (e) { /* skip */ }
+    }
+    totalDays.value = allDates.size
+  } catch (e) {
+    totalDays.value = 0
+  }
 }
 
 function goToLogin() {

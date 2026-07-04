@@ -93,6 +93,8 @@ class DailyTask(Base):
     status = Column(String(20), default="pending")   # pending / doing / completed
     completed_at = Column(DateTime(timezone=True), default=None)
     proof_image_url = Column(Text, default="")
+    actual_duration = Column(Integer, default=0)        # actual minutes tracked by pomodoro
+    chapter = Column(String(100), default="")
     created_at = Column(DateTime(timezone=True), default=utcnow)
 
     plan = relationship("StudyPlan", back_populates="tasks")
@@ -188,6 +190,16 @@ class FocusRecord(Base):
 
     plan = relationship("StudyPlan")
     task = relationship("DailyTask")
+
+
+class UserSubject(Base):
+    """Per-user custom subjects. Each user has their own subject list stored server-side."""
+    __tablename__ = "user_subjects"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
 
 
 # ---------------------------------------------------------------------------
