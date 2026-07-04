@@ -573,7 +573,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { usePlanStore } from '@/stores/plan'
 import { useUserStore } from '@/stores/user'
 import * as api from '@/api/client'
-import { exportCardsCSV, exportCardsExcel, exportCardsPDF, exportMistakesCSV, exportMistakesExcel, exportMistakesPDF, getDefaultTags, SUBJECT_TAGS, compressImages } from '@/utils/export'
+import { exportCardsCSV, exportCardsExcel, exportCardsPDF, exportMistakesCSV, exportMistakesExcel, exportMistakesPDF, getDefaultTags, SUBJECT_TAGS } from '@/utils/export'
 
 const planStore = usePlanStore()
 const userStore = useUserStore()
