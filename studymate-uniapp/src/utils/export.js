@@ -167,11 +167,14 @@ function mistakesToExcel(mistakes, includeAnswer) {
 function pdfImgCell(images) {
   if (!images || images.length === 0) return ''
   const count = images.length
-  const w = count === 1 ? 320 : 200
+  // Single image: full card width. Multiple: 2 per row with gap.
+  const colStyle = count === 1
+    ? 'width:100%'
+    : 'width:calc(50% - 4px); max-width:48%'
   return images.map(img => {
-    const src = img.startsWith('data:') || img.startsWith('http') || img.startsWith('blob:') || img.startsWith('/') ? img : ''
-    if (!src) return `[图片]`
-    return `<img src="${esc(src)}" style="max-width:${w}px;max-height:220px;width:auto;height:auto;margin:4px;border:1px solid #ddd;border-radius:4px;" />`
+    const src = (img && (img.startsWith('data:') || img.startsWith('http') || img.startsWith('blob:') || img.startsWith('/'))) ? img : ''
+    if (!src) return '[图片]'
+    return `<img src="${esc(src)}" style="${colStyle};height:auto;margin:2px;border:1px solid #ddd;border-radius:6px;object-fit:contain;" />`
   }).join('')
 }
 
@@ -192,9 +195,9 @@ function buildPDFCardsHTML(cards, includeAnswer) {
     return html
   }).join('')
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>知识卡片导出</title>
-<style>@page{size:A4;margin:12mm}body{font-family:'Microsoft YaHei',sans-serif;font-size:13px;color:#1a1a2e;background:#fff;line-height:1.7}
+<style>@page{size:A4;margin:8mm}body{font-family:'Microsoft YaHei',sans-serif;font-size:13px;color:#1a1a2e;background:#fff;line-height:1.7}
 h2{text-align:center;font-size:20px;margin:0 0 16px;padding-bottom:8px;border-bottom:2px solid #6b4ce6}
-.card{border:1px solid #d9e7dd;border-radius:10px;padding:16px;margin-bottom:14px;page-break-inside:avoid;background:#fafbfa;}
+.card{border:1px solid #d9e7dd;border-radius:10px;padding:12px;margin-bottom:12px;page-break-inside:avoid;background:#fafbfa;}
 .card-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .card-num{font-size:12px;color:#999;font-weight:700}
 .card-subject{font-size:14px;font-weight:700;color:#6b4ce6;background:#f3f0ff;padding:3px 12px;border-radius:12px}
@@ -227,9 +230,9 @@ function buildPDFMistakesHTML(mistakes, includeAnswer) {
     return html
   }).join('')
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>错题本导出</title>
-<style>@page{size:A4;margin:12mm}body{font-family:'Microsoft YaHei',sans-serif;font-size:13px;color:#1a1a2e;background:#fff;line-height:1.7}
+<style>@page{size:A4;margin:8mm}body{font-family:'Microsoft YaHei',sans-serif;font-size:13px;color:#1a1a2e;background:#fff;line-height:1.7}
 h2{text-align:center;font-size:20px;margin:0 0 16px;padding-bottom:8px;border-bottom:2px solid #ef5350}
-.card{border:1px solid #ffcdd2;border-radius:10px;padding:16px;margin-bottom:14px;page-break-inside:avoid;background:#fffafa;}
+.card{border:1px solid #ffcdd2;border-radius:10px;padding:12px;margin-bottom:12px;page-break-inside:avoid;background:#fffafa;}
 .card-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .card-num{font-size:12px;color:#999;font-weight:700}
 .card-subject{font-size:14px;font-weight:700;background:#f3f0ff;padding:3px 12px;border-radius:12px}
