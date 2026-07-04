@@ -112,25 +112,25 @@ function cardsToExcel(cards, includeAnswer) {
   if (hasImgQ) headers.push('问题图片')
   if (includeAnswer) { if (hasTextA) headers.push('答案'); if (hasImgA) headers.push('答案图片') }
   headers.push('掌握程度', '复习次数', '下次复习', '创建日期')
-  let html = `<table border="1" style="border-collapse:collapse;width:100%"><tr>${headers.map(h => `<th style="background:#6b4ce6;color:#fff;padding:8px;text-align:center">${esc(h)}</th>`).join('')}</tr>`
+  let html = `<table border="1" style="border-collapse:collapse;table-layout:fixed;width:100%"><tr>${headers.map(h => `<th style="background:#6b4ce6;color:#fff;padding:8px;text-align:center">${esc(h)}</th>`).join('')}</tr>`
   for (const c of cards) {
     html += `<tr>`
-    html += `<td style="padding:6px;vertical-align:top">${esc(c.subject)}</td>`
-    html += `<td style="padding:6px;vertical-align:top">${esc((c.tags||[]).join('；'))}</td>`
-    if (hasTextQ) html += `<td style="padding:6px;vertical-align:top;white-space:pre-wrap;max-width:300px">${esc(c.question)}</td>`
-    if (hasImgQ) html += `<td style="padding:4px;vertical-align:top">${excelImgCell(c.question_images)}</td>`
+    html += `<td style="padding:6px;vertical-align:top;width:80px;word-wrap:break-word">${esc(c.subject)}</td>`
+    html += `<td style="padding:6px;vertical-align:top;width:100px;word-wrap:break-word">${esc((c.tags||[]).join('；'))}</td>`
+    if (hasTextQ) html += `<td style="padding:6px;vertical-align:top;width:180px;word-wrap:break-word;white-space:pre-wrap">${esc(c.question)}</td>`
+    if (hasImgQ) html += `<td style="padding:4px;vertical-align:top;width:220px">${excelImgCell(c.question_images)}</td>`
     if (includeAnswer) {
-      if (hasTextA) html += `<td style="padding:6px;vertical-align:top;white-space:pre-wrap;max-width:300px">${esc(c.answer)}</td>`
-      if (hasImgA) html += `<td style="padding:4px;vertical-align:top">${excelImgCell(c.answer_images)}</td>`
+      if (hasTextA) html += `<td style="padding:6px;vertical-align:top;width:180px;word-wrap:break-word;white-space:pre-wrap">${esc(c.answer)}</td>`
+      if (hasImgA) html += `<td style="padding:4px;vertical-align:top;width:220px">${excelImgCell(c.answer_images)}</td>`
     }
-    html += `<td style="padding:6px;text-align:center;vertical-align:top">${esc(masteryCN(c.mastery_level))}</td>`
-    html += `<td style="padding:6px;text-align:center;vertical-align:top">${c.review_count}</td>`
-    html += `<td style="padding:6px;vertical-align:top">${formatDate(c.next_review_date)}</td>`
-    html += `<td style="padding:6px;vertical-align:top">${formatDate(c.created_at)}</td>`
+    html += `<td style="padding:6px;text-align:center;vertical-align:top;width:60px">${esc(masteryCN(c.mastery_level))}</td>`
+    html += `<td style="padding:6px;text-align:center;vertical-align:top;width:50px">${c.review_count}</td>`
+    html += `<td style="padding:6px;vertical-align:top;width:80px">${formatDate(c.next_review_date)}</td>`
+    html += `<td style="padding:6px;vertical-align:top;width:80px">${formatDate(c.created_at)}</td>`
     html += `</tr>`
   }
   html += `</table>`
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>知识卡片导出</title><style>body{font-family:'Microsoft YaHei',sans-serif;padding:10px;}td img{display:block;}</style></head><body>${html}</body></html>`
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>知识卡片导出</title><style>body{font-family:'Microsoft YaHei',sans-serif;padding:10px;}td img{display:block;max-width:100%;}</style></head><body>${html}</body></html>`
 }
 
 // ─── Mistakes Excel ───
@@ -149,27 +149,27 @@ function mistakesToExcel(mistakes, includeAnswer) {
     if (hasAnalysis) headers.push('错误分析')
   }
   headers.push('难度', '错误次数', '正确次数', '已掌握', '创建日期')
-  let html = `<table border="1" style="border-collapse:collapse;width:100%"><tr>${headers.map(h => `<th style="background:#ef5350;color:#fff;padding:8px;text-align:center">${esc(h)}</th>`).join('')}</tr>`
+  let html = `<table border="1" style="border-collapse:collapse;table-layout:fixed;width:100%"><tr>${headers.map(h => `<th style="background:#ef5350;color:#fff;padding:8px;text-align:center">${esc(h)}</th>`).join('')}</tr>`
   for (const m of mistakes) {
     html += `<tr>`
-    html += `<td style="padding:6px;vertical-align:top">${esc(m.subject)}</td>`
-    html += `<td style="padding:6px;vertical-align:top">${esc((m.tags||[]).join('；'))}</td>`
-    if (hasTextQ) html += `<td style="padding:6px;vertical-align:top;white-space:pre-wrap;max-width:300px">${esc(m.question)}</td>`
-    if (hasImgQ) html += `<td style="padding:4px;vertical-align:top">${excelImgCell(m.question_images)}</td>`
+    html += `<td style="padding:6px;vertical-align:top;width:80px;word-wrap:break-word">${esc(m.subject)}</td>`
+    html += `<td style="padding:6px;vertical-align:top;width:100px;word-wrap:break-word">${esc((m.tags||[]).join('；'))}</td>`
+    if (hasTextQ) html += `<td style="padding:6px;vertical-align:top;width:180px;word-wrap:break-word;white-space:pre-wrap">${esc(m.question)}</td>`
+    if (hasImgQ) html += `<td style="padding:4px;vertical-align:top;width:220px">${excelImgCell(m.question_images)}</td>`
     if (includeAnswer) {
-      if (hasTextA) html += `<td style="padding:6px;vertical-align:top;white-space:pre-wrap;max-width:300px">${esc(m.answer)}</td>`
-      if (hasImgA) html += `<td style="padding:4px;vertical-align:top">${excelImgCell(m.answer_images)}</td>`
-      if (hasAnalysis) html += `<td style="padding:6px;vertical-align:top;white-space:pre-wrap;max-width:250px">${esc(m.analysis||'')}</td>`
+      if (hasTextA) html += `<td style="padding:6px;vertical-align:top;width:180px;word-wrap:break-word;white-space:pre-wrap">${esc(m.answer)}</td>`
+      if (hasImgA) html += `<td style="padding:4px;vertical-align:top;width:220px">${excelImgCell(m.answer_images)}</td>`
+      if (hasAnalysis) html += `<td style="padding:6px;vertical-align:top;width:180px;word-wrap:break-word;white-space:pre-wrap">${esc(m.analysis||'')}</td>`
     }
-    html += `<td style="padding:6px;text-align:center;vertical-align:top">${esc(difficultyCN(m.difficulty))}</td>`
-    html += `<td style="padding:6px;text-align:center;vertical-align:top">${m.error_count}</td>`
-    html += `<td style="padding:6px;text-align:center;vertical-align:top">${m.correct_count}</td>`
-    html += `<td style="padding:6px;text-align:center;vertical-align:top">${m.mastered==='1'?'是':'否'}</td>`
-    html += `<td style="padding:6px;vertical-align:top">${formatDate(m.created_at)}</td>`
+    html += `<td style="padding:6px;text-align:center;vertical-align:top;width:50px">${esc(difficultyCN(m.difficulty))}</td>`
+    html += `<td style="padding:6px;text-align:center;vertical-align:top;width:50px">${m.error_count}</td>`
+    html += `<td style="padding:6px;text-align:center;vertical-align:top;width:50px">${m.correct_count}</td>`
+    html += `<td style="padding:6px;text-align:center;vertical-align:top;width:50px">${m.mastered==='1'?'是':'否'}</td>`
+    html += `<td style="padding:6px;vertical-align:top;width:80px">${formatDate(m.created_at)}</td>`
     html += `</tr>`
   }
   html += `</table>`
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>错题本导出</title><style>body{font-family:'Microsoft YaHei',sans-serif;padding:10px;}td img{display:block;}</style></head><body>${html}</body></html>`
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>错题本导出</title><style>body{font-family:'Microsoft YaHei',sans-serif;padding:10px;}td img{display:block;max-width:100%;}</style></head><body>${html}</body></html>`
 }
 
 // ─── PDF HTML (portrait A4, vertical card layout) ───
@@ -284,15 +284,50 @@ function openPrint(html) {
 }
 
 export function exportCardsCSV(cards, opts = {}) { saveFile(cardsToCSV(cards, opts.includeAnswer !== false), '知识卡片.csv') }
-export function exportCardsExcel(cards, opts = {}) { saveFile(cardsToExcel(cards, opts.includeAnswer !== false), '知识卡片.xls', 'text/html;charset=utf-8') }
+export function exportCardsExcel(cards, opts = {}) { saveFile(cardsToExcel(cards, opts.includeAnswer !== false), `知识卡片_表格_${fmtNow()}.html`, 'text/html;charset=utf-8') }
 export function exportCardsPDF(cards, opts = {}) { openPrint(buildPDFCardsHTML(cards, opts.includeAnswer !== false)) }
 export function exportMistakesCSV(mistakes, opts = {}) { saveFile(mistakesToCSV(mistakes, opts.includeAnswer !== false), '错题本.csv') }
-export function exportMistakesExcel(mistakes, opts = {}) { saveFile(mistakesToExcel(mistakes, opts.includeAnswer !== false), '错题本.xls', 'text/html;charset=utf-8') }
+export function exportMistakesExcel(mistakes, opts = {}) { saveFile(mistakesToExcel(mistakes, opts.includeAnswer !== false), `错题本_表格_${fmtNow()}.html`, 'text/html;charset=utf-8') }
 export function exportMistakesPDF(mistakes, opts = {}) { openPrint(buildPDFMistakesHTML(mistakes, opts.includeAnswer !== false)) }
-export { getDefaultTags, SUBJECT_TAGS }
+export { getDefaultTags, SUBJECT_TAGS, compressImages }
 
 // ─── Helpers ───
+function fmtNow() { const d=new Date(); return `${d.getFullYear()}${(d.getMonth()+1).toString().padStart(2,'0')}${d.getDate().toString().padStart(2,'0')}` }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
 function escapeCSV(s) { const str = String(s||'').replace(/"/g,'""'); return str.includes(',')||str.includes('\n')||str.includes('"') ? `"${str}"` : str }
 function masteryCN(l) { const m={unmastered:'未掌握',familiar:'较熟悉',mastered:'已掌握'}; return m[l]||l }
 function difficultyCN(d) { const m={easy:'简单',medium:'中等',hard:'困难'}; return m[d]||d }
+
+// ─── Image compression for export (reduces file size) ───
+function compressBase64Image(dataUrl, maxW = 400) {
+  if (typeof window === 'undefined' || !dataUrl.startsWith('data:image/')) return dataUrl
+  try {
+    const canvas = document.createElement('canvas')
+    const img = new Image()
+    return new Promise(resolve => {
+      img.onload = () => {
+        let w = img.naturalWidth, h = img.naturalHeight
+        if (w > maxW) { h = Math.round(h * maxW / w); w = maxW }
+        canvas.width = w; canvas.height = h
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+        resolve(canvas.toDataURL('image/jpeg', 0.6))
+      }
+      img.onerror = () => resolve(dataUrl)
+      img.src = dataUrl
+    })
+  } catch (e) { return dataUrl }
+}
+
+async function compressImages(items) {
+  for (const item of items) {
+    for (const key of ['question_images', 'answer_images']) {
+      if (!item[key] || !item[key].length) continue
+      const compressed = []
+      for (const src of item[key]) {
+        compressed.push(await compressBase64Image(typeof src === 'string' ? src : ''))
+      }
+      item[key] = compressed
+    }
+  }
+  return items
+}
