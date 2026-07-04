@@ -446,7 +446,14 @@ async function loadStats() {
   }
 }
 
-function goBack() { uni.navigateBack() }
+function goBack() {
+  const pages = getCurrentPages()
+  if (pages.length > 1) {
+    uni.navigateBack()
+  } else {
+    uni.switchTab({ url: '/pages/index/index' })
+  }
+}
 
 function openDateRange() {
   const today = new Date()
@@ -618,7 +625,7 @@ onShow(() => {
 .bar-wrapper { width: 22px; height: 100px; display: flex; align-items: flex-end; }
 .chart-bars-area.scrollable .bar-wrapper { width: 28px; }
 .bar-fill {
-  width: 100%; background: linear-gradient(180deg, $accent 0%, lighten($accent, 15%) 100%);
+  width: 100%; background: linear-gradient(180deg, var(--color-accent, #2f7d4f) 0%, var(--color-header-green-end, #4a9d6a) 100%);
   border-radius: 4px 4px 0 0; min-height: 2px; transition: height 0.3s ease;
 }
 .bar-label { font-size: 10px; color: $muted; margin-top: 4px; }

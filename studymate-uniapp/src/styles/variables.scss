@@ -1,11 +1,14 @@
-$bg: #f8fbf6;
-$bg2: #ffffff;
-$ink: #17332a;
-$muted: #65746d;
-$rule: #d9e7dd;
-$accent: #2f7d4f;
-$accent2: #d9903d;
-$soft: #edf7ee;
+// SCSS variables backed by CSS custom properties for dark mode support.
+// In light mode, var() falls back to the second value.
+// In dark mode, global.scss overrides the CSS variables.
+$bg: var(--color-bg, #f8fbf6);
+$bg2: var(--color-bg2, #ffffff);
+$ink: var(--color-ink, #17332a);
+$muted: var(--color-muted, #65746d);
+$rule: var(--color-rule, #d9e7dd);
+$accent: var(--color-accent, #2f7d4f);
+$accent2: var(--color-accent2, #d9903d);
+$soft: var(--color-soft, #edf7ee);
 $font: 'Outfit', 'Microsoft YaHei', sans-serif;
 $font-mono: 'JetBrainsMono', monospace;
 $max-width: 1080px;

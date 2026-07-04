@@ -102,7 +102,7 @@ function goToRegister() {
 <style lang="scss" scoped>
 .login-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, $accent 0%, lighten($accent, 5%) 100%);
+  background: linear-gradient(180deg, var(--color-header-green-start, #2f7d4f) 0%, var(--color-header-green-end, #4a9d6a) 100%);
   padding: 40px 24px;
   display: flex;
   flex-direction: column;

@@ -92,9 +92,9 @@ const form = reactive({
   subjects: [],
   subject_phases: {}
 })
-
 function goBack() {
-  uni.navigateBack()
+  const pages = getCurrentPages()
+  if (pages.length > 1) { uni.navigateBack() } else { uni.switchTab({ url: '/pages/profile/profile' }) }
 }
 
 function onDateChange(e) {

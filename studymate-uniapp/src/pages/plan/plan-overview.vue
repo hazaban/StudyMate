@@ -233,7 +233,8 @@ function switchToPlan(plan) {
 }
 
 function goBack() {
-  uni.navigateBack()
+  const pages = getCurrentPages()
+  if (pages.length > 1) { uni.navigateBack() } else { uni.switchTab({ url: '/pages/profile/profile' }) }
 }
 
 function editPlan() {
@@ -430,7 +431,7 @@ onMounted(async () => {
   border-top: 1px solid $rule;
   transition: background 0.15s;
   &:active { background: $soft; }
-  &.active { background: rgba($accent, 0.06); }
+  &.active { background: rgba(47,125,79,0.06); }
 }
 .switch-plan-info {
   flex: 1;

@@ -210,7 +210,7 @@ onShow(async () => {
 <style lang="scss" scoped>
 .header {
   padding: 60px 0 20px;
-  background: linear-gradient(135deg, $accent 0%, lighten($accent, 10%) 100%);
+  background: linear-gradient(135deg, var(--color-header-green-start, #2f7d4f) 0%, var(--color-header-green-end, #4a9d6a) 100%);
   border-radius: 0 0 30px 30px;
   margin-bottom: 20px;
   

@@ -981,7 +981,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 <style lang="scss" scoped>
 .header {
   padding: 60px 0 20px;
-  background: linear-gradient(135deg, #6b4ce6 0%, #8b6ef5 100%);
+  background: linear-gradient(135deg, var(--color-header-purple-start, #6b4ce6) 0%, var(--color-header-purple-end, #8b6ef5) 100%);
   border-radius: 0 0 32px 32px;
   margin-bottom: 20px;
   margin-left: -20px;

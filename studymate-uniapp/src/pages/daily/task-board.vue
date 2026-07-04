@@ -642,7 +642,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 <style lang="scss" scoped>
 .header {
   padding: 60px 0 20px;
-  background: linear-gradient(135deg, #2f7d4f 0%, #3d9a62 100%);
+  background: linear-gradient(135deg, var(--color-header-green-start, #2f7d4f) 0%, var(--color-header-green-end, #3d9a62) 100%);
   border-radius: 0 0 32px 32px;
   margin-bottom: 24px;
   margin-left: -20px;
@@ -834,8 +834,8 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .form-label-row .form-label { margin-bottom: 0; }
 .form-manage-link {
   font-size: 12px; color: $accent; padding: 2px 8px; border-radius: 8px;
-  background: rgba($accent, 0.06); font-weight: 500;
-  &:active { background: rgba($accent, 0.15); }
+  background: rgba(47,125,79,0.06); font-weight: 500;
+  &:active { background: rgba(47,125,79,0.15); }
 }
 .subject-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .subject-item { padding: 8px 16px; border-radius: 20px; font-size: 13px; color: #65746d; background: #f5f7f5; display: flex; align-items: center; gap: 4px; &.active { background: #2f7d4f; color: #fff; } &.subject-add { background: #fff; border: 1.5px dashed #d0d5d2; color: #2f7d4f; } }

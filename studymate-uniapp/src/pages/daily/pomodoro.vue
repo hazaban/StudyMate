@@ -48,12 +48,12 @@
       <view class="time-row">
         <text class="time-label">专注时长</text>
         <view class="time-controls">
-          <view class="time-btn" @click="adjustFocusTime(-5)">−</view>
+          <view class="time-btn" @click="adjustFocusTime(-1)">−</view>
           <view class="time-input-wrap">
             <input class="time-input" type="number" v-model="focusTimeInput" @blur="onFocusTimeBlur" />
           </view>
           <text class="time-unit">分钟</text>
-          <view class="time-btn" @click="adjustFocusTime(5)">+</view>
+          <view class="time-btn" @click="adjustFocusTime(1)">+</view>
         </view>
       </view>
       <view class="time-row">
@@ -67,6 +67,7 @@
           <view class="time-btn" @click="adjustBreakTime(1)">+</view>
         </view>
       </view>
+      <text class="time-hint">💡 专注时长以1分钟为刻度调整；休息时长设为0可跳过休息</text>
     </view>
 
     <!-- Stats -->
@@ -250,20 +251,20 @@ watch([focusTime, breakTime], () => {
 // --- Time adjust ---
 function adjustFocusTime(d) {
   const n = focusTime.value + d
-  if (n < 5 || n > 120) return
+  if (n < 1 || n > 120) return
   focusTime.value = n
   if (!isRunning.value && !isBreak.value) timeRemaining.value = n * 60
 }
 function adjustBreakTime(d) {
   const n = breakTime.value + d
-  if (n < 1 || n > 30) return
+  if (n < 0 || n > 30) return
   breakTime.value = n
   if (!isRunning.value && isBreak.value) timeRemaining.value = n * 60
 }
 function onFocusTimeBlur() {
   let v = parseInt(focusTimeInput.value)
   if (isNaN(v)) v = focusTime.value
-  v = Math.max(5, Math.min(120, v))
+  v = Math.max(1, Math.min(120, v))
   focusTime.value = v
   focusTimeInput.value = String(v)
   if (!isRunning.value && !isBreak.value) timeRemaining.value = v * 60
@@ -271,7 +272,7 @@ function onFocusTimeBlur() {
 function onBreakTimeBlur() {
   let v = parseInt(breakTimeInput.value)
   if (isNaN(v)) v = breakTime.value
-  v = Math.max(1, Math.min(30, v))
+  v = Math.max(0, Math.min(30, v))
   breakTime.value = v
   breakTimeInput.value = String(v)
   if (!isRunning.value && isBreak.value) timeRemaining.value = v * 60
@@ -554,7 +555,14 @@ function notifyCompletion(title, body, isFocusEnd) {
   // #endif
 }
 
-function goBack() { uni.navigateBack() }
+function goBack() {
+  const pages = getCurrentPages()
+  if (pages.length > 1) {
+    uni.navigateBack()
+  } else {
+    uni.switchTab({ url: '/pages/daily/task-board' })
+  }
+}
 
 onMounted(async () => {
   const s = uni.getStorageSync('studymate_pomodoro_settings')
@@ -689,7 +697,7 @@ onUnmounted(() => {
   &:active { transform: scale(0.95); }
   &.reset { background: $bg; color: $muted; border: 1px solid $rule; }
   &.start {
-    background: $accent; color: #fff; box-shadow: 0 4px 16px rgba($accent,.3);
+    background: $accent; color: #fff; box-shadow: 0 4px 16px rgba(47,125,79,0.3);
     &.pause { background: #ef5350; box-shadow: 0 4px 16px rgba(#ef5350,.3); }
   }
 }
@@ -709,6 +717,7 @@ onUnmounted(() => {
   &:active { transform: scale(0.9); background: $accent; color: #fff; }
 }
 .time-unit { font-size: 12px; color: $muted; }
+.time-hint { font-size: 11px; color: $muted; display: block; margin-top: 8px; }
 .time-input-wrap {
   width: 50px; padding: 4px 2px; border-radius: 10px; background: $bg; border: 1px solid $rule;
   &:focus-within { border-color: $accent; }
@@ -744,7 +753,7 @@ onUnmounted(() => {
 .record-time { display: block; font-size: 11px; color: $muted; margin-top: 2px; }
 .record-dur { font-size: 13px; font-weight: 700; color: $accent; flex-shrink: 0; }
 .record-actions { display: flex; gap: 2px; flex-shrink: 0; }
-.act-edit { font-size: 11px; color: $accent; padding: 3px 7px; background: rgba($accent,.08); border-radius: 6px; }
+.act-edit { font-size: 11px; color: $accent; padding: 3px 7px; background: rgba(47,125,79,0.08); border-radius: 6px; }
 .act-del { font-size: 11px; color: #e53935; padding: 3px 7px; background: rgba(#e53935,.06); border-radius: 6px; }
 
 /* ===== Manual Row ===== */
@@ -829,7 +838,7 @@ onUnmounted(() => {
 .btn-submit {
   flex: 2; padding: 13px; text-align: center; border-radius: 12px;
   font-size: 15px; color: #fff; background: $accent; font-weight: 700;
-  box-shadow: 0 3px 10px rgba($accent,.2);
+  box-shadow: 0 3px 10px rgba(47,125,79,0.2);
   &:active { transform: scale(0.97); }
 }
 

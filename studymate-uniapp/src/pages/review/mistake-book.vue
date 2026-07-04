@@ -738,9 +738,9 @@ function switchMode(mode) {
   viewMode.value = mode
   loadMistakes()
 }
-
 function goBack() {
-  uni.navigateBack()
+  const pages = getCurrentPages()
+  if (pages.length > 1) { uni.navigateBack() } else { uni.switchTab({ url: '/pages/review/index' }) }
 }
 
 function goToCards() {
@@ -1050,7 +1050,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 <style lang="scss" scoped>
 .header {
   padding: 60px 0 20px;
-  background: linear-gradient(135deg, #ef5350 0%, #f27573 100%);
+  background: linear-gradient(135deg, var(--color-header-red-start, #ef5350) 0%, var(--color-header-red-end, #f27573) 100%);
   border-radius: 0 0 32px 32px;
   margin-bottom: 20px;
   margin-left: -20px;

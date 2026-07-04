@@ -1025,8 +1025,8 @@ watch(() => planStore.currentPlan?.id, async (n, o) => { if (n && n !== o) { awa
 <style lang="scss" scoped>
 /* ===== Header ===== */
 .header { padding: 60px 0 20px; border-radius: 0 0 32px 32px; margin: 0 -20px 16px; padding-left: 20px; padding-right: 20px; }
-.header-purple { background: linear-gradient(135deg, #6b4ce6 0%, #8b6ef5 100%); }
-.header-red { background: linear-gradient(135deg, #ef5350 0%, #f27573 100%); }
+.header-purple { background: linear-gradient(135deg, var(--color-header-purple-start, #6b4ce6) 0%, var(--color-header-purple-end, #8b6ef5) 100%); }
+.header-red { background: linear-gradient(135deg, var(--color-header-red-start, #ef5350) 0%, var(--color-header-red-end, #f27573) 100%); }
 .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
 .header-left { .title { display: block; font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 4px; } .subtitle { font-size: 14px; color: rgba(255,255,255,0.8); } }
 .header-right { position: relative; }
