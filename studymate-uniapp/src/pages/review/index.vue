@@ -695,19 +695,60 @@ function getTargetArray(target) {
   if (target === 'edit_mistake_a') return editMistakeForm.value.answerImages
   return null
 }
+// ── Convert any image source to base64 data URL ──
+function imgSrcToBase64(src) {
+  return new Promise((resolve) => {
+    // Already base64
+    if (typeof src === 'string' && src.startsWith('data:')) return resolve(src)
+    // #ifdef H5
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        const maxW = 1200; const maxH = 1200
+        let w = img.naturalWidth; let h = img.naturalHeight
+        if (w > maxW || h > maxH) { const r = Math.min(maxW / w, maxH / h); w = Math.round(w * r); h = Math.round(h * r) }
+        canvas.width = w; canvas.height = h
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+        resolve(canvas.toDataURL('image/jpeg', 0.75))
+      } catch (e) { resolve(src) }
+    }
+    img.onerror = () => resolve(src)
+    img.src = src
+    // #endif
+    // #ifndef H5
+    // For mini-program, read file as base64
+    try {
+      const fs = uni.getFileSystemManager()
+      const data = fs.readFileSync(src, 'base64')
+      resolve(`data:image/jpeg;base64,${data}`)
+    } catch (e) { resolve(src) }
+    // #endif
+  })
+}
+
 function takePhoto(target) {
   uni.chooseImage({
     count: 1, sizeType: ['compressed'], sourceType: ['camera'],
-    success: (res) => { const arr = getTargetArray(target); if (arr) res.tempFilePaths.forEach(fp => arr.push(fp)) }
+    success: async (res) => {
+      const arr = getTargetArray(target)
+      if (!arr) return
+      for (const fp of res.tempFilePaths) { arr.push(await imgSrcToBase64(fp)) }
+    }
   })
 }
 function pickAlbum(target) {
   uni.chooseImage({
     count: 9, sizeType: ['compressed'], sourceType: ['album'],
-    success: (res) => { const arr = getTargetArray(target); if (arr) res.tempFilePaths.forEach(fp => arr.push(fp)) }
+    success: async (res) => {
+      const arr = getTargetArray(target)
+      if (!arr) return
+      for (const fp of res.tempFilePaths) { arr.push(await imgSrcToBase64(fp)) }
+    }
   })
 }
-function handleGlobalPaste(e) {
+async function handleGlobalPaste(e) {
   if (!activePasteTarget.value) return
   const items = e.clipboardData?.items
   if (!items) return
@@ -715,13 +756,21 @@ function handleGlobalPaste(e) {
   for (const item of items) {
     if (item.type.startsWith('image/')) {
       const file = item.getAsFile()
-      if (file) { const url = URL.createObjectURL(file); files.push(url) }
+      if (file) files.push(file)
     }
   }
   if (files.length === 0) return
   e.preventDefault()
   const arr = getTargetArray(activePasteTarget.value)
-  if (arr) { files.forEach(f => arr.push(f)); uni.showToast({ title: `已粘贴 ${files.length} 张图片`, icon: 'success' }) }
+  if (arr) {
+    for (const file of files) {
+      const blobUrl = URL.createObjectURL(file)
+      const b64 = await imgSrcToBase64(blobUrl)
+      URL.revokeObjectURL(blobUrl)
+      arr.push(b64)
+    }
+    uni.showToast({ title: `已粘贴 ${files.length} 张图片`, icon: 'success' })
+  }
 }
 function parseTags() { if (!tagInput.value.trim()) return; const t = tagInput.value.split(/[,，]/).map(s => s.trim()).filter(Boolean); cardForm.value.tags = [...new Set([...cardForm.value.tags, ...t])]; tagInput.value = '' }
 function parseEditTags() { if (!editTagInput.value.trim()) return; const t = editTagInput.value.split(/[,，]/).map(s => s.trim()).filter(Boolean); editForm.value.tags = [...new Set([...editForm.value.tags, ...t])]; editTagInput.value = '' }
@@ -788,6 +837,25 @@ function exitMistakeReview() { mistakeReviewMode.value = false; mistakeReviewCom
 async function loadMistakes() { if (!planStore.currentPlan) return; try { const p = mistakeViewMode.value === 'pending'; const r = await api.getMistakes(planStore.currentPlan.id, activeSubject.value || null, null, p); mistakes.value = r.mistakes || [] } catch (e) { console.error('loadMistakes:', e) } }
 
 // ── Export ──
+async function sanitizeImages(items) {
+  // Convert any non-base64 image URLs to base64 data URLs so they render in exports
+  for (const item of items) {
+    for (const key of ['question_images', 'answer_images']) {
+      if (!item[key] || !item[key].length) continue
+      const converted = []
+      for (const src of item[key]) {
+        if (typeof src === 'string' && !src.startsWith('data:')) {
+          converted.push(await imgSrcToBase64(src))
+        } else {
+          converted.push(src)
+        }
+      }
+      item[key] = converted
+    }
+  }
+  return items
+}
+
 async function doExport(format) {
   showExportModal.value = false
   if (!planStore.currentPlan) { uni.showToast({ title: '请先创建学习计划', icon: 'none' }); return }
@@ -804,6 +872,7 @@ async function doExport(format) {
       }
       if (activeMastery.value) d = d.filter(c => c.mastery_level === activeMastery.value)
       if (!d.length) { uni.showToast({ title: '没有可导出的数据', icon: 'none' }); return }
+      d = await sanitizeImages(d)
       if (format === 'csv') exportCardsCSV(d, opts); else if (format === 'excel') exportCardsExcel(d, opts); else if (format === 'pdf') exportCardsPDF(d, opts)
     } else {
       const r = await api.getMistakes(planStore.currentPlan.id, activeSubject.value || null, null, false)
@@ -817,6 +886,7 @@ async function doExport(format) {
       else if (activeErrorCount.value === '2') d = d.filter(m => m.error_count === 2)
       else if (activeErrorCount.value === '3+') d = d.filter(m => m.error_count >= 3)
       if (!d.length) { uni.showToast({ title: '没有可导出的数据', icon: 'none' }); return }
+      d = await sanitizeImages(d)
       if (format === 'csv') exportMistakesCSV(d, opts); else if (format === 'excel') exportMistakesExcel(d, opts); else if (format === 'pdf') exportMistakesPDF(d, opts)
     }
   } catch (e) { console.error('Export error:', e); uni.showToast({ title: e.message || '导出失败', icon: 'none' }) } finally { uni.hideLoading() }

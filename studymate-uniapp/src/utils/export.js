@@ -20,7 +20,9 @@ function formatDate(dateStr) { if (!dateStr) return ''; try { return new Date(da
 function imgCell(images) {
   if (!images || images.length === 0) return ''
   return images.map(img => {
-    if (img.startsWith('data:') || img.startsWith('http')) return `<img src="${esc(img)}" style="max-width:120px;max-height:80px;margin:2px;border:1px solid #ddd;border-radius:4px;" />`
+    if (img.startsWith('data:')) return `<img src="${esc(img)}" style="max-width:120px;max-height:80px;margin:2px;border:1px solid #ddd;border-radius:4px;" />`
+    if (img.startsWith('http') || img.startsWith('blob:')) return `<img src="${esc(img)}" style="max-width:120px;max-height:80px;margin:2px;border:1px solid #ddd;border-radius:4px;" />`
+    if (img.startsWith('/')) return `<img src="${esc(img)}" style="max-width:120px;max-height:80px;margin:2px;border:1px solid #ddd;border-radius:4px;" />`
     return `[图片:${img}]`
   }).join('')
 }
