@@ -212,7 +212,31 @@
         <view class="mode-btn" :class="{ active: mistakeViewMode === 'all' }" @click="switchMistakeMode('all')">查看全部</view>
       </view>
 
-      <view class="error-count-filter">
+      <!-- Mistake Subject Filter (一级) -->
+      <view class="filter-section">
+        <view class="filter-row">
+          <scroll-view scroll-x class="filter-scroll">
+            <view class="filter-list">
+              <view class="filter-item" :class="{ active: activeSubject === '' }" @click="onSubjectChange('')">全部科目</view>
+              <view class="filter-item" v-for="s in allSubjects" :key="s" :class="{ active: activeSubject === s }" @click="onSubjectChange(s)">{{ s }}</view>
+            </view>
+          </scroll-view>
+          <view class="filter-manage-btn" @click="showManageSubjects = true">⚙</view>
+        </view>
+      </view>
+
+      <!-- Mistake Tag Filter (二级，联动科目) -->
+      <view class="filter-section" v-if="availableMistakeTags.length > 0">
+        <scroll-view scroll-x class="filter-scroll">
+          <view class="filter-list">
+            <view class="filter-item tag-item" :class="{ active: activeTag === '' }" @click="activeTag = ''">全部标签</view>
+            <view class="filter-item tag-item" v-for="t in availableMistakeTags" :key="t" :class="{ active: activeTag === t }" @click="activeTag = t">{{ t }}</view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <!-- Mistake Error Count Filter -->
+      <view class="filter-section">
         <scroll-view scroll-x class="filter-scroll">
           <view class="filter-list">
             <view class="filter-item err-item" :class="{ active: activeErrorCount === '' }" @click="activeErrorCount = ''">全部次数</view>
@@ -434,6 +458,11 @@ const availableCardTags = computed(() => {
   const set = new Set(); cards.value.forEach(c => (c.tags || []).forEach(t => set.add(t))); return [...set]
 })
 
+const availableMistakeTags = computed(() => {
+  if (activeSubject.value) return getDefaultTags(activeSubject.value)
+  const set = new Set(); mistakes.value.forEach(m => (m.tags || []).forEach(t => set.add(t))); return [...set]
+})
+
 const filteredCards = computed(() => {
   let r = cards.value
   if (activeSubject.value) r = r.filter(c => c.subject === activeSubject.value)
@@ -624,7 +653,6 @@ watch(() => planStore.currentPlan?.id, async (n, o) => { if (n && n !== o) { awa
 .mode-toggle .mode-btn.active { color: #6b4ce6; }
 
 /* ===== Filters ===== */
-.error-count-filter { margin-bottom: 10px; }
 .filter-section { margin-bottom: 10px; }
 .filter-row { display: flex; align-items: center; gap: 6px; }
 .filter-scroll { white-space: nowrap; width: 100%; flex: 1; min-width: 0; }
