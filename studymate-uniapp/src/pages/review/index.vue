@@ -944,7 +944,18 @@ async function removeCard(card) {
   if (r.confirm) { try { await api.deleteCard(card.id); cards.value = cards.value.filter(c => c.id !== card.id); uni.showToast({ title: '已删除', icon: 'success' }) } catch (e) { uni.showToast({ title: '删除失败', icon: 'none' }) } }
 }
 function startCardReview() { reviewMode.value = true; reviewShowAnswer.value = false; reviewIndex.value = 0; reviewComplete.value = false }
-async function reviewCardResult(level) { const c = reviewCards.value[reviewIndex.value]; await api.reviewCard(c.id, level); if (reviewIndex.value < reviewCards.value.length - 1) { reviewIndex.value++; reviewShowAnswer.value = false } else { reviewMode.value = false; reviewComplete.value = true; await loadCards() } }
+async function reviewCardResult(level) {
+  const c = reviewCards.value[reviewIndex.value]
+  const updated = await api.reviewCard(c.id, level)
+  // Immediately sync next_review_date + mastery to the in-memory card
+  if (updated) {
+    c.mastery_level = updated.mastery_level
+    c.next_review_date = updated.next_review_date
+    c.review_count = updated.review_count
+  }
+  if (reviewIndex.value < reviewCards.value.length - 1) { reviewIndex.value++; reviewShowAnswer.value = false }
+  else { reviewMode.value = false; reviewComplete.value = true; await loadCards() }
+}
 function exitCardReview() { reviewMode.value = false; reviewComplete.value = false; reviewIndex.value = 0; viewMode.value = 'all'; activeSubject.value = ''; activeTags.value = []; activeMastery.value = ''; loadCards() }
 async function loadCards() { if (!planStore.currentPlan) return; try { const p = viewMode.value === 'pending'; const r = await api.getCards(planStore.currentPlan.id, activeSubject.value || null, null, p); cards.value = r.cards || [] } catch (e) { console.error('loadCards:', e) } }
 
@@ -977,7 +988,20 @@ async function saveEditMistake() {
 async function toggleMastered(m) { try { if (m.mastered === '1') await api.updateMistake(m.id, { mastered: '0' }); else await api.markMistakeMastered(m.id); await loadMistakes() } catch (e) { uni.showToast({ title: '操作失败', icon: 'none' }) } }
 async function removeMistake(m) { const r = await new Promise(r => uni.showModal({ title: '删除确认', content: '确定删除吗？', success: r })); if (r.confirm) { try { await api.deleteMistake(m.id); mistakes.value = mistakes.value.filter(x => x.id !== m.id); uni.showToast({ title: '已删除', icon: 'success' }) } catch (e) { uni.showToast({ title: '删除失败', icon: 'none' }) } } }
 function startMistakeReview() { mistakeReviewMode.value = true; mistakeShowAnswer.value = false; mistakeReviewIndex.value = 0; reviewCorrect.value = 0; reviewTotal.value = mistakeReviewCards.value.length; mistakeReviewComplete.value = false }
-async function reviewMistakeResult(correct) { if (correct) reviewCorrect.value++; const m = mistakeReviewCards.value[mistakeReviewIndex.value]; await api.reviewMistake(m.id, correct); if (mistakeReviewIndex.value < mistakeReviewCards.value.length - 1) { mistakeReviewIndex.value++; mistakeShowAnswer.value = false } else { mistakeReviewMode.value = false; mistakeReviewComplete.value = true; await loadMistakes() } }
+async function reviewMistakeResult(correct) {
+  if (correct) reviewCorrect.value++
+  const m = mistakeReviewCards.value[mistakeReviewIndex.value]
+  const updated = await api.reviewMistake(m.id, correct)
+  // Immediately sync next_review_date + mastered to the in-memory mistake
+  if (updated) {
+    m.correct_count = updated.correct_count
+    m.error_count = updated.error_count
+    m.mastered = updated.mastered
+    m.next_review_date = updated.next_review_date
+  }
+  if (mistakeReviewIndex.value < mistakeReviewCards.value.length - 1) { mistakeReviewIndex.value++; mistakeShowAnswer.value = false }
+  else { mistakeReviewMode.value = false; mistakeReviewComplete.value = true; await loadMistakes() }
+}
 function exitMistakeReview() { mistakeReviewMode.value = false; mistakeReviewComplete.value = false; mistakeReviewIndex.value = 0; mistakeViewMode.value = 'all'; activeSubject.value = ''; activeTags.value = []; activeErrorCount.value = ''; loadMistakes() }
 async function loadMistakes() { if (!planStore.currentPlan) return; try { const p = mistakeViewMode.value === 'pending'; const r = await api.getMistakes(planStore.currentPlan.id, activeSubject.value || null, null, p); mistakes.value = r.mistakes || [] } catch (e) { console.error('loadMistakes:', e) } }
 
