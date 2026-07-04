@@ -7,12 +7,7 @@ declare module '*.vue' {
 }
 
 interface ImportMetaEnv {
-  readonly VUE_APP_SUPABASE_URL: string
-  readonly VUE_APP_SUPABASE_KEY: string
-  readonly VUE_APP_DEEPSEEK_API_KEY: string
-  readonly VUE_APP_COS_BUCKET: string
-  readonly VUE_APP_COS_REGION: string
-  readonly VUE_APP_SIGNATURE_URL: string
+  readonly VITE_API_BASE_URL: string
 }
 
 interface ImportMeta {
