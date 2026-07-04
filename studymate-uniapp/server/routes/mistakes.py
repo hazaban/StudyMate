@@ -204,7 +204,12 @@ def review_mistake(mistake_id: UUID, correct: bool = Query(...), user_id: UUID =
         # Map correct_count to review interval using Ebbinghaus curve
         intervals = [1, 3, 7, 14, 30]  # Ebbinghaus: 1/3/7/14/30 days
         idx = min(mistake.correct_count - 1, len(intervals) - 1)
-        mistake.next_review_date = today + timedelta(days=intervals[idx])
+        next_date = today + timedelta(days=intervals[idx])
+        # Never allow next_review_date before creation date
+        created = mistake.created_at.date() if mistake.created_at else today
+        if next_date < created:
+            next_date = created + timedelta(days=1)
+        mistake.next_review_date = next_date
 
         # Mark mastered after 2+ consecutive correct answers
         if mistake.correct_count >= 2:
@@ -212,7 +217,12 @@ def review_mistake(mistake_id: UUID, correct: bool = Query(...), user_id: UUID =
     else:
         mistake.correct_count = 0
         mistake.error_count += 1
-        mistake.next_review_date = today + timedelta(days=1)  # Review again tomorrow
+        # Review again tomorrow, but never before creation date
+        next_date = today + timedelta(days=1)
+        created = mistake.created_at.date() if mistake.created_at else today
+        if next_date < created:
+            next_date = created + timedelta(days=1)
+        mistake.next_review_date = next_date
 
     db.commit()
     db.refresh(mistake)

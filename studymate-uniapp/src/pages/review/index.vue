@@ -180,12 +180,19 @@
                 <input class="input-field" v-model="customSubject" placeholder="输入自定义科目..." @confirm="addCardCustomSubject" />
               </view>
             </view>
-            <view class="form-group"><text class="form-label">自定义标签（逗号分隔）</text>
-              <view class="input-wrapper"><input class="input-field" v-model="tagInput" placeholder="输入标签，逗号分隔..." @blur="parseTags" /></view>
+            <view class="form-group"><text class="form-label">标签</text>
+              <!-- Existing tags chips from all records -->
+              <view class="tag-picker" v-if="cardAvailableTags.length > 0">
+                <view class="tag-picker-chip" v-for="t in cardAvailableTags" :key="t" :class="{ picked: cardForm.tags.includes(t) }" @click="toggleFormTag('card', t)">{{ t }}</view>
+              </view>
+              <!-- Custom tag input -->
+              <view class="input-wrapper" style="margin-top: 8px;">
+                <input class="input-field" v-model="tagInput" placeholder="输入新标签，逗号分隔..." @blur="parseTags" @confirm="parseTags" />
+              </view>
               <view class="tag-preview" v-if="cardForm.tags.length > 0"><view class="tag-chip" v-for="(t, idx) in cardForm.tags" :key="idx">{{ t }}<text class="tag-remove" @click="cardForm.tags.splice(idx, 1)">✕</text></view></view>
             </view>
-            <view class="form-group"><text class="form-label">问题</text><view class="input-wrapper"><textarea class="textarea-field" v-model="cardForm.question" placeholder="请输入复习问题..." maxlength="2000" /></view></view>
-            <view class="form-group"><text class="form-label">答案</text><view class="input-wrapper"><textarea class="textarea-field" v-model="cardForm.answer" placeholder="请输入答案..." maxlength="2000" /></view></view>
+            <view class="form-group"><text class="form-label">问题（选填）</text><view class="input-wrapper"><textarea class="textarea-field" v-model="cardForm.question" placeholder="可留空，仅上传图片" maxlength="2000" /></view></view>
+            <view class="form-group"><text class="form-label">答案（选填）</text><view class="input-wrapper"><textarea class="textarea-field" v-model="cardForm.answer" placeholder="可留空，仅上传图片" maxlength="2000" /></view></view>
             <view class="form-group"><text class="form-label">问题图片（可选）</text>
               <view class="image-upload-area">
                 <view class="image-item" v-for="(img, idx) in cardForm.questionImages" :key="'q'+idx">
@@ -227,12 +234,17 @@
             <view class="form-group"><text class="form-label">科目</text>
               <view class="subject-grid"><view class="subject-item" v-for="s in allSubjects" :key="s" :class="{ active: editForm.subject === s }" @click="editForm.subject = s">{{ s }}</view></view>
             </view>
-            <view class="form-group"><text class="form-label">标签（逗号分隔）</text>
-              <view class="input-wrapper"><input class="input-field" v-model="editTagInput" placeholder="输入标签，逗号分隔..." @blur="parseEditTags" /></view>
+            <view class="form-group"><text class="form-label">标签</text>
+              <view class="tag-picker" v-if="cardAvailableTags.length > 0">
+                <view class="tag-picker-chip" v-for="t in cardAvailableTags" :key="t" :class="{ picked: editForm.tags.includes(t) }" @click="toggleEditTag(t)">{{ t }}</view>
+              </view>
+              <view class="input-wrapper" style="margin-top: 8px;">
+                <input class="input-field" v-model="editTagInput" placeholder="输入新标签，逗号分隔..." @blur="parseEditTags" @confirm="parseEditTags" />
+              </view>
               <view class="tag-preview" v-if="editForm.tags.length > 0"><view class="tag-chip" v-for="(t, idx) in editForm.tags" :key="idx">{{ t }}<text class="tag-remove" @click="editForm.tags.splice(idx, 1)">✕</text></view></view>
             </view>
-            <view class="form-group"><text class="form-label">问题</text><view class="input-wrapper"><textarea class="textarea-field" v-model="editForm.question" placeholder="请输入复习问题..." maxlength="2000" /></view></view>
-            <view class="form-group"><text class="form-label">答案</text><view class="input-wrapper"><textarea class="textarea-field" v-model="editForm.answer" placeholder="请输入答案..." maxlength="2000" /></view></view>
+            <view class="form-group"><text class="form-label">问题（选填）</text><view class="input-wrapper"><textarea class="textarea-field" v-model="editForm.question" placeholder="可留空" maxlength="2000" /></view></view>
+            <view class="form-group"><text class="form-label">答案（选填）</text><view class="input-wrapper"><textarea class="textarea-field" v-model="editForm.answer" placeholder="可留空" maxlength="2000" /></view></view>
             <view class="form-group"><text class="form-label">问题图片（可选）</text>
               <view class="image-upload-area">
                 <view class="image-item" v-for="(img, idx) in editForm.questionImages" :key="'eq'+idx">
@@ -393,14 +405,25 @@
             <view class="form-group"><text class="form-label">科目</text>
               <view class="subject-grid">
                 <view class="subject-item" v-for="s in allSubjects" :key="s" :class="{ active: mistakeForm.subject === s }" @click="mistakeForm.subject = s">{{ s }}</view>
+                <view class="subject-item subject-add" @click="showMistakeSubjectInput = !showMistakeSubjectInput">
+                  <text v-if="!showMistakeSubjectInput">+ 自定义</text><text v-else>收起</text>
+                </view>
+              </view>
+              <view class="input-wrapper" v-if="showMistakeSubjectInput" style="margin-top: 10px;">
+                <input class="input-field" v-model="customMistakeSubject" placeholder="输入自定义科目..." @confirm="addMistakeCustomSubject" />
               </view>
             </view>
-            <view class="form-group"><text class="form-label">自定义标签（逗号分隔）</text>
-              <view class="input-wrapper"><input class="input-field" v-model="mistakeTagInput" placeholder="输入标签，逗号分隔..." @blur="parseMistakeTags" /></view>
+            <view class="form-group"><text class="form-label">标签</text>
+              <view class="tag-picker" v-if="mistakeAvailableTags.length > 0">
+                <view class="tag-picker-chip" v-for="t in mistakeAvailableTags" :key="t" :class="{ picked: mistakeForm.tags.includes(t) }" @click="toggleMistakeFormTag(t)">{{ t }}</view>
+              </view>
+              <view class="input-wrapper" style="margin-top: 8px;">
+                <input class="input-field" v-model="mistakeTagInput" placeholder="输入新标签，逗号分隔..." @blur="parseMistakeTags" @confirm="parseMistakeTags" />
+              </view>
               <view class="tag-preview" v-if="mistakeForm.tags.length > 0"><view class="tag-chip red-chip" v-for="(t, idx) in mistakeForm.tags" :key="idx">{{ t }}<text class="tag-remove red-remove" @click="mistakeForm.tags.splice(idx, 1)">✕</text></view></view>
             </view>
-            <view class="form-group"><text class="form-label">题目内容</text><view class="input-wrapper"><textarea class="textarea-field" v-model="mistakeForm.question" placeholder="请输入错题题目..." maxlength="2000" /></view></view>
-            <view class="form-group"><text class="form-label">正确答案</text><view class="input-wrapper"><textarea class="textarea-field" v-model="mistakeForm.answer" placeholder="请输入正确答案..." maxlength="2000" /></view></view>
+            <view class="form-group"><text class="form-label">题目内容（选填）</text><view class="input-wrapper"><textarea class="textarea-field" v-model="mistakeForm.question" placeholder="可留空，仅上传图片" maxlength="2000" /></view></view>
+            <view class="form-group"><text class="form-label">正确答案（选填）</text><view class="input-wrapper"><textarea class="textarea-field" v-model="mistakeForm.answer" placeholder="可留空，仅上传图片" maxlength="2000" /></view></view>
             <view class="form-group"><text class="form-label">错误分析（可选）</text><view class="input-wrapper"><textarea class="textarea-field" v-model="mistakeForm.analysis" placeholder="分析错误原因..." maxlength="2000" /></view></view>
             <view class="form-group"><text class="form-label">难度</text>
               <view class="difficulty-row">
@@ -448,13 +471,25 @@
           <view class="modal-header"><text class="modal-title">编辑错题</text><view class="modal-close" @click="showEditMistake = false">✕</view></view>
           <scroll-view scroll-y class="modal-body">
             <view class="form-group"><text class="form-label">科目</text>
-              <view class="subject-grid"><view class="subject-item" v-for="s in allSubjects" :key="s" :class="{ active: editMistakeForm.subject === s }" @click="editMistakeForm.subject = s">{{ s }}</view></view>
+              <view class="subject-grid"><view class="subject-item" v-for="s in allSubjects" :key="s" :class="{ active: editMistakeForm.subject === s }" @click="editMistakeForm.subject = s">{{ s }}</view>
+                <view class="subject-item subject-add" @click="showEditMistakeSubjectInput = !showEditMistakeSubjectInput">
+                  <text v-if="!showEditMistakeSubjectInput">+ 自定义</text><text v-else>收起</text>
+                </view>
+              </view>
+              <view class="input-wrapper" v-if="showEditMistakeSubjectInput" style="margin-top: 10px;">
+                <input class="input-field" v-model="customEditMistakeSubject" placeholder="输入自定义科目..." @confirm="addEditMistakeCustomSubject" />
+              </view>
             </view>
-            <view class="form-group"><text class="form-label">标签（逗号分隔）</text>
-              <view class="input-wrapper"><input class="input-field" v-model="editMistakeTagInput" placeholder="输入标签，逗号分隔..." @blur="parseEditMistakeTags" /></view>
+            <view class="form-group"><text class="form-label">标签</text>
+              <view class="tag-picker" v-if="mistakeAvailableTags.length > 0">
+                <view class="tag-picker-chip" v-for="t in mistakeAvailableTags" :key="t" :class="{ picked: editMistakeForm.tags.includes(t) }" @click="toggleEditMistakeTag(t)">{{ t }}</view>
+              </view>
+              <view class="input-wrapper" style="margin-top: 8px;">
+                <input class="input-field" v-model="editMistakeTagInput" placeholder="输入新标签，逗号分隔..." @blur="parseEditMistakeTags" @confirm="parseEditMistakeTags" />
+              </view>
             </view>
-            <view class="form-group"><text class="form-label">题目内容</text><view class="input-wrapper"><textarea class="textarea-field" v-model="editMistakeForm.question" placeholder="请输入错题题目..." maxlength="2000" /></view></view>
-            <view class="form-group"><text class="form-label">正确答案</text><view class="input-wrapper"><textarea class="textarea-field" v-model="editMistakeForm.answer" placeholder="请输入正确答案..." maxlength="2000" /></view></view>
+            <view class="form-group"><text class="form-label">题目内容（选填）</text><view class="input-wrapper"><textarea class="textarea-field" v-model="editMistakeForm.question" placeholder="可留空" maxlength="2000" /></view></view>
+            <view class="form-group"><text class="form-label">正确答案（选填）</text><view class="input-wrapper"><textarea class="textarea-field" v-model="editMistakeForm.answer" placeholder="可留空" maxlength="2000" /></view></view>
             <view class="form-group"><text class="form-label">错误分析（可选）</text><view class="input-wrapper"><textarea class="textarea-field" v-model="editMistakeForm.analysis" placeholder="分析错误原因..." maxlength="2000" /></view></view>
             <view class="form-group"><text class="form-label">难度</text>
               <view class="difficulty-row">
@@ -569,6 +604,11 @@ const showCardForm = ref(false)
 const showCardSubjectInput = ref(false)
 const customSubject = ref('')
 const tagInput = ref('')
+// Mistake form subject customization
+const showMistakeSubjectInput = ref(false)
+const customMistakeSubject = ref('')
+const showEditMistakeSubjectInput = ref(false)
+const customEditMistakeSubject = ref('')
 const reviewMode = ref(false)
 const reviewShowAnswer = ref(false)
 const reviewIndex = ref(0)
@@ -591,6 +631,53 @@ const availableMistakeTags = computed(() => {
   if (activeSubject.value) return getDefaultTags(activeSubject.value)
   const set = new Set(); mistakes.value.forEach(m => (m.tags || []).forEach(t => set.add(t))); return [...set]
 })
+
+// Tags available for picker in forms (from all cards/mistakes)
+const cardAvailableTags = computed(() => {
+  const set = new Set()
+  cards.value.forEach(c => (c.tags || []).forEach(t => set.add(t)))
+  return [...set].sort()
+})
+const mistakeAvailableTags = computed(() => {
+  const set = new Set()
+  mistakes.value.forEach(m => (m.tags || []).forEach(t => set.add(t)))
+  return [...set].sort()
+})
+
+// Tag toggle helpers for forms
+function toggleFormTag(formType, tag) {
+  const arr = cardForm.value.tags
+  const idx = arr.indexOf(tag)
+  if (idx >= 0) arr.splice(idx, 1); else arr.push(tag)
+}
+function toggleEditTag(tag) {
+  const arr = editForm.value.tags
+  const idx = arr.indexOf(tag)
+  if (idx >= 0) arr.splice(idx, 1); else arr.push(tag)
+}
+function toggleMistakeFormTag(tag) {
+  const arr = mistakeForm.value.tags
+  const idx = arr.indexOf(tag)
+  if (idx >= 0) arr.splice(idx, 1); else arr.push(tag)
+}
+function toggleEditMistakeTag(tag) {
+  const arr = editMistakeForm.value.tags
+  const idx = arr.indexOf(tag)
+  if (idx >= 0) arr.splice(idx, 1); else arr.push(tag)
+}
+
+function addMistakeCustomSubject() {
+  const n = customMistakeSubject.value.trim()
+  if (!n) return
+  if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n); persistSubjects() }
+  mistakeForm.value.subject = n; customMistakeSubject.value = ''; showMistakeSubjectInput.value = false
+}
+function addEditMistakeCustomSubject() {
+  const n = customEditMistakeSubject.value.trim()
+  if (!n) return
+  if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n); persistSubjects() }
+  editMistakeForm.value.subject = n; customEditMistakeSubject.value = ''; showEditMistakeSubjectInput.value = false
+}
 
 const filteredCards = computed(() => {
   let r = cards.value
@@ -789,8 +876,10 @@ function switchCardMode(m) { viewMode.value = m; loadCards() }
 function previewImage(c, u) { uni.previewImage({ current: c, urls: u }) }
 
 async function submitCard() {
-  if (!cardForm.value.question.trim()) { uni.showToast({ title: '请输入问题', icon: 'none' }); return }
-  if (!cardForm.value.answer.trim()) { uni.showToast({ title: '请输入答案', icon: 'none' }); return }
+  const hasQ = cardForm.value.question.trim() || cardForm.value.questionImages.length > 0
+  const hasA = cardForm.value.answer.trim() || cardForm.value.answerImages.length > 0
+  if (!hasQ) { uni.showToast({ title: '请至少填写问题或上传问题图片', icon: 'none' }); return }
+  if (!hasA) { uni.showToast({ title: '请至少填写答案或上传答案图片', icon: 'none' }); return }
   if (!planStore.currentPlan) { uni.showToast({ title: '请先创建学习计划', icon: 'none' }); return }
   uni.showLoading({ title: '保存中...' })
   try {
@@ -804,7 +893,9 @@ function openEditCard(card) {
   editingCardId.value = card.id; editForm.value = { subject: card.subject, question: card.question, answer: card.answer, tags: [...(card.tags || [])], questionImages: [...(card.question_images || [])], answerImages: [...(card.answer_images || [])] }; editTagInput.value = ''; showEditCard.value = true
 }
 async function saveEditCard() {
-  if (!editForm.value.question.trim() || !editForm.value.answer.trim()) { uni.showToast({ title: '请填写完整', icon: 'none' }); return }
+  const hasQ = editForm.value.question.trim() || editForm.value.questionImages.length > 0
+  const hasA = editForm.value.answer.trim() || editForm.value.answerImages.length > 0
+  if (!hasQ || !hasA) { uni.showToast({ title: '请至少保证问题和答案有一方非空', icon: 'none' }); return }
   uni.showLoading({ title: '保存中...' })
   try { await api.updateCard(editingCardId.value, { question: editForm.value.question, answer: editForm.value.answer, subject: editForm.value.subject, tags: editForm.value.tags, question_images: editForm.value.questionImages, answer_images: editForm.value.answerImages }); showEditCard.value = false; uni.showToast({ title: '编辑成功', icon: 'success' }); await loadCards() }
   catch (e) { uni.showToast({ title: e.message || '保存失败', icon: 'none' }) } finally { uni.hideLoading() }
@@ -824,7 +915,10 @@ function parseEditMistakeTags() { if (!editMistakeTagInput.value.trim()) return;
 function switchMistakeMode(m) { mistakeViewMode.value = m; loadMistakes() }
 
 async function submitMistake() {
-  if (!mistakeForm.value.question.trim() || !mistakeForm.value.answer.trim()) { uni.showToast({ title: '请填写完整', icon: 'none' }); return }
+  const hasQ = mistakeForm.value.question.trim() || mistakeForm.value.questionImages.length > 0
+  const hasA = mistakeForm.value.answer.trim() || mistakeForm.value.answerImages.length > 0
+  if (!hasQ) { uni.showToast({ title: '请至少填写题目或上传题目图片', icon: 'none' }); return }
+  if (!hasA) { uni.showToast({ title: '请至少填写答案或上传答案图片', icon: 'none' }); return }
   if (!planStore.currentPlan) { uni.showToast({ title: '请先创建学习计划', icon: 'none' }); return }
   uni.showLoading({ title: '保存中...' })
   try {
@@ -835,7 +929,9 @@ async function submitMistake() {
 }
 function openEditMistake(m) { editingMistakeId.value = m.id; editMistakeForm.value = { subject: m.subject, question: m.question, answer: m.answer, analysis: m.analysis || '', difficulty: m.difficulty, tags: [...(m.tags || [])], questionImages: [...(m.question_images || [])], answerImages: [...(m.answer_images || [])] }; editMistakeTagInput.value = ''; showEditMistake.value = true }
 async function saveEditMistake() {
-  if (!editMistakeForm.value.question.trim() || !editMistakeForm.value.answer.trim()) { uni.showToast({ title: '请填写完整', icon: 'none' }); return }
+  const hasQ = editMistakeForm.value.question.trim() || editMistakeForm.value.questionImages.length > 0
+  const hasA = editMistakeForm.value.answer.trim() || editMistakeForm.value.answerImages.length > 0
+  if (!hasQ || !hasA) { uni.showToast({ title: '请至少保证题目和答案有一方非空', icon: 'none' }); return }
   uni.showLoading({ title: '保存中...' })
   try { await api.updateMistake(editingMistakeId.value, { question: editMistakeForm.value.question, answer: editMistakeForm.value.answer, analysis: editMistakeForm.value.analysis, subject: editMistakeForm.value.subject, difficulty: editMistakeForm.value.difficulty, tags: editMistakeForm.value.tags, question_images: editMistakeForm.value.questionImages, answer_images: editMistakeForm.value.answerImages }); showEditMistake.value = false; uni.showToast({ title: '编辑成功', icon: 'success' }); await loadMistakes() }
   catch (e) { uni.showToast({ title: e.message || '保存失败', icon: 'none' }) } finally { uni.hideLoading() }
@@ -1056,6 +1152,15 @@ watch(() => planStore.currentPlan?.id, async (n, o) => { if (n && n !== o) { awa
   &.active { border-color: #6b4ce6; background: #f3f0ff; .action-text { color: #6b4ce6; } }
 }
 .paste-hint { font-size: 11px; color: #999; margin-top: 6px; display: block; }
+
+/* ===== Tag Picker Chips ===== */
+.tag-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 0; }
+.tag-picker-chip {
+  padding: 5px 12px; border-radius: 14px; font-size: 12px;
+  background: #f5f5f5; color: #65746d; border: 1.5px solid transparent;
+  transition: all 0.15s;
+  &.picked { background: #f3f0ff; color: #6b4ce6; border-color: #6b4ce6; }
+}
 
 /* ===== Image in list cards ===== */
 .card-images { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }

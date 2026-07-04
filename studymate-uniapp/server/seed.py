@@ -111,7 +111,7 @@ cards = [
     FlashCard(id=uuid4(), plan_id=plan_id, question="死锁的四个必要条件是什么？", answer="互斥条件、请求与保持条件、不可剥夺条件、循环等待条件。", subject="操作系统", mastery_level="familiar", next_review_date=today + timedelta(days=7), review_count=1, tags=["死锁", "重点"]),
     FlashCard(id=uuid4(), plan_id=plan_id, question="OSI七层模型从下到上分别是什么？", answer="物理层、数据链路层、网络层、传输层、会话层、表示层、应用层。", subject="计算机网络", mastery_level="unmastered", next_review_date=today + timedelta(days=1), review_count=0, tags=["OSI", "网络"],
         question_images=["https://picsum.photos/seed/osi-q/550/250"]),
-    FlashCard(id=uuid4(), plan_id=plan_id, question="流水线的三种冒险是什么？", answer="结构冒险、数据冒险、控制冒险。", subject="计算机组成原理", mastery_level="mastered", next_review_date=today - timedelta(days=10), review_count=3, tags=["流水线", "必考"]),
+    FlashCard(id=uuid4(), plan_id=plan_id, question="流水线的三种冒险是什么？", answer="结构冒险、数据冒险、控制冒险。", subject="计算机组成原理", mastery_level="mastered", next_review_date=today, review_count=3, tags=["流水线", "必考"]),
 ]
 for c in cards:
     db.add(c)
@@ -129,7 +129,7 @@ mistakes = [
     Mistake(id=uuid4(), plan_id=plan_id, question="Cache的写策略有哪些？各自的优缺点？", answer="写直达(Write-through)：同时写Cache和主存，简单但慢；写回(Write-back)：只写Cache，替换时写回主存，快但复杂。", analysis="容易混淆两种策略的适用场景。", subject="计算机组成原理", difficulty="medium", next_review_date=today + timedelta(days=1), correct_count=0, error_count=1, mastered="0", tags=["Cache"],
         question_images=["https://picsum.photos/seed/cache-write/500/250"]),
     # Mastered
-    Mistake(id=uuid4(), plan_id=plan_id, question="什么是虚拟内存？它的作用是什么？", answer="虚拟内存将磁盘空间作为内存扩展，使得程序可以运行比物理内存大的程序，同时实现内存保护和隔离。", analysis="最初理解有误，把虚拟内存和交换空间混为一谈。", subject="操作系统", difficulty="easy", next_review_date=today - timedelta(days=5), correct_count=3, error_count=1, mastered="1", tags=["内存"]),
+    Mistake(id=uuid4(), plan_id=plan_id, question="什么是虚拟内存？它的作用是什么？", answer="虚拟内存将磁盘空间作为内存扩展，使得程序可以运行比物理内存大的程序，同时实现内存保护和隔离。", analysis="最初理解有误，把虚拟内存和交换空间混为一谈。", subject="操作系统", difficulty="easy", next_review_date=today + timedelta(days=14), correct_count=3, error_count=1, mastered="1", tags=["内存"]),
 ]
 for m in mistakes:
     db.add(m)

@@ -30,11 +30,29 @@ function imgCSV(images) { return (images || []).join(' | ') }
 
 // ─── Cards CSV ───
 function cardsToCSV(cards, includeAnswer) {
-  const headers = includeAnswer ? ['科目', '标签', '问题', '问题图片', '答案', '答案图片', '掌握程度', '复习次数', '下次复习日期', '创建日期'] : ['科目', '标签', '问题', '问题图片', '掌握程度', '复习次数', '下次复习日期', '创建日期']
+  // Only include text columns that have ANY content across all cards
+  const hasTextQ = cards.some(c => (c.question || '').trim())
+  const hasImgQ = cards.some(c => (c.question_images || []).length > 0)
+  const hasTextA = cards.some(c => (c.answer || '').trim())
+  const hasImgA = cards.some(c => (c.answer_images || []).length > 0)
+  const headers = []
+  headers.push('科目', '标签')
+  if (hasTextQ) headers.push('问题')
+  if (hasImgQ) headers.push('问题图片')
+  if (includeAnswer) {
+    if (hasTextA) headers.push('答案')
+    if (hasImgA) headers.push('答案图片')
+  }
+  headers.push('掌握程度', '复习次数', '下次复习日期', '创建日期')
   const rows = [headers.join(',')]
   for (const c of cards) {
-    const row = [escapeCSV(c.subject), escapeCSV((c.tags||[]).join('；')), escapeCSV(c.question), imgCSV(c.question_images)]
-    if (includeAnswer) { row.push(escapeCSV(c.answer)); row.push(imgCSV(c.answer_images)) }
+    const row = [escapeCSV(c.subject), escapeCSV((c.tags||[]).join('；'))]
+    if (hasTextQ) row.push(escapeCSV(c.question))
+    if (hasImgQ) row.push(imgCSV(c.question_images || []))
+    if (includeAnswer) {
+      if (hasTextA) row.push(escapeCSV(c.answer))
+      if (hasImgA) row.push(imgCSV(c.answer_images))
+    }
     row.push(masteryCN(c.mastery_level), c.review_count, formatDate(c.next_review_date), formatDate(c.created_at))
     rows.push(row.join(','))
   }
@@ -43,11 +61,30 @@ function cardsToCSV(cards, includeAnswer) {
 
 // ─── Mistakes CSV ───
 function mistakesToCSV(mistakes, includeAnswer) {
-  const headers = includeAnswer ? ['科目', '标签', '题目', '题目图片', '正确答案', '答案图片', '错误分析', '难度', '错误次数', '正确次数', '已掌握', '创建日期'] : ['科目', '标签', '题目', '题目图片', '难度', '错误次数', '正确次数', '已掌握', '创建日期']
+  const hasTextQ = mistakes.some(m => (m.question || '').trim())
+  const hasImgQ = mistakes.some(m => (m.question_images || []).length > 0)
+  const hasTextA = mistakes.some(m => (m.answer || '').trim())
+  const hasImgA = mistakes.some(m => (m.answer_images || []).length > 0)
+  const hasAnalysis = mistakes.some(m => (m.analysis || '').trim())
+  const headers = ['科目', '标签']
+  if (hasTextQ) headers.push('题目')
+  if (hasImgQ) headers.push('题目图片')
+  if (includeAnswer) {
+    if (hasTextA) headers.push('正确答案')
+    if (hasImgA) headers.push('答案图片')
+    if (hasAnalysis) headers.push('错误分析')
+  }
+  headers.push('难度', '错误次数', '正确次数', '已掌握', '创建日期')
   const rows = [headers.join(',')]
   for (const m of mistakes) {
-    const row = [escapeCSV(m.subject), escapeCSV((m.tags||[]).join('；')), escapeCSV(m.question), imgCSV(m.question_images)]
-    if (includeAnswer) { row.push(escapeCSV(m.answer)); row.push(imgCSV(m.answer_images)); row.push(escapeCSV(m.analysis||'')) }
+    const row = [escapeCSV(m.subject), escapeCSV((m.tags||[]).join('；'))]
+    if (hasTextQ) row.push(escapeCSV(m.question))
+    if (hasImgQ) row.push(imgCSV(m.question_images || []))
+    if (includeAnswer) {
+      if (hasTextA) row.push(escapeCSV(m.answer))
+      if (hasImgA) row.push(imgCSV(m.answer_images || []))
+      if (hasAnalysis) row.push(escapeCSV(m.analysis||''))
+    }
     row.push(difficultyCN(m.difficulty), m.error_count, m.correct_count, m.mastered==='1'?'是':'否', formatDate(m.created_at))
     rows.push(row.join(','))
   }
@@ -56,17 +93,25 @@ function mistakesToCSV(mistakes, includeAnswer) {
 
 // ─── Cards Excel ───
 function cardsToExcel(cards, includeAnswer) {
-  const headers = includeAnswer ? ['科目', '标签', '问题', '问题图片', '答案', '答案图片', '掌握程度', '复习次数', '下次复习', '创建日期'] : ['科目', '标签', '问题', '问题图片', '掌握程度', '复习次数', '下次复习', '创建日期']
+  const hasTextQ = cards.some(c => (c.question || '').trim())
+  const hasImgQ = cards.some(c => (c.question_images || []).length > 0)
+  const hasTextA = cards.some(c => (c.answer || '').trim())
+  const hasImgA = cards.some(c => (c.answer_images || []).length > 0)
+  const headers = ['科目', '标签']
+  if (hasTextQ) headers.push('问题')
+  if (hasImgQ) headers.push('问题图片')
+  if (includeAnswer) { if (hasTextA) headers.push('答案'); if (hasImgA) headers.push('答案图片') }
+  headers.push('掌握程度', '复习次数', '下次复习', '创建日期')
   let html = `<table border="1" style="border-collapse:collapse;width:100%"><tr>${headers.map(h => `<th style="background:#6b4ce6;color:#fff;padding:8px">${esc(h)}</th>`).join('')}</tr>`
   for (const c of cards) {
     html += `<tr>`
     html += `<td style="padding:6px">${esc(c.subject)}</td>`
     html += `<td style="padding:6px">${esc((c.tags||[]).join('；'))}</td>`
-    html += `<td style="padding:6px">${esc(c.question)}</td>`
-    html += `<td style="padding:6px">${imgCell(c.question_images)}</td>`
+    if (hasTextQ) html += `<td style="padding:6px">${esc(c.question)}</td>`
+    if (hasImgQ) html += `<td style="padding:6px">${imgCell(c.question_images)}</td>`
     if (includeAnswer) {
-      html += `<td style="padding:6px">${esc(c.answer)}</td>`
-      html += `<td style="padding:6px">${imgCell(c.answer_images)}</td>`
+      if (hasTextA) html += `<td style="padding:6px">${esc(c.answer)}</td>`
+      if (hasImgA) html += `<td style="padding:6px">${imgCell(c.answer_images)}</td>`
     }
     html += `<td style="padding:6px">${esc(masteryCN(c.mastery_level))}</td>`
     html += `<td style="padding:6px;text-align:center">${c.review_count}</td>`
@@ -80,18 +125,31 @@ function cardsToExcel(cards, includeAnswer) {
 
 // ─── Mistakes Excel ───
 function mistakesToExcel(mistakes, includeAnswer) {
-  const headers = includeAnswer ? ['科目', '标签', '题目', '题目图片', '正确答案', '答案图片', '错误分析', '难度', '错误次数', '正确次数', '已掌握', '创建日期'] : ['科目', '标签', '题目', '题目图片', '难度', '错误次数', '正确次数', '已掌握', '创建日期']
+  const hasTextQ = mistakes.some(m => (m.question || '').trim())
+  const hasImgQ = mistakes.some(m => (m.question_images || []).length > 0)
+  const hasTextA = mistakes.some(m => (m.answer || '').trim())
+  const hasImgA = mistakes.some(m => (m.answer_images || []).length > 0)
+  const hasAnalysis = mistakes.some(m => (m.analysis || '').trim())
+  const headers = ['科目', '标签']
+  if (hasTextQ) headers.push('题目')
+  if (hasImgQ) headers.push('题目图片')
+  if (includeAnswer) {
+    if (hasTextA) headers.push('正确答案')
+    if (hasImgA) headers.push('答案图片')
+    if (hasAnalysis) headers.push('错误分析')
+  }
+  headers.push('难度', '错误次数', '正确次数', '已掌握', '创建日期')
   let html = `<table border="1" style="border-collapse:collapse;width:100%"><tr>${headers.map(h => `<th style="background:#ef5350;color:#fff;padding:8px">${esc(h)}</th>`).join('')}</tr>`
   for (const m of mistakes) {
     html += `<tr>`
     html += `<td style="padding:6px">${esc(m.subject)}</td>`
     html += `<td style="padding:6px">${esc((m.tags||[]).join('；'))}</td>`
-    html += `<td style="padding:6px">${esc(m.question)}</td>`
-    html += `<td style="padding:6px">${imgCell(m.question_images)}</td>`
+    if (hasTextQ) html += `<td style="padding:6px">${esc(m.question)}</td>`
+    if (hasImgQ) html += `<td style="padding:6px">${imgCell(m.question_images)}</td>`
     if (includeAnswer) {
-      html += `<td style="padding:6px">${esc(m.answer)}</td>`
-      html += `<td style="padding:6px">${imgCell(m.answer_images)}</td>`
-      html += `<td style="padding:6px">${esc(m.analysis||'')}</td>`
+      if (hasTextA) html += `<td style="padding:6px">${esc(m.answer)}</td>`
+      if (hasImgA) html += `<td style="padding:6px">${imgCell(m.answer_images)}</td>`
+      if (hasAnalysis) html += `<td style="padding:6px">${esc(m.analysis||'')}</td>`
     }
     html += `<td style="padding:6px">${esc(difficultyCN(m.difficulty))}</td>`
     html += `<td style="padding:6px;text-align:center">${m.error_count}</td>`
@@ -106,22 +164,29 @@ function mistakesToExcel(mistakes, includeAnswer) {
 
 // ─── PDF HTML ───
 function cardsToPDFHTML(cards, includeAnswer) {
-  const headers = includeAnswer ? ['科目', '标签', '问题', '问题图片', '答案', '答案图片', '掌握程度', '复习次数', '下次复习', '创建日期'] : ['科目', '标签', '问题', '问题图片', '掌握程度', '复习次数', '下次复习', '创建日期']
+  const hasTextQ = cards.some(c => (c.question||'').trim()); const hasImgQ = cards.some(c => (c.question_images||[]).length > 0)
+  const hasTextA = cards.some(c => (c.answer||'').trim()); const hasImgA = cards.some(c => (c.answer_images||[]).length > 0)
+  const headers = ['科目', '标签']; if (hasTextQ) headers.push('问题'); if (hasImgQ) headers.push('问题图片')
+  if (includeAnswer) { if (hasTextA) headers.push('答案'); if (hasImgA) headers.push('答案图片') }
+  headers.push('掌握程度', '复习次数', '下次复习', '创建日期')
   const rows = cards.map(c => {
-    const r = [c.subject, (c.tags||[]).join('；'), c.question, imgCell(c.question_images)]
-    if (includeAnswer) { r.push(c.answer); r.push(imgCell(c.answer_images)) }
-    r.push(masteryCN(c.mastery_level), c.review_count, formatDate(c.next_review_date), formatDate(c.created_at))
-    return r
+    const r = [c.subject, (c.tags||[]).join('；')]; if (hasTextQ) r.push(c.question); if (hasImgQ) r.push(imgCell(c.question_images))
+    if (includeAnswer) { if (hasTextA) r.push(c.answer); if (hasImgA) r.push(imgCell(c.answer_images)) }
+    r.push(masteryCN(c.mastery_level), c.review_count, formatDate(c.next_review_date), formatDate(c.created_at)); return r
   })
   return buildPDFHTML('知识卡片导出', headers, rows)
 }
 function mistakesToPDFHTML(mistakes, includeAnswer) {
-  const headers = includeAnswer ? ['科目', '标签', '题目', '题目图片', '正确答案', '答案图片', '错误分析', '难度', '错误次数', '正确次数', '已掌握', '创建日期'] : ['科目', '标签', '题目', '题目图片', '难度', '错误次数', '正确次数', '已掌握', '创建日期']
+  const hasTextQ = mistakes.some(m => (m.question||'').trim()); const hasImgQ = mistakes.some(m => (m.question_images||[]).length > 0)
+  const hasTextA = mistakes.some(m => (m.answer||'').trim()); const hasImgA = mistakes.some(m => (m.answer_images||[]).length > 0)
+  const hasAnalysis = mistakes.some(m => (m.analysis||'').trim())
+  const headers = ['科目', '标签']; if (hasTextQ) headers.push('题目'); if (hasImgQ) headers.push('题目图片')
+  if (includeAnswer) { if (hasTextA) headers.push('正确答案'); if (hasImgA) headers.push('答案图片'); if (hasAnalysis) headers.push('错误分析') }
+  headers.push('难度', '错误次数', '正确次数', '已掌握', '创建日期')
   const rows = mistakes.map(m => {
-    const r = [m.subject, (m.tags||[]).join('；'), m.question, imgCell(m.question_images)]
-    if (includeAnswer) { r.push(m.answer); r.push(imgCell(m.answer_images)); r.push(m.analysis||'') }
-    r.push(difficultyCN(m.difficulty), m.error_count, m.correct_count, m.mastered==='1'?'是':'否', formatDate(m.created_at))
-    return r
+    const r = [m.subject, (m.tags||[]).join('；')]; if (hasTextQ) r.push(m.question); if (hasImgQ) r.push(imgCell(m.question_images))
+    if (includeAnswer) { if (hasTextA) r.push(m.answer); if (hasImgA) r.push(imgCell(m.answer_images)); if (hasAnalysis) r.push(m.analysis||'') }
+    r.push(difficultyCN(m.difficulty), m.error_count, m.correct_count, m.mastered==='1'?'是':'否', formatDate(m.created_at)); return r
   })
   return buildPDFHTML('错题本导出', headers, rows)
 }
