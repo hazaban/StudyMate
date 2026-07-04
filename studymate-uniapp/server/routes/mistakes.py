@@ -189,7 +189,7 @@ def delete_mistake(mistake_id: UUID, user_id: UUID = Depends(_get_user_id), db: 
 
 @router.post("/{mistake_id}/review", response_model=MistakeResponse)
 def review_mistake(mistake_id: UUID, correct: bool = Query(...), user_id: UUID = Depends(_get_user_id), db: Session = Depends(get_db)):
-    """复习错题：做对+1分，连续做对2次标记已掌握；做错清零。按艾宾浩斯曲线推算下次复习日期。"""
+    """复习错题：做对+1分，连续做对3次标记已掌握；做错清零。按艾宾浩斯曲线推算下次复习日期。"""
     mistake = db.query(Mistake).join(StudyPlan).filter(
         Mistake.id == mistake_id,
         StudyPlan.user_id == user_id

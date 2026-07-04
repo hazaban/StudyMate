@@ -409,7 +409,7 @@
           <view class="mistake-analysis-section" v-if="mistake.analysis"><text class="section-label">错误分析</text><text class="mistake-analysis">{{ mistake.analysis }}</text></view>
           <view class="mistake-footer">
             <text class="mistake-date">{{ formatDate(mistake.created_at) }}</text>
-            <text class="correct-progress" v-if="!mistake.mastered || mistake.mastered === '0'">正确 {{ mistake.correct_count }}/2 次</text>
+            <text class="correct-progress" v-if="!mistake.mastered || mistake.mastered === '0'">正确 {{ mistake.correct_count }}/3 次</text>
             <text class="error-count">做错 {{ mistake.error_count }} 次</text>
             <text class="mistake-next" v-if="mistake.next_review_date">下次复习 {{ formatDate(mistake.next_review_date) }}</text>
             <view class="mistake-actions">
