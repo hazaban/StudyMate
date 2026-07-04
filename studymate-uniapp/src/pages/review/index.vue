@@ -70,8 +70,8 @@
       <view class="filter-section" v-if="availableCardTags.length > 0">
         <scroll-view scroll-x class="filter-scroll">
           <view class="filter-list">
-            <view class="filter-item tag-item" :class="{ active: activeTag === '' }" @click="activeTag = ''">全部标签</view>
-            <view class="filter-item tag-item" v-for="t in availableCardTags" :key="t" :class="{ active: activeTag === t }" @click="activeTag = t">{{ t }}</view>
+            <view class="filter-item tag-item" :class="{ active: activeTags.length === 0 }" @click="activeTags = []">全部标签</view>
+            <view class="filter-item tag-item" v-for="t in availableCardTags" :key="t" :class="{ active: activeTags.includes(t) }" @click="toggleTag(t)">{{ t }}</view>
           </view>
         </scroll-view>
       </view>
@@ -143,7 +143,11 @@
               <view class="mastery-badge" :class="getMasteryClass(card.mastery_level)">{{ getMasteryLabel(card.mastery_level) }}</view>
             </view>
           </view>
-          <view class="card-item-question"><text class="section-label">问题</text><text class="card-question-text">{{ card.question }}</text></view>
+          <view class="card-item-question"><text class="section-label">问题</text><text class="card-question-text">{{ card.question }}</text>
+            <view class="card-images" v-if="card.question_images && card.question_images.length > 0">
+              <image v-for="(img, i) in card.question_images" :key="i" :src="img" mode="aspectFill" class="card-img-item" @click="previewImage(img, card.question_images)" />
+            </view>
+          </view>
           <view class="card-item-footer">
             <text class="review-count">第{{ card.review_count }}次复习</text>
             <text class="review-date" v-if="card.next_review_date && card.next_review_date > today">下次 {{ formatDate(card.next_review_date) }}</text>
@@ -177,6 +181,24 @@
             </view>
             <view class="form-group"><text class="form-label">问题</text><view class="input-wrapper"><textarea class="textarea-field" v-model="cardForm.question" placeholder="请输入复习问题..." maxlength="2000" /></view></view>
             <view class="form-group"><text class="form-label">答案</text><view class="input-wrapper"><textarea class="textarea-field" v-model="cardForm.answer" placeholder="请输入答案..." maxlength="2000" /></view></view>
+            <view class="form-group"><text class="form-label">问题图片</text>
+              <view class="img-preview-list" v-if="cardForm.questionImages.length > 0">
+                <view class="img-preview-item" v-for="(img, i) in cardForm.questionImages" :key="'q'+i">
+                  <image :src="img" mode="aspectFill" class="img-preview-thumb" @click="previewImage(img, cardForm.questionImages)" />
+                  <view class="img-preview-del" @click="cardForm.questionImages.splice(i, 1)">✕</view>
+                </view>
+              </view>
+              <view class="img-add-btn" @click="pickImages(cardForm.questionImages)"><text>+ 上传</text></view>
+            </view>
+            <view class="form-group"><text class="form-label">答案图片</text>
+              <view class="img-preview-list" v-if="cardForm.answerImages.length > 0">
+                <view class="img-preview-item" v-for="(img, i) in cardForm.answerImages" :key="'a'+i">
+                  <image :src="img" mode="aspectFill" class="img-preview-thumb" @click="previewImage(img, cardForm.answerImages)" />
+                  <view class="img-preview-del" @click="cardForm.answerImages.splice(i, 1)">✕</view>
+                </view>
+              </view>
+              <view class="img-add-btn" @click="pickImages(cardForm.answerImages)"><text>+ 上传</text></view>
+            </view>
           </scroll-view>
           <view class="modal-footer"><view class="cancel-btn" @click="showCardForm = false">取消</view><view class="submit-btn" @click="submitCard">提交</view></view>
         </view>
@@ -196,6 +218,24 @@
             </view>
             <view class="form-group"><text class="form-label">问题</text><view class="input-wrapper"><textarea class="textarea-field" v-model="editForm.question" placeholder="请输入复习问题..." maxlength="2000" /></view></view>
             <view class="form-group"><text class="form-label">答案</text><view class="input-wrapper"><textarea class="textarea-field" v-model="editForm.answer" placeholder="请输入答案..." maxlength="2000" /></view></view>
+            <view class="form-group"><text class="form-label">问题图片</text>
+              <view class="img-preview-list" v-if="editForm.questionImages.length > 0">
+                <view class="img-preview-item" v-for="(img, i) in editForm.questionImages" :key="'eq'+i">
+                  <image :src="img" mode="aspectFill" class="img-preview-thumb" @click="previewImage(img, editForm.questionImages)" />
+                  <view class="img-preview-del" @click="editForm.questionImages.splice(i, 1)">✕</view>
+                </view>
+              </view>
+              <view class="img-add-btn" @click="pickImages(editForm.questionImages)"><text>+ 上传</text></view>
+            </view>
+            <view class="form-group"><text class="form-label">答案图片</text>
+              <view class="img-preview-list" v-if="editForm.answerImages.length > 0">
+                <view class="img-preview-item" v-for="(img, i) in editForm.answerImages" :key="'ea'+i">
+                  <image :src="img" mode="aspectFill" class="img-preview-thumb" @click="previewImage(img, editForm.answerImages)" />
+                  <view class="img-preview-del" @click="editForm.answerImages.splice(i, 1)">✕</view>
+                </view>
+              </view>
+              <view class="img-add-btn" @click="pickImages(editForm.answerImages)"><text>+ 上传</text></view>
+            </view>
           </scroll-view>
           <view class="modal-footer"><view class="cancel-btn" @click="showEditCard = false">取消</view><view class="submit-btn" @click="saveEditCard">保存</view></view>
         </view>
@@ -229,8 +269,8 @@
       <view class="filter-section" v-if="availableMistakeTags.length > 0">
         <scroll-view scroll-x class="filter-scroll">
           <view class="filter-list">
-            <view class="filter-item tag-item" :class="{ active: activeTag === '' }" @click="activeTag = ''">全部标签</view>
-            <view class="filter-item tag-item" v-for="t in availableMistakeTags" :key="t" :class="{ active: activeTag === t }" @click="activeTag = t">{{ t }}</view>
+            <view class="filter-item tag-item" :class="{ active: activeTags.length === 0 }" @click="activeTags = []">全部标签</view>
+            <view class="filter-item tag-item" v-for="t in availableMistakeTags" :key="t" :class="{ active: activeTags.includes(t) }" @click="toggleTag(t)">{{ t }}</view>
           </view>
         </scroll-view>
       </view>
@@ -297,7 +337,11 @@
               <view class="mistake-tag mastered-tag" v-if="mistake.mastered === '1'">已掌握</view>
             </view>
           </view>
-          <view class="mistake-question-section"><text class="section-label">题目</text><text class="mistake-question">{{ mistake.question }}</text></view>
+          <view class="mistake-question-section"><text class="section-label">题目</text><text class="mistake-question">{{ mistake.question }}</text>
+            <view class="card-images" v-if="mistake.question_images && mistake.question_images.length > 0">
+              <image v-for="(img, i) in mistake.question_images" :key="i" :src="img" mode="aspectFill" class="card-img-item" @click="previewImage(img, mistake.question_images)" />
+            </view>
+          </view>
           <view class="mistake-answer-section"><text class="section-label">正确答案</text><text class="mistake-answer">{{ mistake.answer }}</text></view>
           <view class="mistake-analysis-section" v-if="mistake.analysis"><text class="section-label">错误分析</text><text class="mistake-analysis">{{ mistake.analysis }}</text></view>
           <view class="mistake-footer">
@@ -337,6 +381,24 @@
                 <view class="diff-item" :class="{ active: mistakeForm.difficulty === 'hard' }" @click="mistakeForm.difficulty = 'hard'">困难</view>
               </view>
             </view>
+            <view class="form-group"><text class="form-label">题目图片</text>
+              <view class="img-preview-list red" v-if="mistakeForm.questionImages.length > 0">
+                <view class="img-preview-item" v-for="(img, i) in mistakeForm.questionImages" :key="'mq'+i">
+                  <image :src="img" mode="aspectFill" class="img-preview-thumb" @click="previewImage(img, mistakeForm.questionImages)" />
+                  <view class="img-preview-del" @click="mistakeForm.questionImages.splice(i, 1)">✕</view>
+                </view>
+              </view>
+              <view class="img-add-btn red-add" @click="pickImages(mistakeForm.questionImages)"><text>+ 上传</text></view>
+            </view>
+            <view class="form-group"><text class="form-label">答案图片</text>
+              <view class="img-preview-list" v-if="mistakeForm.answerImages.length > 0">
+                <view class="img-preview-item" v-for="(img, i) in mistakeForm.answerImages" :key="'ma'+i">
+                  <image :src="img" mode="aspectFill" class="img-preview-thumb" @click="previewImage(img, mistakeForm.answerImages)" />
+                  <view class="img-preview-del" @click="mistakeForm.answerImages.splice(i, 1)">✕</view>
+                </view>
+              </view>
+              <view class="img-add-btn" @click="pickImages(mistakeForm.answerImages)"><text>+ 上传</text></view>
+            </view>
           </scroll-view>
           <view class="modal-footer"><view class="cancel-btn" @click="showMistakeForm = false">取消</view><view class="submit-btn red-btn" @click="submitMistake">提交</view></view>
         </view>
@@ -362,6 +424,24 @@
                 <view class="diff-item" :class="{ active: editMistakeForm.difficulty === 'medium' }" @click="editMistakeForm.difficulty = 'medium'">中等</view>
                 <view class="diff-item" :class="{ active: editMistakeForm.difficulty === 'hard' }" @click="editMistakeForm.difficulty = 'hard'">困难</view>
               </view>
+            </view>
+            <view class="form-group"><text class="form-label">题目图片</text>
+              <view class="img-preview-list" v-if="editMistakeForm.questionImages.length > 0">
+                <view class="img-preview-item" v-for="(img, i) in editMistakeForm.questionImages" :key="'emq'+i">
+                  <image :src="img" mode="aspectFill" class="img-preview-thumb" @click="previewImage(img, editMistakeForm.questionImages)" />
+                  <view class="img-preview-del" @click="editMistakeForm.questionImages.splice(i, 1)">✕</view>
+                </view>
+              </view>
+              <view class="img-add-btn" @click="pickImages(editMistakeForm.questionImages)"><text>+ 上传</text></view>
+            </view>
+            <view class="form-group"><text class="form-label">答案图片</text>
+              <view class="img-preview-list" v-if="editMistakeForm.answerImages.length > 0">
+                <view class="img-preview-item" v-for="(img, i) in editMistakeForm.answerImages" :key="'ema'+i">
+                  <image :src="img" mode="aspectFill" class="img-preview-thumb" @click="previewImage(img, editMistakeForm.answerImages)" />
+                  <view class="img-preview-del" @click="editMistakeForm.answerImages.splice(i, 1)">✕</view>
+                </view>
+              </view>
+              <view class="img-add-btn" @click="pickImages(editMistakeForm.answerImages)"><text>+ 上传</text></view>
             </view>
           </scroll-view>
           <view class="modal-footer"><view class="cancel-btn" @click="showEditMistake = false">取消</view><view class="submit-btn red-btn" @click="saveEditMistake">保存</view></view>
@@ -426,7 +506,7 @@ const showExportModal = ref(false)
 const showManageSubjects = ref(false)
 const manageNewSubject = ref('')
 const activeSubject = ref('')
-const activeTag = ref('')
+const activeTags = ref([])
 
 const defaultSubjects = Object.keys(SUBJECT_TAGS)
 const allSubjects = ref([...defaultSubjects])
@@ -445,8 +525,8 @@ const reviewShowAnswer = ref(false)
 const reviewIndex = ref(0)
 const reviewComplete = ref(false)
 
-const cardForm = ref({ subject: '数据结构', question: '', answer: '', tags: [] })
-const editForm = ref({ subject: '', question: '', answer: '', tags: [] })
+const cardForm = ref({ subject: '数据结构', question: '', answer: '', tags: [], questionImages: [], answerImages: [] })
+const editForm = ref({ subject: '', question: '', answer: '', tags: [], questionImages: [], answerImages: [] })
 const editTagInput = ref('')
 const showEditCard = ref(false)
 const editingCardId = ref(null)
@@ -466,7 +546,7 @@ const availableMistakeTags = computed(() => {
 const filteredCards = computed(() => {
   let r = cards.value
   if (activeSubject.value) r = r.filter(c => c.subject === activeSubject.value)
-  if (activeTag.value) r = r.filter(c => (c.tags || []).includes(activeTag.value))
+  if (activeTags.value.length > 0) r = r.filter(c => activeTags.value.every(t => (c.tags || []).includes(t)))
   if (activeMastery.value) r = r.filter(c => c.mastery_level === activeMastery.value)
   return r
 })
@@ -487,15 +567,15 @@ const mistakeReviewComplete = ref(false)
 const showEditMistake = ref(false)
 const editingMistakeId = ref(null)
 const editMistakeTagInput = ref('')
-const editMistakeForm = ref({ subject: '', question: '', answer: '', analysis: '', difficulty: 'medium', tags: [] })
-const mistakeForm = ref({ subject: '数据结构', question: '', answer: '', analysis: '', difficulty: 'medium', tags: [] })
+const editMistakeForm = ref({ subject: '', question: '', answer: '', analysis: '', difficulty: 'medium', tags: [], questionImages: [], answerImages: [] })
+const mistakeForm = ref({ subject: '数据结构', question: '', answer: '', analysis: '', difficulty: 'medium', tags: [], questionImages: [], answerImages: [] })
 
 const masteredMistakesCount = computed(() => mistakes.value.filter(m => m.mastered === '1').length)
 const activeMistakesCount = computed(() => mistakes.value.filter(m => m.mastered === '0').length)
 const filteredMistakes = computed(() => {
   let r = mistakes.value
   if (activeSubject.value) r = r.filter(m => m.subject === activeSubject.value)
-  if (activeTag.value) r = r.filter(m => (m.tags || []).includes(activeTag.value))
+  if (activeTags.value.length > 0) r = r.filter(m => activeTags.value.every(t => (m.tags || []).includes(t)))
   if (activeErrorCount.value === '1') r = r.filter(m => m.error_count === 1)
   else if (activeErrorCount.value === '2') r = r.filter(m => m.error_count === 2)
   else if (activeErrorCount.value === '3+') r = r.filter(m => m.error_count >= 3)
@@ -513,12 +593,17 @@ function formatDate(s) { if (!s) return ''; const d = new Date(s); return `${d.g
 function switchView(view) {
   if (currentView.value === view) return
   currentView.value = view
-  activeSubject.value = ''; activeTag.value = ''; activeMastery.value = ''; activeErrorCount.value = ''
+  activeSubject.value = ''; activeTags.value = []; activeMastery.value = ''; activeErrorCount.value = ''
   if (view === 'cards') loadCards()
   else loadMistakes()
 }
 
-function onSubjectChange(s) { activeSubject.value = s; activeTag.value = ''; activeMastery.value = ''; activeErrorCount.value = '' }
+function onSubjectChange(s) { activeSubject.value = s; activeTags.value = []; activeMastery.value = ''; activeErrorCount.value = '' }
+function toggleTag(tag) {
+  const idx = activeTags.value.indexOf(tag)
+  if (idx >= 0) activeTags.value.splice(idx, 1)
+  else activeTags.value.push(tag)
+}
 
 // ── Subject management ──
 function addManageSubject() {
@@ -529,12 +614,34 @@ function addManageSubject() {
 }
 function removeSubject(n) {
   uni.showModal({ title: '删除科目', content: `确定要删除「${n}」吗？`, success: r => {
-    if (r.confirm) { customSubjects.value = customSubjects.value.filter(s => s !== n); allSubjects.value = allSubjects.value.filter(s => s !== n); if (activeSubject.value === n) { activeSubject.value = ''; activeTag.value = '' } }
+    if (r.confirm) { customSubjects.value = customSubjects.value.filter(s => s !== n); allSubjects.value = allSubjects.value.filter(s => s !== n); if (activeSubject.value === n) { activeSubject.value = ''; activeTags.value = [] } }
   }})
 }
 
 // ── Cards functions ──
 function addCardCustomSubject() { const n = customSubject.value.trim(); if (!n) return; if (!allSubjects.value.includes(n)) allSubjects.value.push(n); cardForm.value.subject = n; customSubject.value = ''; showCardSubjectInput.value = false }
+// ── Image helpers ──
+function pickImages(targetArray) {
+  uni.chooseImage({
+    count: 6, sizeType: ['compressed'], sourceType: ['album', 'camera'],
+    success: (res) => {
+      res.tempFilePaths.forEach(fp => {
+        // Convert to base64 data URL for local storage
+        // #ifdef H5
+        const canvas = document.createElement('canvas')
+        const img = new Image()
+        img.onload = () => { canvas.width = img.width; canvas.height = img.height; canvas.getContext('2d').drawImage(img, 0, 0); targetArray.push(canvas.toDataURL('image/jpeg', 0.7)) }
+        img.src = fp
+        // #endif
+        // #ifndef H5
+        const fs = uni.getFileSystemManager()
+        const data = fs.readFileSync(fp, 'base64')
+        targetArray.push(`data:image/jpeg;base64,${data}`)
+        // #endif
+      })
+    }
+  })
+}
 function parseTags() { if (!tagInput.value.trim()) return; const t = tagInput.value.split(/[,，]/).map(s => s.trim()).filter(Boolean); cardForm.value.tags = [...new Set([...cardForm.value.tags, ...t])]; tagInput.value = '' }
 function parseEditTags() { if (!editTagInput.value.trim()) return; const t = editTagInput.value.split(/[,，]/).map(s => s.trim()).filter(Boolean); editForm.value.tags = [...new Set([...editForm.value.tags, ...t])]; editTagInput.value = '' }
 function switchCardMode(m) { viewMode.value = m; loadCards() }
@@ -546,19 +653,19 @@ async function submitCard() {
   if (!planStore.currentPlan) { uni.showToast({ title: '请先创建学习计划', icon: 'none' }); return }
   uni.showLoading({ title: '保存中...' })
   try {
-    await api.createCard({ plan_id: planStore.currentPlan.id, question: cardForm.value.question, answer: cardForm.value.answer, subject: cardForm.value.subject, mastery_level: 'unmastered', next_review_date: today, question_images: [], answer_images: [], tags: cardForm.value.tags })
-    showCardForm.value = false; cardForm.value = { subject: '数据结构', question: '', answer: '', tags: [] }
+    await api.createCard({ plan_id: planStore.currentPlan.id, question: cardForm.value.question, answer: cardForm.value.answer, subject: cardForm.value.subject, mastery_level: 'unmastered', next_review_date: today, question_images: cardForm.value.questionImages, answer_images: cardForm.value.answerImages, tags: cardForm.value.tags })
+    showCardForm.value = false; cardForm.value = { subject: '数据结构', question: '', answer: '', tags: [], questionImages: [], answerImages: [] }
     uni.showToast({ title: '添加成功', icon: 'success' }); await loadCards()
   } catch (e) { uni.showToast({ title: e.message || '保存失败', icon: 'none' }) } finally { uni.hideLoading() }
 }
 
 function openEditCard(card) {
-  editingCardId.value = card.id; editForm.value = { subject: card.subject, question: card.question, answer: card.answer, tags: [...(card.tags || [])] }; editTagInput.value = ''; showEditCard.value = true
+  editingCardId.value = card.id; editForm.value = { subject: card.subject, question: card.question, answer: card.answer, tags: [...(card.tags || [])], questionImages: [...(card.question_images || [])], answerImages: [...(card.answer_images || [])] }; editTagInput.value = ''; showEditCard.value = true
 }
 async function saveEditCard() {
   if (!editForm.value.question.trim() || !editForm.value.answer.trim()) { uni.showToast({ title: '请填写完整', icon: 'none' }); return }
   uni.showLoading({ title: '保存中...' })
-  try { await api.updateCard(editingCardId.value, { question: editForm.value.question, answer: editForm.value.answer, subject: editForm.value.subject, tags: editForm.value.tags }); showEditCard.value = false; uni.showToast({ title: '编辑成功', icon: 'success' }); await loadCards() }
+  try { await api.updateCard(editingCardId.value, { question: editForm.value.question, answer: editForm.value.answer, subject: editForm.value.subject, tags: editForm.value.tags, question_images: editForm.value.questionImages, answer_images: editForm.value.answerImages }); showEditCard.value = false; uni.showToast({ title: '编辑成功', icon: 'success' }); await loadCards() }
   catch (e) { uni.showToast({ title: e.message || '保存失败', icon: 'none' }) } finally { uni.hideLoading() }
 }
 async function removeCard(card) {
@@ -567,8 +674,8 @@ async function removeCard(card) {
 }
 function startCardReview() { reviewMode.value = true; reviewShowAnswer.value = false; reviewIndex.value = 0; reviewComplete.value = false }
 async function reviewCardResult(level) { const c = reviewCards.value[reviewIndex.value]; await api.reviewCard(c.id, level); if (reviewIndex.value < reviewCards.value.length - 1) { reviewIndex.value++; reviewShowAnswer.value = false } else { reviewMode.value = false; reviewComplete.value = true; await loadCards() } }
-function exitCardReview() { reviewMode.value = false; reviewComplete.value = false; reviewIndex.value = 0; viewMode.value = 'all'; activeSubject.value = ''; activeTag.value = ''; activeMastery.value = ''; loadCards() }
-async function loadCards() { if (!planStore.currentPlan) return; try { const p = viewMode.value === 'pending'; const r = await api.getCards(planStore.currentPlan.id, activeSubject.value || null, activeTag.value || null, p); cards.value = r.cards || [] } catch (e) { console.error('loadCards:', e) } }
+function exitCardReview() { reviewMode.value = false; reviewComplete.value = false; reviewIndex.value = 0; viewMode.value = 'all'; activeSubject.value = ''; activeTags.value = []; activeMastery.value = ''; loadCards() }
+async function loadCards() { if (!planStore.currentPlan) return; try { const p = viewMode.value === 'pending'; const r = await api.getCards(planStore.currentPlan.id, activeSubject.value || null, null, p); cards.value = r.cards || [] } catch (e) { console.error('loadCards:', e) } }
 
 // ── Mistakes functions ──
 function parseMistakeTags() { if (!mistakeTagInput.value.trim()) return; const t = mistakeTagInput.value.split(/[,，]/).map(s => s.trim()).filter(Boolean); mistakeForm.value.tags = [...new Set([...mistakeForm.value.tags, ...t])]; mistakeTagInput.value = '' }
@@ -580,24 +687,24 @@ async function submitMistake() {
   if (!planStore.currentPlan) { uni.showToast({ title: '请先创建学习计划', icon: 'none' }); return }
   uni.showLoading({ title: '保存中...' })
   try {
-    await api.createMistake({ plan_id: planStore.currentPlan.id, question: mistakeForm.value.question, answer: mistakeForm.value.answer, analysis: mistakeForm.value.analysis, subject: mistakeForm.value.subject, difficulty: mistakeForm.value.difficulty, question_images: [], answer_images: [], tags: mistakeForm.value.tags })
-    showMistakeForm.value = false; mistakeForm.value = { subject: '数据结构', question: '', answer: '', analysis: '', difficulty: 'medium', tags: [] }
+    await api.createMistake({ plan_id: planStore.currentPlan.id, question: mistakeForm.value.question, answer: mistakeForm.value.answer, analysis: mistakeForm.value.analysis, subject: mistakeForm.value.subject, difficulty: mistakeForm.value.difficulty, question_images: mistakeForm.value.questionImages, answer_images: mistakeForm.value.answerImages, tags: mistakeForm.value.tags })
+    showMistakeForm.value = false; mistakeForm.value = { subject: '数据结构', question: '', answer: '', analysis: '', difficulty: 'medium', tags: [], questionImages: [], answerImages: [] }
     uni.showToast({ title: '添加成功', icon: 'success' }); await loadMistakes()
   } catch (e) { uni.showToast({ title: e.message || '保存失败', icon: 'none' }) } finally { uni.hideLoading() }
 }
-function openEditMistake(m) { editingMistakeId.value = m.id; editMistakeForm.value = { subject: m.subject, question: m.question, answer: m.answer, analysis: m.analysis || '', difficulty: m.difficulty, tags: [...(m.tags || [])] }; editMistakeTagInput.value = ''; showEditMistake.value = true }
+function openEditMistake(m) { editingMistakeId.value = m.id; editMistakeForm.value = { subject: m.subject, question: m.question, answer: m.answer, analysis: m.analysis || '', difficulty: m.difficulty, tags: [...(m.tags || [])], questionImages: [...(m.question_images || [])], answerImages: [...(m.answer_images || [])] }; editMistakeTagInput.value = ''; showEditMistake.value = true }
 async function saveEditMistake() {
   if (!editMistakeForm.value.question.trim() || !editMistakeForm.value.answer.trim()) { uni.showToast({ title: '请填写完整', icon: 'none' }); return }
   uni.showLoading({ title: '保存中...' })
-  try { await api.updateMistake(editingMistakeId.value, { question: editMistakeForm.value.question, answer: editMistakeForm.value.answer, analysis: editMistakeForm.value.analysis, subject: editMistakeForm.value.subject, difficulty: editMistakeForm.value.difficulty, tags: editMistakeForm.value.tags }); showEditMistake.value = false; uni.showToast({ title: '编辑成功', icon: 'success' }); await loadMistakes() }
+  try { await api.updateMistake(editingMistakeId.value, { question: editMistakeForm.value.question, answer: editMistakeForm.value.answer, analysis: editMistakeForm.value.analysis, subject: editMistakeForm.value.subject, difficulty: editMistakeForm.value.difficulty, tags: editMistakeForm.value.tags, question_images: editMistakeForm.value.questionImages, answer_images: editMistakeForm.value.answerImages }); showEditMistake.value = false; uni.showToast({ title: '编辑成功', icon: 'success' }); await loadMistakes() }
   catch (e) { uni.showToast({ title: e.message || '保存失败', icon: 'none' }) } finally { uni.hideLoading() }
 }
 async function toggleMastered(m) { try { if (m.mastered === '1') await api.updateMistake(m.id, { mastered: '0' }); else await api.markMistakeMastered(m.id); await loadMistakes() } catch (e) { uni.showToast({ title: '操作失败', icon: 'none' }) } }
 async function removeMistake(m) { const r = await new Promise(r => uni.showModal({ title: '删除确认', content: '确定删除吗？', success: r })); if (r.confirm) { try { await api.deleteMistake(m.id); mistakes.value = mistakes.value.filter(x => x.id !== m.id); uni.showToast({ title: '已删除', icon: 'success' }) } catch (e) { uni.showToast({ title: '删除失败', icon: 'none' }) } } }
 function startMistakeReview() { mistakeReviewMode.value = true; mistakeShowAnswer.value = false; mistakeReviewIndex.value = 0; reviewCorrect.value = 0; reviewTotal.value = mistakeReviewCards.value.length; mistakeReviewComplete.value = false }
 async function reviewMistakeResult(correct) { if (correct) reviewCorrect.value++; const m = mistakeReviewCards.value[mistakeReviewIndex.value]; await api.reviewMistake(m.id, correct); if (mistakeReviewIndex.value < mistakeReviewCards.value.length - 1) { mistakeReviewIndex.value++; mistakeShowAnswer.value = false } else { mistakeReviewMode.value = false; mistakeReviewComplete.value = true; await loadMistakes() } }
-function exitMistakeReview() { mistakeReviewMode.value = false; mistakeReviewComplete.value = false; mistakeReviewIndex.value = 0; mistakeViewMode.value = 'all'; activeSubject.value = ''; activeTag.value = ''; activeErrorCount.value = ''; loadMistakes() }
-async function loadMistakes() { if (!planStore.currentPlan) return; try { const p = mistakeViewMode.value === 'pending'; const r = await api.getMistakes(planStore.currentPlan.id, activeSubject.value || null, activeTag.value || null, p); mistakes.value = r.mistakes || [] } catch (e) { console.error('loadMistakes:', e) } }
+function exitMistakeReview() { mistakeReviewMode.value = false; mistakeReviewComplete.value = false; mistakeReviewIndex.value = 0; mistakeViewMode.value = 'all'; activeSubject.value = ''; activeTags.value = []; activeErrorCount.value = ''; loadMistakes() }
+async function loadMistakes() { if (!planStore.currentPlan) return; try { const p = mistakeViewMode.value === 'pending'; const r = await api.getMistakes(planStore.currentPlan.id, activeSubject.value || null, null, p); mistakes.value = r.mistakes || [] } catch (e) { console.error('loadMistakes:', e) } }
 
 // ── Export ──
 async function doExport(format) {
@@ -607,14 +714,16 @@ async function doExport(format) {
   try {
     const opts = { includeAnswer: exportIncludeAnswer.value }
     if (currentView.value === 'cards') {
-      const r = await api.getCards(planStore.currentPlan.id, activeSubject.value || null, activeTag.value || null, false)
+      const r = await api.getCards(planStore.currentPlan.id, activeSubject.value || null, null, false)
       let d = r.cards || []
+      if (activeTags.value.length > 0) d = d.filter(c => activeTags.value.every(t => (c.tags || []).includes(t)))
       if (activeMastery.value) d = d.filter(c => c.mastery_level === activeMastery.value)
       if (!d.length) { uni.showToast({ title: '没有可导出的数据', icon: 'none' }); return }
       if (format === 'csv') exportCardsCSV(d, opts); else if (format === 'excel') exportCardsExcel(d, opts); else if (format === 'pdf') exportCardsPDF(d, opts)
     } else {
-      const r = await api.getMistakes(planStore.currentPlan.id, activeSubject.value || null, activeTag.value || null, false)
+      const r = await api.getMistakes(planStore.currentPlan.id, activeSubject.value || null, null, false)
       let d = r.mistakes || []
+      if (activeTags.value.length > 0) d = d.filter(m => activeTags.value.every(t => (m.tags || []).includes(t)))
       if (activeErrorCount.value === '1') d = d.filter(m => m.error_count === 1)
       else if (activeErrorCount.value === '2') d = d.filter(m => m.error_count === 2)
       else if (activeErrorCount.value === '3+') d = d.filter(m => m.error_count >= 3)
@@ -749,6 +858,18 @@ watch(() => planStore.currentPlan?.id, async (n, o) => { if (n && n !== o) { awa
 .textarea-field { width: 100%; min-height: 80px; font-size: 15px; color: #1a1a2e; line-height: 1.6; border: none; outline: none; background: transparent; resize: none; }
 .difficulty-row { display: flex; gap: 10px; }
 .diff-item { flex: 1; padding: 10px; text-align: center; border-radius: 12px; font-size: 14px; color: #65746d; background: #f5f7f5; transition: all 0.2s; &.active { background: #ef5350; color: #fff; } }
+
+/* ===== Image Upload ===== */
+.img-preview-list { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.img-preview-item { position: relative; width: 72px; height: 72px; }
+.img-preview-thumb { width: 72px; height: 72px; border-radius: 8px; border: 1px solid #e0e0e0; object-fit: cover; }
+.img-preview-del { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; background: #ef5350; color: #fff; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+.img-add-btn { padding: 8px 16px; border-radius: 10px; border: 1.5px dashed #6b4ce6; color: #6b4ce6; text-align: center; font-size: 13px; display: inline-block; &:active { background: #f3f0ff; } }
+.red-add { border-color: #ef5350; color: #ef5350; &:active { background: #ffebee; } }
+
+/* ===== Image in list cards ===== */
+.card-images { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+.card-img-item { width: 60px; height: 60px; border-radius: 6px; border: 1px solid #e0e0e0; object-fit: cover; }
 
 /* ===== Export Modal ===== */
 .export-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 250; display: flex; align-items: center; justify-content: center; padding: 30px; }
