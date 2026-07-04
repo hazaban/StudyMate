@@ -140,7 +140,10 @@
           <text class="empty-icon">📖</text><text class="empty-text">{{ viewMode === 'pending' ? '今天没有需要复习的卡片' : '暂无卡片' }}</text>
           <text class="empty-hint">点击右下角按钮，手动添加知识卡片</text>
         </view>
-        <view class="card-item" v-for="card in filteredCards" :key="card.id" :class="{ 'not-today': card.next_review_date > today }">
+        <view class="load-more" v-if="filteredCards.length > cardsPageSize" @click="showAllCards">
+          <text>展开全部 {{ filteredCards.length }} 张卡片 ▾</text>
+        </view>
+        <view class="card-item" v-for="card in displayedCards" :key="card.id" :class="{ 'not-today': card.next_review_date > today }">
           <view class="card-item-header">
             <text class="card-item-subject">{{ card.subject }}</text>
             <view class="card-item-tags">
@@ -368,7 +371,10 @@
           <text class="empty-icon">📝</text><text class="empty-text">{{ mistakeViewMode === 'pending' ? '今天没有需要复习的错题' : '暂无错题' }}</text>
           <text class="empty-hint">点击右下角按钮，手动录入错题</text>
         </view>
-        <view class="mistake-card" v-for="mistake in filteredMistakes" :key="mistake.id" :class="{ mastered: mistake.mastered === '1' }">
+        <view class="load-more" v-if="filteredMistakes.length > mistakesPageSize" @click="showAllMistakes">
+          <text>展开全部 {{ filteredMistakes.length }} 道错题 ▾</text>
+        </view>
+        <view class="mistake-card" v-for="mistake in displayedMistakes" :key="mistake.id" :class="{ mastered: mistake.mastered === '1' }">
           <view class="mistake-header">
             <text class="mistake-subject">{{ mistake.subject }}</text>
             <view class="mistake-tags">
@@ -706,6 +712,9 @@ const filteredCards = computed(() => {
   if (activeMastery.value) r = r.filter(c => c.mastery_level === activeMastery.value)
   return r
 })
+const cardsPageSize = ref(10)
+const displayedCards = computed(() => filteredCards.value.slice(0, cardsPageSize.value))
+function showAllCards() { cardsPageSize.value = filteredCards.value.length }
 const reviewCards = computed(() => filteredCards.value.filter(c => c.next_review_date && c.next_review_date <= today))
 
 // ── Mistakes state ──
@@ -741,6 +750,9 @@ const filteredMistakes = computed(() => {
   else if (activeErrorCount.value === '3+') r = r.filter(m => m.error_count >= 3)
   return r
 })
+const mistakesPageSize = ref(10)
+const displayedMistakes = computed(() => filteredMistakes.value.slice(0, mistakesPageSize.value))
+function showAllMistakes() { mistakesPageSize.value = filteredMistakes.value.length }
 const mistakeReviewCards = computed(() => filteredMistakes.value.filter(m => m.mastered === '0'))
 
 // ── Helpers ──
@@ -758,7 +770,7 @@ function switchView(view) {
   else loadMistakes()
 }
 
-function onSubjectChange(s) { activeSubject.value = s; activeTags.value = []; tagLogic.value = 'or'; activeMastery.value = ''; activeErrorCount.value = '' }
+function onSubjectChange(s) { activeSubject.value = s; activeTags.value = []; tagLogic.value = 'or'; activeMastery.value = ''; activeErrorCount.value = ''; cardsPageSize.value = 10; mistakesPageSize.value = 10 }
 function toggleTag(tag) {
   const idx = activeTags.value.indexOf(tag)
   if (idx >= 0) activeTags.value.splice(idx, 1)
@@ -884,7 +896,22 @@ async function handleGlobalPaste(e) {
 }
 function parseTags() { if (!tagInput.value.trim()) return; const t = tagInput.value.split(/[,，]/).map(s => s.trim()).filter(Boolean); cardForm.value.tags = [...new Set([...cardForm.value.tags, ...t])]; tagInput.value = '' }
 function parseEditTags() { if (!editTagInput.value.trim()) return; const t = editTagInput.value.split(/[,，]/).map(s => s.trim()).filter(Boolean); editForm.value.tags = [...new Set([...editForm.value.tags, ...t])]; editTagInput.value = '' }
-function switchCardMode(m) { viewMode.value = m; loadCards() }
+function switchCardMode(m) {
+  viewMode.value = m
+  reviewMode.value = false
+  reviewComplete.value = false
+  reviewIndex.value = 0
+  cardsPageSize.value = 10
+  loadCards()
+}
+function switchMistakeMode(m) {
+  mistakeViewMode.value = m
+  mistakeReviewMode.value = false
+  mistakeReviewComplete.value = false
+  mistakeReviewIndex.value = 0
+  mistakesPageSize.value = 10
+  loadMistakes()
+}
 function previewImage(c, u) { uni.previewImage({ current: c, urls: u }) }
 
 async function submitCard() {
@@ -924,7 +951,6 @@ async function loadCards() { if (!planStore.currentPlan) return; try { const p =
 // ── Mistakes functions ──
 function parseMistakeTags() { if (!mistakeTagInput.value.trim()) return; const t = mistakeTagInput.value.split(/[,，]/).map(s => s.trim()).filter(Boolean); mistakeForm.value.tags = [...new Set([...mistakeForm.value.tags, ...t])]; mistakeTagInput.value = '' }
 function parseEditMistakeTags() { if (!editMistakeTagInput.value.trim()) return; const t = editMistakeTagInput.value.split(/[,，]/).map(s => s.trim()).filter(Boolean); editMistakeForm.value.tags = [...new Set([...editMistakeForm.value.tags, ...t])]; editMistakeTagInput.value = '' }
-function switchMistakeMode(m) { mistakeViewMode.value = m; loadMistakes() }
 
 async function submitMistake() {
   const hasQ = mistakeForm.value.question.trim() || mistakeForm.value.questionImages.length > 0
@@ -1062,6 +1088,7 @@ watch(() => planStore.currentPlan?.id, async (n, o) => { if (n && n !== o) { awa
 /* ===== Section ===== */
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; .section-title { font-size: 18px; font-weight: 600; color: #1a1a2e; } .section-count { font-size: 13px; color: #999; } }
 .start-review-btn { color: #fff; padding: 8px 20px; border-radius: 20px; font-size: 14px; font-weight: 500; &:active { transform: scale(0.96); } &.purple { background: #6b4ce6; } &.red { background: #ef5350; } }
+.load-more { text-align: center; padding: 12px; margin-top: 8px; color: #6b4ce6; font-size: 13px; font-weight: 500; cursor: pointer; &:active { color: #4a35a0; } }
 .empty { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; .empty-icon { font-size: 48px; margin-bottom: 12px; } .empty-text { font-size: 16px; color: #65746d; margin-bottom: 8px; } .empty-hint { font-size: 13px; color: #999; text-align: center; } }
 
 /* ===== Card Item ===== */
