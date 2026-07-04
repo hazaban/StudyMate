@@ -2,11 +2,6 @@ import { request } from '@/api/client.js'
 
 const blobUrlToFile = new Map()
 
-async function fetchSignature(keyPrefix = '') {
-  const params = keyPrefix ? `?key_prefix=${encodeURIComponent(keyPrefix)}` : ''
-  return request(`/upload/signature${params}`, { method: 'POST' })
-}
-
 async function chooseImage(count = 1) {
   return new Promise((resolve, reject) => {
     uni.chooseImage({
@@ -46,20 +41,11 @@ async function blobUrlToBlob(blobUrl) {
 }
 
 async function uploadToCOS(filePath, userId, date, keyPrefix = '') {
-  const sig = await fetchSignature(keyPrefix)
-
-  const timestamp = Date.now()
-  const filename = `${timestamp}.jpg`
-  const key = `${sig.keyPrefix}${date ? date + '/' : ''}${filename}`
-  const imageUrl = `https://${sig.bucket}.cos.${sig.region}.myqcloud.com/${key}`
-
-  const formData = {
-    key,
-    policy: sig.policy,
-    signature: sig.signature,
-    'x-cos-security-token': sig.sessionToken || '',
-    'Content-Type': 'image/jpeg',
-  }
+  // Get presigned PUT URL from backend
+  const result = await request(`/upload/presign?filename=${Date.now()}.jpg`, {
+    method: 'POST'
+  })
+  const { upload_url, file_url } = result
 
   // #ifdef H5
   let fileBlob
@@ -71,17 +57,13 @@ async function uploadToCOS(filePath, userId, date, keyPrefix = '') {
     fileBlob = await blobUrlToBlob(filePath)
   }
 
-  const fd = new FormData()
-  Object.keys(formData).forEach(k => fd.append(k, formData[k]))
-  fd.append('file', fileBlob, filename)
-
-  const res = await fetch(`https://${sig.bucket}.cos.${sig.region}.myqcloud.com`, {
-    method: 'POST',
-    body: fd,
+  const res = await fetch(upload_url, {
+    method: 'PUT',
+    body: fileBlob,
   })
 
-  if (res.status === 204 || res.status === 200) {
-    return imageUrl
+  if (res.status === 200) {
+    return file_url
   } else {
     throw new Error(`上传失败 (${res.status})`)
   }
@@ -91,13 +73,12 @@ async function uploadToCOS(filePath, userId, date, keyPrefix = '') {
   const compressedPath = await compressImage(filePath)
   return new Promise((resolve, reject) => {
     uni.uploadFile({
-      url: `https://${sig.bucket}.cos.${sig.region}.myqcloud.com`,
+      url: upload_url,
       filePath: compressedPath,
       name: 'file',
-      formData,
       success: (res) => {
-        if (res.statusCode === 204 || res.statusCode === 200) {
-          resolve(imageUrl)
+        if (res.statusCode === 200) {
+          resolve(file_url)
         } else {
           reject(new Error(`上传失败 (${res.statusCode})`))
         }
@@ -135,8 +116,7 @@ export const uploadUtil = {
   },
 
   async uploadProof(imagePath, userId) {
-    const today = new Date().toISOString().split('T')[0]
-    return uploadToCOS(imagePath, userId, today, 'proofs/')
+    return uploadToCOS(imagePath, userId, '', 'proofs/')
   },
 
   async uploadAvatar(imagePath, userId) {
@@ -144,23 +124,19 @@ export const uploadUtil = {
   },
 
   async uploadCardQuestion(imagePath, userId) {
-    const today = new Date().toISOString().split('T')[0]
-    return uploadToCOS(imagePath, userId, today, 'cards/question/')
+    return uploadToCOS(imagePath, userId, '', 'cards/question/')
   },
 
   async uploadCardAnswer(imagePath, userId) {
-    const today = new Date().toISOString().split('T')[0]
-    return uploadToCOS(imagePath, userId, today, 'cards/answer/')
+    return uploadToCOS(imagePath, userId, '', 'cards/answer/')
   },
 
   async uploadMistakeQuestion(imagePath, userId) {
-    const today = new Date().toISOString().split('T')[0]
-    return uploadToCOS(imagePath, userId, today, 'mistakes/question/')
+    return uploadToCOS(imagePath, userId, '', 'mistakes/question/')
   },
 
   async uploadMistakeAnswer(imagePath, userId) {
-    const today = new Date().toISOString().split('T')[0]
-    return uploadToCOS(imagePath, userId, today, 'mistakes/answer/')
+    return uploadToCOS(imagePath, userId, '', 'mistakes/answer/')
   },
 
   uploadToCOS,
