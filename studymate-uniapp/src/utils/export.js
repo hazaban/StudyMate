@@ -16,12 +16,17 @@ const SUBJECT_TAGS = {
 function getDefaultTags(subject) { return SUBJECT_TAGS[subject] || [] }
 function formatDate(dateStr) { if (!dateStr) return ''; try { return new Date(dateStr).toLocaleDateString('zh-CN') } catch (e) { return dateStr } }
 
-// ─── Image column builder ───
+// ─── Image column builder (for Excel: small inline thumbnails) ───
 function imgCell(images) {
   if (!images || images.length === 0) return ''
-  if (images.length === 1) return '📷 [查看图片]'
-  return `📷 [${images.length}张图片]`
+  return images.map(img => {
+    if (img.startsWith('data:')) return `<img src="${esc(img)}" style="max-width:120px;max-height:80px;margin:2px;border:1px solid #ddd;border-radius:4px;" />`
+    if (img.startsWith('http') || img.startsWith('blob:')) return `<img src="${esc(img)}" style="max-width:120px;max-height:80px;margin:2px;border:1px solid #ddd;border-radius:4px;" />`
+    if (img.startsWith('/')) return `<img src="${esc(img)}" style="max-width:120px;max-height:80px;margin:2px;border:1px solid #ddd;border-radius:4px;" />`
+    return `[图片:${img}]`
+  }).join('')
 }
+function excelImgCell(images) { return imgCell(images) }
 function imgCSV(images) { return (images || []).join(' | ') }
 
 // ─── Cards CSV ───
@@ -87,14 +92,7 @@ function mistakesToCSV(mistakes, includeAnswer) {
   return '﻿' + rows.join('\n')
 }
 
-// ─── Excel image helper: text labels only (Excel can't render embedded base64 reliably) ───
-function excelImgCell(images) {
-  if (!images || images.length === 0) return ''
-  if (images.length === 1) return '📷 [查看图片]'
-  return `📷 [${images.length}张图片]`
-}
-
-// ─── Cards Excel ───
+// ─── Cards Excel (simple table, small inline images) ───
 function cardsToExcel(cards, includeAnswer) {
   const hasTextQ = cards.some(c => (c.question || '').trim())
   const hasImgQ = cards.some(c => (c.question_images || []).length > 0)
@@ -105,28 +103,28 @@ function cardsToExcel(cards, includeAnswer) {
   if (hasImgQ) headers.push('问题图片')
   if (includeAnswer) { if (hasTextA) headers.push('答案'); if (hasImgA) headers.push('答案图片') }
   headers.push('掌握程度', '复习次数', '下次复习', '创建日期')
-  let html = `<table border="1" style="border-collapse:collapse;table-layout:fixed;width:100%"><tr>${headers.map(h => `<th style="background:#6b4ce6;color:#fff;padding:8px;text-align:center">${esc(h)}</th>`).join('')}</tr>`
+  let html = `<table border="1" style="border-collapse:collapse;width:100%"><tr>${headers.map(h => `<th style="background:#6b4ce6;color:#fff;padding:8px;text-align:center">${esc(h)}</th>`).join('')}</tr>`
   for (const c of cards) {
     html += `<tr>`
-    html += `<td style="padding:6px;vertical-align:top;width:80px;word-wrap:break-word">${esc(c.subject)}</td>`
-    html += `<td style="padding:6px;vertical-align:top;width:100px;word-wrap:break-word">${esc((c.tags||[]).join('；'))}</td>`
-    if (hasTextQ) html += `<td style="padding:6px;vertical-align:top;width:180px;word-wrap:break-word;white-space:pre-wrap">${esc(c.question)}</td>`
-    if (hasImgQ) html += `<td style="padding:4px;vertical-align:top;width:100px">${excelImgCell(c.question_images)}</td>`
+    html += `<td style="padding:6px">${esc(c.subject)}</td>`
+    html += `<td style="padding:6px">${esc((c.tags||[]).join('；'))}</td>`
+    if (hasTextQ) html += `<td style="padding:6px">${esc(c.question)}</td>`
+    if (hasImgQ) html += `<td style="padding:6px">${imgCell(c.question_images)}</td>`
     if (includeAnswer) {
-      if (hasTextA) html += `<td style="padding:6px;vertical-align:top;width:180px;word-wrap:break-word;white-space:pre-wrap">${esc(c.answer)}</td>`
-      if (hasImgA) html += `<td style="padding:4px;vertical-align:top;width:100px">${excelImgCell(c.answer_images)}</td>`
+      if (hasTextA) html += `<td style="padding:6px">${esc(c.answer)}</td>`
+      if (hasImgA) html += `<td style="padding:6px">${imgCell(c.answer_images)}</td>`
     }
-    html += `<td style="padding:6px;text-align:center;vertical-align:top;width:60px">${esc(masteryCN(c.mastery_level))}</td>`
-    html += `<td style="padding:6px;text-align:center;vertical-align:top;width:50px">${c.review_count}</td>`
-    html += `<td style="padding:6px;vertical-align:top;width:80px">${formatDate(c.next_review_date)}</td>`
-    html += `<td style="padding:6px;vertical-align:top;width:80px">${formatDate(c.created_at)}</td>`
+    html += `<td style="padding:6px;text-align:center">${esc(masteryCN(c.mastery_level))}</td>`
+    html += `<td style="padding:6px;text-align:center">${c.review_count}</td>`
+    html += `<td style="padding:6px">${formatDate(c.next_review_date)}</td>`
+    html += `<td style="padding:6px">${formatDate(c.created_at)}</td>`
     html += `</tr>`
   }
   html += `</table>`
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>知识卡片导出</title><style>body{font-family:'Microsoft YaHei',sans-serif;padding:10px;}</style></head><body>${html}</body></html>`
 }
 
-// ─── Mistakes Excel ───
+// ─── Mistakes Excel (simple table, small inline images) ───
 function mistakesToExcel(mistakes, includeAnswer) {
   const hasTextQ = mistakes.some(m => (m.question || '').trim())
   const hasImgQ = mistakes.some(m => (m.question_images || []).length > 0)
@@ -142,23 +140,23 @@ function mistakesToExcel(mistakes, includeAnswer) {
     if (hasAnalysis) headers.push('错误分析')
   }
   headers.push('难度', '错误次数', '正确次数', '已掌握', '创建日期')
-  let html = `<table border="1" style="border-collapse:collapse;table-layout:fixed;width:100%"><tr>${headers.map(h => `<th style="background:#ef5350;color:#fff;padding:8px;text-align:center">${esc(h)}</th>`).join('')}</tr>`
+  let html = `<table border="1" style="border-collapse:collapse;width:100%"><tr>${headers.map(h => `<th style="background:#ef5350;color:#fff;padding:8px;text-align:center">${esc(h)}</th>`).join('')}</tr>`
   for (const m of mistakes) {
     html += `<tr>`
-    html += `<td style="padding:6px;vertical-align:top;width:80px;word-wrap:break-word">${esc(m.subject)}</td>`
-    html += `<td style="padding:6px;vertical-align:top;width:100px;word-wrap:break-word">${esc((m.tags||[]).join('；'))}</td>`
-    if (hasTextQ) html += `<td style="padding:6px;vertical-align:top;width:180px;word-wrap:break-word;white-space:pre-wrap">${esc(m.question)}</td>`
-    if (hasImgQ) html += `<td style="padding:4px;vertical-align:top;width:100px">${excelImgCell(m.question_images)}</td>`
+    html += `<td style="padding:6px">${esc(m.subject)}</td>`
+    html += `<td style="padding:6px">${esc((m.tags||[]).join('；'))}</td>`
+    if (hasTextQ) html += `<td style="padding:6px">${esc(m.question)}</td>`
+    if (hasImgQ) html += `<td style="padding:6px">${imgCell(m.question_images)}</td>`
     if (includeAnswer) {
-      if (hasTextA) html += `<td style="padding:6px;vertical-align:top;width:180px;word-wrap:break-word;white-space:pre-wrap">${esc(m.answer)}</td>`
-      if (hasImgA) html += `<td style="padding:4px;vertical-align:top;width:100px">${excelImgCell(m.answer_images)}</td>`
-      if (hasAnalysis) html += `<td style="padding:6px;vertical-align:top;width:180px;word-wrap:break-word;white-space:pre-wrap">${esc(m.analysis||'')}</td>`
+      if (hasTextA) html += `<td style="padding:6px">${esc(m.answer)}</td>`
+      if (hasImgA) html += `<td style="padding:6px">${imgCell(m.answer_images)}</td>`
+      if (hasAnalysis) html += `<td style="padding:6px">${esc(m.analysis||'')}</td>`
     }
-    html += `<td style="padding:6px;text-align:center;vertical-align:top;width:50px">${esc(difficultyCN(m.difficulty))}</td>`
-    html += `<td style="padding:6px;text-align:center;vertical-align:top;width:50px">${m.error_count}</td>`
-    html += `<td style="padding:6px;text-align:center;vertical-align:top;width:50px">${m.correct_count}</td>`
-    html += `<td style="padding:6px;text-align:center;vertical-align:top;width:50px">${m.mastered==='1'?'是':'否'}</td>`
-    html += `<td style="padding:6px;vertical-align:top;width:80px">${formatDate(m.created_at)}</td>`
+    html += `<td style="padding:6px;text-align:center">${esc(difficultyCN(m.difficulty))}</td>`
+    html += `<td style="padding:6px;text-align:center">${m.error_count}</td>`
+    html += `<td style="padding:6px;text-align:center">${m.correct_count}</td>`
+    html += `<td style="padding:6px;text-align:center">${m.mastered==='1'?'是':'否'}</td>`
+    html += `<td style="padding:6px">${formatDate(m.created_at)}</td>`
     html += `</tr>`
   }
   html += `</table>`
