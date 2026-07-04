@@ -1,4 +1,4 @@
-"""Tencent COS service for image upload with STS and POST signature."""
+"""Tencent COS service for image upload with STS, POST signature, and presigned URLs."""
 
 import json
 import time
@@ -96,13 +96,85 @@ def get_post_signature(user_id: str, key_prefix: str = "",
     }
 
 
+# ── Presigned PUT URL (using COS SDK) ─────────────────────────────────────
+
+def get_presigned_put_url(user_id: str, filename: str, key_prefix: str = "proofs/",
+                           expires: int = 1800) -> dict:
+    """Generate a properly signed presigned URL for PUT upload to COS."""
+    if not COS_ENABLED:
+        raise RuntimeError("COS upload is not configured")
+
+    ext = filename.split(".")[-1] if "." in filename else "jpg"
+    unique_name = f"{uuid.uuid4().hex}.{ext}"
+    key = f"{key_prefix}{user_id}/{unique_name}"
+
+    try:
+        from qcloud_cos import CosConfig, CosS3Client
+        config = CosConfig(
+            Region=COS_REGION,
+            SecretId=COS_SECRET_ID,
+            SecretKey=COS_SECRET_KEY,
+        )
+        client = CosS3Client(config)
+        presigned_url = client.get_presigned_url(
+            Method='PUT',
+            Bucket=COS_BUCKET,
+            Key=key,
+            Expired=expires,
+        )
+        file_url = f"https://{COS_BUCKET}.cos.{COS_REGION}.myqcloud.com/{key}"
+        return {"upload_url": presigned_url, "file_url": file_url, "key": key}
+    except Exception as e:
+        # Fallback: manual presigned URL using HMAC-SHA1
+        now = int(time.time())
+        expired_time = now + expires
+        sign_time = f"{now - 60};{expired_time}"
+        key_time = sign_time
+
+        http_method = "put"
+        uri_path = f"/{key}"
+        http_params = ""
+        http_headers = "host"
+
+        sign_string = f"{http_method}\n{uri_path}\n{http_params}\n{http_headers}\n"
+        sha1_hash = hashlib.sha1(sign_string.encode("utf-8")).hexdigest()
+        string_to_sign = f"sha1\n{sign_time}\n{sha1_hash}\n"
+
+        sign_key = hmac.new(
+            COS_SECRET_KEY.encode("utf-8"),
+            key_time.encode("utf-8"),
+            hashlib.sha1
+        ).hexdigest()
+        signature = hmac.new(
+            sign_key.encode("utf-8"),
+            string_to_sign.encode("utf-8"),
+            hashlib.sha1
+        ).hexdigest()
+
+        auth_parts = [
+            f"q-sign-algorithm=sha1",
+            f"q-ak={COS_SECRET_ID}",
+            f"q-sign-time={sign_time}",
+            f"q-key-time={key_time}",
+            f"q-header-list={http_headers}",
+            f"q-url-param-list=",
+            f"q-signature={signature}",
+        ]
+        authorization = "&".join(auth_parts)
+
+        presigned_url = (
+            f"https://{COS_BUCKET}.cos.{COS_REGION}.myqcloud.com/{key}"
+            f"?{authorization}"
+        )
+        file_url = f"https://{COS_BUCKET}.cos.{COS_REGION}.myqcloud.com/{key}"
+        return {"upload_url": presigned_url, "file_url": file_url, "key": key}
+
+
 # ── URL helpers ───────────────────────────────────────────────────────────
 
 def generate_upload_url(user_id: str, filename: str) -> str:
-    """Generate a unique upload URL for COS."""
-    ext = filename.split(".")[-1] if "." in filename else "jpg"
-    unique_name = f"{uuid.uuid4().hex}.{ext}"
-    return f"https://{COS_BUCKET}.cos.{COS_REGION}.myqcloud.com/proofs/{user_id}/{unique_name}"
+    """Generate a unique presigned upload URL for COS."""
+    return get_presigned_put_url(user_id, filename)["upload_url"]
 
 
 def get_preview_url(object_key: str) -> str:

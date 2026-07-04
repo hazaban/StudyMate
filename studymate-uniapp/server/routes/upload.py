@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from jose import jwt
 
 from config import SECRET_KEY, ALGORITHM
-from services.cos_service import get_sts_credential, get_post_signature, generate_upload_url
+from services.cos_service import get_sts_credential, get_post_signature, get_presigned_put_url
 
 router = APIRouter(prefix="/api/upload", tags=["upload"])
 
@@ -44,6 +44,6 @@ async def get_signature(
 
 @router.post("/presign")
 async def presign_upload(filename: str, user_id: UUID = Depends(_get_user_id)):
-    """Generate a pre-signed upload URL."""
-    url = generate_upload_url(str(user_id), filename)
-    return {"upload_url": url, "file_url": url}
+    """Generate a pre-signed PUT upload URL (properly signed via COS SDK)."""
+    result = get_presigned_put_url(str(user_id), filename)
+    return result
