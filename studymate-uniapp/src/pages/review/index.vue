@@ -758,6 +758,14 @@ const mistakeReviewCards = computed(() => filteredMistakes.value.filter(m => m.m
 // ── Helpers ──
 function getMasteryLabel(l) { const m = { unmastered: '未掌握', familiar: '较熟悉', mastered: '已掌握' }; return m[l] || l }
 function getMasteryClass(l) { const m = { unmastered: 'badge-red', familiar: 'badge-orange', mastered: 'badge-green' }; return m[l] || '' }
+function getNextReviewHint(card) {
+  const intervals = { unmastered: [1,1,2,3,5,8,14,21,30], familiar: [3,5,8,14,21,30], mastered: [7,14,30] }
+  const levels = intervals[card.mastery_level] || intervals.unmastered
+  const idx = Math.min(card.review_count, levels.length - 1)
+  const days = levels[idx]
+  const next = new Date()
+  next.setDate(next.getDate() + days)
+  return `${days}天后 (${next.getMonth()+1}月${next.getDate()}日)`
 function getDifficultyLabel(d) { const m = { easy: '简单', medium: '中等', hard: '困难' }; return m[d] || d }
 function formatDate(s) { if (!s) return ''; const d = new Date(s); return `${d.getMonth()+1}月${d.getDate()}日` }
 
