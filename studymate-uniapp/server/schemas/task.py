@@ -14,6 +14,7 @@ class TaskCreate(BaseModel):
     content: str
     duration: int = 25
     status: str = "pending"
+    repeat_type: str = "none"  # none / daily / weekday / holiday
     actual_duration: int = 0
     chapter: str = ""
 
@@ -26,6 +27,7 @@ class TaskUpdate(BaseModel):
     status: Optional[str] = None
     completed_at: Optional[datetime] = None
     proof_image_url: Optional[str] = None
+    repeat_type: Optional[str] = None
     actual_duration: Optional[int] = None
     chapter: Optional[str] = None
 
@@ -41,6 +43,8 @@ class TaskResponse(BaseModel):
     status: str
     completed_at: Optional[datetime]
     proof_image_url: str
+    repeat_type: str = "none"
+    completed_dates: list[str] = []
     actual_duration: int = 0
     chapter: str = ""
     created_at: datetime

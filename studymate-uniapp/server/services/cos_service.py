@@ -8,15 +8,15 @@ import hmac
 import hashlib
 from datetime import datetime
 
-from config import COS_SECRET_ID, COS_SECRET_KEY, COS_BUCKET, COS_REGION
+from config import COS_SECRET_ID, COS_SECRET_KEY, COS_BUCKET, COS_REGION, COS_ENABLED
 
 
 # ── STS temporary credentials (for SDK-based upload) ──────────────────────
 
-async def get_sts_credential(user_id: str) -> dict:
+async def get_sts_credential(user_id: str, key_prefix: str = "proofs/") -> dict:
     """Get STS temporary credential for direct upload to COS."""
-    if not COS_SECRET_ID or not COS_SECRET_KEY:
-        return _demo_credential(user_id)
+    if not COS_ENABLED:
+        raise RuntimeError("COS upload is not configured. Set COS_SECRET_ID, COS_SECRET_KEY, COS_BUCKET")
 
     try:
         from sts.sts import Sts
@@ -26,7 +26,7 @@ async def get_sts_credential(user_id: str) -> dict:
             "bucket": COS_BUCKET,
             "region": COS_REGION,
             "duration_seconds": 1800,
-            "allow_prefix": [f"proofs/{user_id}/*"],
+            "allow_prefix": [f"{key_prefix}{user_id}/*"],
             "allow_actions": [
                 "name/cos:PutObject",
                 "name/cos:PostObject",
@@ -41,26 +41,10 @@ async def get_sts_credential(user_id: str) -> dict:
             "startTime": response["startTime"],
             "bucket": COS_BUCKET,
             "region": COS_REGION,
-            "prefix": f"proofs/{user_id}/"
+            "prefix": f"{key_prefix}{user_id}/"
         }
-    except Exception:
-        return _demo_credential(user_id)
-
-
-def _demo_credential(user_id: str) -> dict:
-    """Demo-mode fallback when COS is not configured."""
-    return {
-        "credentials": {
-            "tmpSecretId": "demo-temp-id",
-            "tmpSecretKey": "demo-temp-key",
-            "sessionToken": "demo-token"
-        },
-        "expiredTime": int(datetime.now().timestamp()) + 1800,
-        "startTime": int(datetime.now().timestamp()),
-        "bucket": COS_BUCKET,
-        "region": COS_REGION,
-        "prefix": f"proofs/{user_id}/"
-    }
+    except Exception as e:
+        raise RuntimeError(f"COS STS credential failed: {e}")
 
 
 # ── POST Object signature (for form-based upload from frontend) ───────────
@@ -72,6 +56,9 @@ def get_post_signature(user_id: str, key_prefix: str = "",
     The frontend POSTs the file directly to COS using the returned policy +
     signature. This avoids streaming the file through our backend.
     """
+    if not COS_ENABLED:
+        raise RuntimeError("COS upload is not configured")
+
     now = int(time.time())
     expired = now + 1800  # 30 minutes
 

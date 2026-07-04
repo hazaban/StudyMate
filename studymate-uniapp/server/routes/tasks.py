@@ -1,4 +1,4 @@
-"""Daily task routes."""
+"""Daily task routes with repeat task support."""
 from uuid import UUID
 from datetime import date, datetime, timezone
 
@@ -25,6 +25,27 @@ def _get_user_id(authorization: str = Header(None)) -> UUID:
         raise HTTPException(status_code=401, detail="登录已过期")
 
 
+def _should_repeat(task: DailyTask, task_date: date) -> bool:
+    """判断循环任务在指定日期是否应该出现。"""
+    if task.repeat_type == "none" or not task.repeat_type:
+        return task.date == task_date
+    if task.repeat_type == "daily":
+        return task.date <= task_date
+    if task.repeat_type == "weekday":
+        return task.date <= task_date and task_date.weekday() < 5
+    if task.repeat_type == "holiday":
+        return task.date <= task_date and task_date.weekday() >= 5
+    return False
+
+
+def _is_completed_on(task: DailyTask, task_date: date) -> bool:
+    """判断循环任务在指定日期是否已完成。"""
+    if task.repeat_type == "none" or not task.repeat_type:
+        return task.status == "completed"
+    date_str = task_date.isoformat()
+    return date_str in (task.completed_dates or [])
+
+
 @router.post("", response_model=TaskResponse, status_code=201)
 def create_task(data: TaskCreate, user_id: UUID = Depends(_get_user_id), db: Session = Depends(get_db)):
     plan = db.query(StudyPlan).filter(StudyPlan.id == data.plan_id, StudyPlan.user_id == user_id).first()
@@ -47,11 +68,26 @@ def list_tasks(
     plan = db.query(StudyPlan).filter(StudyPlan.id == plan_id, StudyPlan.user_id == user_id).first()
     if not plan:
         raise HTTPException(status_code=404, detail="计划不存在")
+
     query = db.query(DailyTask).filter(DailyTask.plan_id == plan_id)
     if task_date:
-        query = query.filter(DailyTask.date == task_date)
-    tasks = query.order_by(DailyTask.created_at.asc()).all()
-    return [TaskResponse.model_validate(t) for t in tasks]
+        query = query.filter(DailyTask.date <= task_date)
+        tasks = query.order_by(DailyTask.created_at.asc()).all()
+
+        result = []
+        for t in tasks:
+            if _should_repeat(t, task_date):
+                completed = _is_completed_on(t, task_date)
+                resp = TaskResponse.model_validate(t)
+                resp = resp.model_copy(update={
+                    "status": "completed" if completed else "pending",
+                    "date": task_date,
+                })
+                result.append(resp)
+        return result
+    else:
+        tasks = query.order_by(DailyTask.created_at.asc()).all()
+        return [TaskResponse.model_validate(t) for t in tasks]
 
 
 @router.get("/{task_id}", response_model=TaskResponse)
@@ -88,12 +124,29 @@ def complete_task(task_id: UUID, task_date: date = Query(None), user_id: UUID = 
     task = db.query(DailyTask).join(StudyPlan).filter(DailyTask.id == task_id, StudyPlan.user_id == user_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
-    task.status = "completed"
-    task.completed_at = datetime.now(timezone.utc)
+
+    now = datetime.now(timezone.utc)
+
+    if task.repeat_type == "none" or not task.repeat_type:
+        task.status = "completed"
+        task.completed_at = now
+    else:
+        the_date = task_date or date.today()
+        date_str = the_date.isoformat()
+        if not task.completed_dates:
+            task.completed_dates = []
+        if date_str not in task.completed_dates:
+            task.completed_dates = list(task.completed_dates) + [date_str]
+
     db.commit()
     db.refresh(task)
+
     add_fertilize_count(task.plan_id, task.subject, db)
-    return TaskResponse.model_validate(task)
+
+    resp = TaskResponse.model_validate(task)
+    if task.repeat_type and task.repeat_type != "none" and task_date:
+        resp = resp.model_copy(update={"status": "completed", "date": task_date})
+    return resp
 
 
 @router.post("/{task_id}/uncomplete", response_model=TaskResponse)
@@ -101,11 +154,23 @@ def uncomplete_task(task_id: UUID, task_date: date = Query(None), user_id: UUID 
     task = db.query(DailyTask).join(StudyPlan).filter(DailyTask.id == task_id, StudyPlan.user_id == user_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
-    task.status = "pending"
-    task.completed_at = None
+
+    if task.repeat_type == "none" or not task.repeat_type:
+        task.status = "pending"
+        task.completed_at = None
+    else:
+        the_date = task_date or date.today()
+        date_str = the_date.isoformat()
+        if task.completed_dates and date_str in task.completed_dates:
+            task.completed_dates = [d for d in task.completed_dates if d != date_str]
+
     db.commit()
     db.refresh(task)
-    return TaskResponse.model_validate(task)
+
+    resp = TaskResponse.model_validate(task)
+    if task.repeat_type and task.repeat_type != "none" and task_date:
+        resp = resp.model_copy(update={"status": "pending", "date": task_date})
+    return resp
 
 
 @router.post("/ai/generate")

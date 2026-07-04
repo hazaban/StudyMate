@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import CORS_ORIGINS
 from database import init_db
-from routes import auth, plans, tasks, cards, mistakes, farm, ai, upload, focus
+from routes import auth, plans, tasks, cards, mistakes, farm, ai, upload, focus, subjects
 
 
 @asynccontextmanager
@@ -41,6 +41,7 @@ app.include_router(farm.router)
 app.include_router(ai.router)
 app.include_router(upload.router)
 app.include_router(focus.router)
+app.include_router(subjects.router)
 
 
 @app.get("/")
@@ -59,4 +60,5 @@ def health():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    from config import PORT, RELOAD
+    uvicorn.run("main:app", host="0.0.0.0", port=PORT, reload=RELOAD)

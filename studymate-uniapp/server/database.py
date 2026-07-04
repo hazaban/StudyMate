@@ -9,17 +9,17 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
-from config import DATABASE_URL
+from config import DATABASE_URL, DB_SSLMODE
 
 engine = create_engine(
     DATABASE_URL,
-    pool_size=5,
-    max_overflow=10,
+    pool_size=3 if DB_SSLMODE == "require" else 5,
+    max_overflow=5 if DB_SSLMODE == "require" else 10,
     pool_pre_ping=True,
     pool_recycle=3600,
     connect_args={
         "connect_timeout": 10,
-        "sslmode": "prefer"
+        "sslmode": DB_SSLMODE
     }
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -95,6 +95,8 @@ class DailyTask(Base):
     proof_image_url = Column(Text, default="")
     actual_duration = Column(Integer, default=0)        # actual minutes tracked by pomodoro
     chapter = Column(String(100), default="")
+    repeat_type = Column(String(20), default="none")     # none / daily / weekday / holiday
+    completed_dates = Column(JSON, default=list)          # 循环任务的完成日期列表
     created_at = Column(DateTime(timezone=True), default=utcnow)
 
     plan = relationship("StudyPlan", back_populates="tasks")

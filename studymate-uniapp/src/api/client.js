@@ -256,6 +256,20 @@ export async function exportMistakes(planId, subject, tag, difficulty) {
   return request(url)
 }
 
+// ==================== Subjects ====================
+
+export async function getUserSubjects() {
+  return request('/subjects')
+}
+
+export async function addUserSubject(name) {
+  return request('/subjects', { method: 'POST', data: { name } })
+}
+
+export async function removeUserSubject(name) {
+  return request(`/subjects/${encodeURIComponent(name)}`, { method: 'DELETE' })
+}
+
 // ==================== Farm ====================
 
 export async function getFarm(planId) {

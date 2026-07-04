@@ -1,0 +1,13 @@
+- generic [ref=e139]:
+  - generic [ref=e142] [cursor=pointer]:
+    - img [ref=e144]
+    - generic [ref=e145]: 首页
+  - generic [ref=e147] [cursor=pointer]:
+    - img [ref=e149]
+    - generic [ref=e150]: 任务
+  - generic [ref=e152] [cursor=pointer]:
+    - img [ref=e154]
+    - generic [ref=e155]: 复习
+  - generic [ref=e157] [cursor=pointer]:
+    - img [ref=e159]
+    - generic [ref=e160]: 我的

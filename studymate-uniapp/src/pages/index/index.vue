@@ -136,6 +136,15 @@
             <text class="form-label">预计时间（分钟）</text>
             <input class="modal-input" type="number" v-model="editingForm.duration" />
           </view>
+          <view class="form-group">
+            <text class="form-label">循环</text>
+            <view class="type-row repeat-row">
+              <view class="type-tag" :class="{ active: (editingForm.repeat_type || 'none') === 'none' }" @click="editingForm.repeat_type = 'none'">不循环</view>
+              <view class="type-tag" :class="{ active: editingForm.repeat_type === 'daily' }" @click="editingForm.repeat_type = 'daily'">每天</view>
+              <view class="type-tag" :class="{ active: editingForm.repeat_type === 'weekday' }" @click="editingForm.repeat_type = 'weekday'">工作日</view>
+              <view class="type-tag" :class="{ active: editingForm.repeat_type === 'holiday' }" @click="editingForm.repeat_type = 'holiday'">节假日</view>
+            </view>
+          </view>
           <view class="form-group" v-if="editingForm.actual_duration !== undefined">
             <text class="form-label">实际用时（分钟，系统自动记录）</text>
             <input class="modal-input" type="number" v-model="editingForm.actual_duration" disabled />
@@ -233,7 +242,8 @@ function editTask(task) {
     content: task.content,
     type: task.type,
     duration: task.duration,
-    actual_duration: task.actual_duration
+    actual_duration: task.actual_duration,
+    repeat_type: task.repeat_type || 'none'
   }
   showTaskForm.value = true
 }
@@ -249,7 +259,8 @@ async function saveTask() {
       chapter: editingForm.value.chapter,
       content: editingForm.value.content,
       type: editingForm.value.type,
-      duration: parseInt(editingForm.value.duration) || 25
+      duration: parseInt(editingForm.value.duration) || 25,
+      repeat_type: editingForm.value.repeat_type || 'none'
     })
     showTaskForm.value = false
     uni.showToast({ title: '保存成功', icon: 'success' })

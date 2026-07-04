@@ -172,7 +172,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useTaskStore } from '@/stores/task'
 import { useFarmStore } from '@/stores/farm'
 import { usePlanStore } from '@/stores/plan'
-import { createFocusRecord } from '@/api/client'
+import { createFocusRecord, getFocusRecords, updateFocusRecord, deleteFocusRecord } from '@/api/client'
 
 const taskStore = useTaskStore()
 const farmStore = useFarmStore()
@@ -434,6 +434,10 @@ function saveEdit() {
   totalMinutes.value = totalMinutes.value - r.duration + m
   r.duration = m; r.taskName = name
   saveRecords()
+  // Sync to backend if we have a focus record ID
+  if (r._focusId) {
+    updateFocusRecord(r._focusId, { duration: m, task_name: name }).catch(e => console.warn('Sync edit failed:', e))
+  }
   showEditModal.value = false; editingIndex.value = -1
   uni.showToast({ title: '保存成功', icon: 'success' })
 }
@@ -442,9 +446,14 @@ function deleteRecord(i) {
     title: '确认删除', content: '确定要删除这条记录吗？',
     success: res => {
       if (res.confirm) {
-        totalMinutes.value -= todayRecords.value[i].duration
+        const r = todayRecords.value[i]
+        totalMinutes.value -= r.duration
         todayRecords.value.splice(i, 1)
         saveRecords()
+        // Sync to backend if we have a focus record ID
+        if (r._focusId) {
+          deleteFocusRecord(r._focusId).catch(e => console.warn('Sync delete failed:', e))
+        }
         uni.showToast({ title: '删除成功', icon: 'success' })
       }
     }
@@ -547,7 +556,7 @@ function notifyCompletion(title, body, isFocusEnd) {
 
 function goBack() { uni.navigateBack() }
 
-onMounted(() => {
+onMounted(async () => {
   const s = uni.getStorageSync('studymate_pomodoro_settings')
   if (s) {
     try {
@@ -564,15 +573,43 @@ onMounted(() => {
   if (opts.taskContent) currentTaskName.value = decodeURIComponent(opts.taskContent)
   if (opts.taskId) currentTaskId.value = opts.taskId
 
-  const all = JSON.parse(uni.getStorageSync('studymate_pomodoro_records') || '[]')
-  todayRecords.value = all.filter(r => r.date === today.value)
+  // Load records from backend (primary) → fallback to localStorage (secondary)
+  let allRecords = []
+  try {
+    if (planStore.currentPlan) {
+      const res = await getFocusRecords(planStore.currentPlan.id, null, null, null)
+      const serverRecords = Array.isArray(res) ? res : (res.records || [])
+      // Convert FocusRecord to pomodoro record format
+      allRecords = serverRecords.map(r => ({
+        type: r.type || 'focus',
+        taskName: r.task_name || '番茄钟专注',
+        time: r.start_time ? r.start_time.split(' ')[1]?.substring(0,5) : '',
+        duration: r.duration || 25,
+        date: r.date,
+        _focusId: r.id  // keep for edit/delete sync
+      }))
+      // Merge local records not yet synced (no _focusId)
+      const localRecords = JSON.parse(uni.getStorageSync('studymate_pomodoro_records') || '[]')
+      localRecords.forEach(lr => {
+        if (!allRecords.find(sr => sr.date === lr.date && sr.taskName === lr.taskName && sr.duration === lr.duration)) {
+          allRecords.unshift(lr)
+        }
+      })
+    }
+  } catch (e) {
+    // Backend unavailable, use localStorage
+    allRecords = JSON.parse(uni.getStorageSync('studymate_pomodoro_records') || '[]')
+  }
+
+  todayRecords.value = allRecords.filter(r => r.date === today.value)
   completedPomodoros.value = todayRecords.value.filter(r => r.type === 'focus').length
   totalMinutes.value = todayRecords.value.reduce((s, r) => s + (r.duration || 0), 0)
+  // Save merged records back to localStorage
+  uni.setStorageSync('studymate_pomodoro_records', JSON.stringify(allRecords))
 
   timeRemaining.value = currentFocusSeconds.value
 
   // #ifdef H5
-  // 请求浏览器通知权限（用于页面后台时提醒）
   if ('Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission()
   }
