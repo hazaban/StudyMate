@@ -111,10 +111,15 @@
         </view>
         <view class="review-actions">
           <view class="show-answer-btn" v-if="!reviewShowAnswer" @click="reviewShowAnswer = true"><text>点击查看答案</text></view>
-          <view class="review-result-btns" v-else>
-            <view class="result-btn fail" @click="reviewCardResult('unmastered')"><text class="result-icon">😣</text><text class="result-text">未掌握</text></view>
-            <view class="result-btn ok" @click="reviewCardResult('familiar')"><text class="result-icon">🤔</text><text class="result-text">较熟悉</text></view>
-            <view class="result-btn great" @click="reviewCardResult('mastered')"><text class="result-icon">😎</text><text class="result-text">已掌握</text></view>
+          <view v-else>
+            <view class="review-next-hint">
+              <text class="next-label">📅 {{ getNextReviewHint(reviewCards[reviewIndex]) }}</text>
+            </view>
+            <view class="review-result-btns">
+              <view class="result-btn fail" @click="reviewCardResult('unmastered')"><text class="result-icon">😣</text><text class="result-text">未掌握</text></view>
+              <view class="result-btn ok" @click="reviewCardResult('familiar')"><text class="result-icon">🤔</text><text class="result-text">较熟悉</text></view>
+              <view class="result-btn great" @click="reviewCardResult('mastered')"><text class="result-icon">😎</text><text class="result-text">已掌握</text></view>
+            </view>
           </view>
         </view>
       </view>
@@ -158,6 +163,7 @@
           </view>
           <view class="card-item-footer">
             <text class="review-count">第{{ card.review_count }}次复习</text>
+            <text class="review-date due-today" v-if="card.next_review_date && card.next_review_date <= today">今天复习</text>
             <text class="review-date" v-if="card.next_review_date && card.next_review_date > today">下次 {{ formatDate(card.next_review_date) }}</text>
             <view class="card-item-actions">
               <view class="action-btn edit-btn" @click="openEditCard(card)">编辑</view>
@@ -394,6 +400,7 @@
             <text class="mistake-date">{{ formatDate(mistake.created_at) }}</text>
             <text class="correct-progress" v-if="!mistake.mastered || mistake.mastered === '0'">正确 {{ mistake.correct_count }}/2 次</text>
             <text class="error-count">做错 {{ mistake.error_count }} 次</text>
+            <text class="mistake-next" v-if="mistake.next_review_date">下次复习 {{ formatDate(mistake.next_review_date) }}</text>
             <view class="mistake-actions">
               <view class="action-btn edit-btn" @click="openEditMistake(mistake)">编辑</view>
               <view class="action-btn master-btn" @click="toggleMastered(mistake)">{{ mistake.mastered === '1' ? '重新攻克' : '已掌握' }}</view>
@@ -766,6 +773,16 @@ function getNextReviewHint(card) {
   const next = new Date()
   next.setDate(next.getDate() + days)
   return `${days}天后 (${next.getMonth()+1}月${next.getDate()}日)`
+}
+function getMistakeNextHint(m) {
+  const intervals = [1, 3, 7, 14, 30]
+  const idx = Math.min(m.correct_count, intervals.length - 1)
+  const days = idx < 0 ? 1 : intervals[idx]
+  const next = new Date()
+  next.setDate(next.getDate() + days)
+  const label = idx === 0 ? '明天' : `${days}天后`
+  return `做对→${label} (${next.getMonth()+1}月${next.getDate()}日) | 做错→明天`
+}
 function getDifficultyLabel(d) { const m = { easy: '简单', medium: '中等', hard: '困难' }; return m[d] || d }
 function formatDate(s) { if (!s) return ''; const d = new Date(s); return `${d.getMonth()+1}月${d.getDate()}日` }
 
@@ -1131,7 +1148,7 @@ watch(() => planStore.currentPlan?.id, async (n, o) => { if (n && n !== o) { awa
 .mastery-badge { font-size: 11px; padding: 3px 10px; border-radius: 12px; font-weight: 500; &.badge-red { background: #ffebee; color: #c62828; } &.badge-orange { background: #fff3e0; color: #e65100; } &.badge-green { background: #e8f5e9; color: #2e7d32; } }
 .section-label { display: block; font-size: 12px; color: #6b4ce6; margin-bottom: 6px; font-weight: 500; }
 .card-question-text { font-size: 15px; color: #1a1a2e; line-height: 1.6; display: block; }
-.card-item-footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; .review-count { font-size: 12px; color: #999; } .review-date { font-size: 12px; color: #6b4ce6; } .card-item-actions { display: flex; gap: 8px; margin-left: auto; } }
+.card-item-footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; .review-count { font-size: 12px; color: #999; } .review-date { font-size: 12px; color: #6b4ce6; } .review-date.due-today { color: #ef5350; font-weight: 600; } .card-item-actions { display: flex; gap: 8px; margin-left: auto; } }
 .action-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; background: #f5f5f5; color: #999; }
 .edit-btn { background: #f3f0ff; color: #6b4ce6; &:active { background: #e8e0ff; } }
 .del-btn { &:active { background: #ffebee; color: #c62828; } }
@@ -1146,7 +1163,7 @@ watch(() => planStore.currentPlan?.id, async (n, o) => { if (n && n !== o) { awa
 .mistake-answer-section, .mistake-analysis-section { margin-bottom: 12px; }
 .mistake-answer { font-size: 14px; color: #2e7d32; line-height: 1.6; display: block; font-weight: 500; }
 .mistake-analysis { font-size: 14px; color: #65746d; line-height: 1.6; display: block; }
-.mistake-footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; .mistake-date { font-size: 12px; color: #999; } .correct-progress { font-size: 12px; color: #2e7d32; font-weight: 500; } .error-count { font-size: 12px; color: #ef5350; } .mistake-actions { display: flex; gap: 6px; margin-left: auto; } }
+.mistake-footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; .mistake-date { font-size: 12px; color: #999; } .correct-progress { font-size: 12px; color: #2e7d32; font-weight: 500; } .mistake-next { font-size: 12px; color: #ef5350; font-weight: 500; } .error-count { font-size: 12px; color: #ef5350; } .mistake-actions { display: flex; gap: 6px; margin-left: auto; } }
 
 /* ===== Review Card ===== */
 .review-card { background: #fff; border-radius: 20px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); margin-bottom: 20px; }
@@ -1169,6 +1186,8 @@ watch(() => planStore.currentPlan?.id, async (n, o) => { if (n && n !== o) { awa
 .analysis-text { font-size: 14px; color: #65746d; line-height: 1.6; }
 .review-actions { margin-top: 20px; }
 .show-answer-btn { text-align: center; padding: 16px; background: #f3f0ff; border-radius: 14px; &:active { transform: scale(0.98); background: #e8e0ff; } text { font-size: 16px; color: #6b4ce6; font-weight: 600; } &.red-bg { background: #ffebee; text { color: #ef5350; } &:active { background: #ffcdd2; } } }
+.review-next-hint { text-align: center; padding: 8px 0 6px; margin-bottom: 8px; background: rgba(107,76,230,0.06); border-radius: 8px; .next-label { font-size: 13px; color: #6b4ce6; font-weight: 600; } .next-value { font-size: 13px; color: #6b4ce6; } }
+
 .review-result-btns { display: flex; gap: 12px; }
 .result-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 8px; border-radius: 14px; &:active { transform: scale(0.96); } &.fail { background: #fff0f0; .result-text { color: #c62828; } } &.ok { background: #fff8f0; .result-text { color: #e65100; } } &.great { background: #f0fff4; .result-text { color: #2e7d32; } } &.wrong { background: #fff0f0; .result-text { color: #c62828; } } &.correct { background: #f0fff4; .result-text { color: #2e7d32; } } .result-icon { font-size: 24px; } .result-text { font-size: 13px; font-weight: 500; } }
 .review-complete { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; .complete-icon { font-size: 56px; margin-bottom: 12px; } .complete-text { font-size: 20px; font-weight: 700; color: #1a1a2e; margin-bottom: 8px; } .complete-hint { font-size: 14px; color: #65746d; margin-bottom: 20px; } .back-btn { padding: 12px 28px; border-radius: 25px; font-size: 15px; font-weight: 500; color: #fff; } }
