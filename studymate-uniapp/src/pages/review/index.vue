@@ -1028,7 +1028,20 @@ async function saveEditMistake() {
   try { await api.updateMistake(editingMistakeId.value, { question: editMistakeForm.value.question, answer: editMistakeForm.value.answer, analysis: editMistakeForm.value.analysis, subject: editMistakeForm.value.subject, difficulty: editMistakeForm.value.difficulty, tags: editMistakeForm.value.tags, question_images: editMistakeForm.value.questionImages, answer_images: editMistakeForm.value.answerImages }); showEditMistake.value = false; uni.showToast({ title: '编辑成功', icon: 'success' }); await loadMistakes() }
   catch (e) { uni.showToast({ title: e.message || '保存失败', icon: 'none' }) } finally { uni.hideLoading() }
 }
-async function toggleMastered(m) { try { if (m.mastered === '1') await api.updateMistake(m.id, { mastered: '0' }); else await api.markMistakeMastered(m.id); await loadMistakes() } catch (e) { uni.showToast({ title: '操作失败', icon: 'none' }) } }
+async function toggleMastered(m) {
+  try {
+    if (m.mastered === '1') {
+      await api.updateMistake(m.id, { mastered: '0', correct_count: 0 })
+      m.mastered = '0'; m.correct_count = 0; m.next_review_date = new Date().toISOString().split('T')[0]
+    } else {
+      const updated = await api.markMistakeMastered(m.id)
+      if (updated) {
+        m.mastered = updated.mastered; m.correct_count = updated.correct_count; m.next_review_date = updated.next_review_date
+      }
+    }
+    await loadMistakes()
+  } catch (e) { uni.showToast({ title: '操作失败', icon: 'none' }) }
+}
 async function removeMistake(m) { const r = await new Promise(r => uni.showModal({ title: '删除确认', content: '确定删除吗？', success: r })); if (r.confirm) { try { await api.deleteMistake(m.id); mistakes.value = mistakes.value.filter(x => x.id !== m.id); uni.showToast({ title: '已删除', icon: 'success' }) } catch (e) { uni.showToast({ title: '删除失败', icon: 'none' }) } } }
 function startMistakeReview() { mistakeReviewMode.value = true; mistakeShowAnswer.value = false; mistakeReviewIndex.value = 0; reviewCorrect.value = 0; reviewTotal.value = mistakeReviewCards.value.length; mistakeReviewComplete.value = false }
 async function reviewMistakeResult(correct) {

@@ -216,6 +216,7 @@ def review_mistake(mistake_id: UUID, correct: bool = Query(...), user_id: UUID =
     else:
         mistake.correct_count = 0
         mistake.error_count += 1
+        mistake.mastered = "0"
         # Review again tomorrow, but never before creation date
         next_date = today + timedelta(days=1)
         created = mistake.created_at.date() if mistake.created_at else today
@@ -230,7 +231,7 @@ def review_mistake(mistake_id: UUID, correct: bool = Query(...), user_id: UUID =
 
 @router.post("/{mistake_id}/master", response_model=MistakeResponse)
 def mark_mastered(mistake_id: UUID, user_id: UUID = Depends(_get_user_id), db: Session = Depends(get_db)):
-    """手动标记错题已掌握。"""
+    """手动标记错题已掌握 — 同步 correct_count=3 + next_review=30天后。"""
     mistake = db.query(Mistake).join(StudyPlan).filter(
         Mistake.id == mistake_id,
         StudyPlan.user_id == user_id
@@ -238,7 +239,9 @@ def mark_mastered(mistake_id: UUID, user_id: UUID = Depends(_get_user_id), db: S
     if not mistake:
         raise HTTPException(status_code=404, detail="错题不存在")
 
+    today = date.today()
     mistake.mastered = "1"
+    mistake.next_review_date = today + timedelta(days=30)
     db.commit()
     db.refresh(mistake)
     return MistakeResponse.model_validate(mistake)
@@ -256,6 +259,7 @@ def retry_mistake(mistake_id: UUID, user_id: UUID = Depends(_get_user_id), db: S
 
     mistake.error_count += 1
     mistake.correct_count = 0
+    mistake.mastered = "0"
     mistake.next_review_date = date.today() + timedelta(days=1)
     db.commit()
     db.refresh(mistake)
