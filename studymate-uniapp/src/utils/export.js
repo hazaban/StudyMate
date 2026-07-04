@@ -166,15 +166,12 @@ function mistakesToExcel(mistakes, includeAnswer) {
 
 function pdfImgCell(images) {
   if (!images || images.length === 0) return ''
-  const count = images.length
-  // Single image: full card width. Multiple: 2 per row with gap.
-  const colStyle = count === 1
-    ? 'width:100%'
-    : 'width:calc(50% - 4px); max-width:48%'
+  // Stack images vertically, each at a comfortable reading width.
+  // max-width: 650px gives ~120mm on print — readable text without over-stretching.
   return images.map(img => {
     const src = (img && (img.startsWith('data:') || img.startsWith('http') || img.startsWith('blob:') || img.startsWith('/'))) ? img : ''
-    if (!src) return '[图片]'
-    return `<img src="${esc(src)}" style="${colStyle};height:auto;margin:2px;border:1px solid #ddd;border-radius:6px;object-fit:contain;" />`
+    if (!src) return '<div class="img-wrap">[图片]</div>'
+    return `<div class="img-wrap"><img src="${esc(src)}" /></div>`
   }).join('')
 }
 
@@ -206,7 +203,7 @@ h2{text-align:center;font-size:20px;margin:0 0 16px;padding-bottom:8px;border-bo
 .card-label{font-size:13px;font-weight:700;color:#6b4ce6;margin-bottom:4px}
 .card-label.answer-label{color:#2e7d32}
 .card-text{font-size:14px;color:#1a1a2e;white-space:pre-wrap}
-.card-images{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.card-images{margin-top:6px}.img-wrap{margin-bottom:8px;text-align:center}img{display:block;max-width:100%;height:auto;margin:0 auto;border:1px solid #ddd;border-radius:6px}
 .card-meta{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#999;padding-top:8px;border-top:1px solid #e8ece9}
 .card-meta span{background:#f5f5f5;padding:2px 8px;border-radius:6px}
 </style><title>知识卡片导出</title></head><body><h2>📚 知识卡片导出 (${cards.length}张)</h2>${rows}</body></html>`
@@ -248,7 +245,7 @@ h2{text-align:center;font-size:20px;margin:0 0 16px;padding-bottom:8px;border-bo
 .card-label.answer-label{color:#2e7d32}
 .card-label.analysis-label{color:#65746d}
 .card-text{font-size:14px;color:#1a1a2e;white-space:pre-wrap}
-.card-images{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.card-images{margin-top:6px}.img-wrap{margin-bottom:8px;text-align:center}img{display:block;max-width:100%;height:auto;margin:0 auto;border:1px solid #ddd;border-radius:6px}
 .card-meta{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#999;padding-top:8px;border-top:1px solid #e8ece9}
 .card-meta span{background:#f5f5f5;padding:2px 8px;border-radius:6px}
 </style><title>错题本导出</title></head><body><h2>📝 错题本导出 (${mistakes.length}道)</h2>${rows}</body></html>`
