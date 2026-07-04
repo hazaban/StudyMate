@@ -266,10 +266,33 @@ function saveFile(content, filename, mime) {
   uni.showToast({ title: '请在电脑端使用导出功能', icon: 'none' })
   // #endif
 }
+function isMobile() {
+  // #ifdef H5
+  return /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent) || window.innerWidth < 768
+  // #endif
+  // #ifndef H5
+  return true
+  // #endif
+}
+
 function openPrint(html) {
   // #ifdef H5
-  const win = window.open('', '_blank')
-  if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 500) }
+  if (isMobile()) {
+    // Mobile browsers don't support window.print() → save as HTML file instead
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = '导出文件.html'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    uni.showToast({ title: '已下载，用浏览器打开后可打印为 PDF', icon: 'none', duration: 3000 })
+  } else {
+    const win = window.open('', '_blank')
+    if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 500) }
+  }
   // #endif
   // #ifndef H5
   uni.showToast({ title: '请在电脑端使用导出功能', icon: 'none' })
