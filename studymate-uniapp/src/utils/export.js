@@ -19,12 +19,8 @@ function formatDate(dateStr) { if (!dateStr) return ''; try { return new Date(da
 // ─── Image column builder ───
 function imgCell(images) {
   if (!images || images.length === 0) return ''
-  return images.map(img => {
-    if (img.startsWith('data:')) return `<img src="${esc(img)}" style="max-width:120px;max-height:80px;margin:2px;border:1px solid #ddd;border-radius:4px;" />`
-    if (img.startsWith('http') || img.startsWith('blob:')) return `<img src="${esc(img)}" style="max-width:120px;max-height:80px;margin:2px;border:1px solid #ddd;border-radius:4px;" />`
-    if (img.startsWith('/')) return `<img src="${esc(img)}" style="max-width:120px;max-height:80px;margin:2px;border:1px solid #ddd;border-radius:4px;" />`
-    return `[图片:${img}]`
-  }).join('')
+  if (images.length === 1) return '📷 [查看图片]'
+  return `📷 [${images.length}张图片]`
 }
 function imgCSV(images) { return (images || []).join(' | ') }
 
@@ -91,14 +87,11 @@ function mistakesToCSV(mistakes, includeAnswer) {
   return '﻿' + rows.join('\n')
 }
 
-// ─── Excel image helper (compact, fits in table cell) ───
+// ─── Excel image helper: text labels only (Excel can't render embedded base64 reliably) ───
 function excelImgCell(images) {
   if (!images || images.length === 0) return ''
-  return `<div style="display:flex;flex-direction:column;gap:4px;">` + images.map(img => {
-    const src = (img && (img.startsWith('data:') || img.startsWith('http') || img.startsWith('blob:') || img.startsWith('/'))) ? img : ''
-    if (!src) return ''
-    return `<img src="${esc(src)}" style="max-width:200px;max-height:150px;display:block;border:1px solid #ddd;border-radius:4px;" />`
-  }).join('') + `</div>`
+  if (images.length === 1) return '📷 [查看图片]'
+  return `📷 [${images.length}张图片]`
 }
 
 // ─── Cards Excel ───
@@ -118,10 +111,10 @@ function cardsToExcel(cards, includeAnswer) {
     html += `<td style="padding:6px;vertical-align:top;width:80px;word-wrap:break-word">${esc(c.subject)}</td>`
     html += `<td style="padding:6px;vertical-align:top;width:100px;word-wrap:break-word">${esc((c.tags||[]).join('；'))}</td>`
     if (hasTextQ) html += `<td style="padding:6px;vertical-align:top;width:180px;word-wrap:break-word;white-space:pre-wrap">${esc(c.question)}</td>`
-    if (hasImgQ) html += `<td style="padding:4px;vertical-align:top;width:220px">${excelImgCell(c.question_images)}</td>`
+    if (hasImgQ) html += `<td style="padding:4px;vertical-align:top;width:100px">${excelImgCell(c.question_images)}</td>`
     if (includeAnswer) {
       if (hasTextA) html += `<td style="padding:6px;vertical-align:top;width:180px;word-wrap:break-word;white-space:pre-wrap">${esc(c.answer)}</td>`
-      if (hasImgA) html += `<td style="padding:4px;vertical-align:top;width:220px">${excelImgCell(c.answer_images)}</td>`
+      if (hasImgA) html += `<td style="padding:4px;vertical-align:top;width:100px">${excelImgCell(c.answer_images)}</td>`
     }
     html += `<td style="padding:6px;text-align:center;vertical-align:top;width:60px">${esc(masteryCN(c.mastery_level))}</td>`
     html += `<td style="padding:6px;text-align:center;vertical-align:top;width:50px">${c.review_count}</td>`
@@ -130,7 +123,7 @@ function cardsToExcel(cards, includeAnswer) {
     html += `</tr>`
   }
   html += `</table>`
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>知识卡片导出</title><style>body{font-family:'Microsoft YaHei',sans-serif;padding:10px;}td img{display:block;max-width:100%;}</style></head><body>${html}</body></html>`
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>知识卡片导出</title><style>body{font-family:'Microsoft YaHei',sans-serif;padding:10px;}</style></head><body>${html}</body></html>`
 }
 
 // ─── Mistakes Excel ───
@@ -155,10 +148,10 @@ function mistakesToExcel(mistakes, includeAnswer) {
     html += `<td style="padding:6px;vertical-align:top;width:80px;word-wrap:break-word">${esc(m.subject)}</td>`
     html += `<td style="padding:6px;vertical-align:top;width:100px;word-wrap:break-word">${esc((m.tags||[]).join('；'))}</td>`
     if (hasTextQ) html += `<td style="padding:6px;vertical-align:top;width:180px;word-wrap:break-word;white-space:pre-wrap">${esc(m.question)}</td>`
-    if (hasImgQ) html += `<td style="padding:4px;vertical-align:top;width:220px">${excelImgCell(m.question_images)}</td>`
+    if (hasImgQ) html += `<td style="padding:4px;vertical-align:top;width:100px">${excelImgCell(m.question_images)}</td>`
     if (includeAnswer) {
       if (hasTextA) html += `<td style="padding:6px;vertical-align:top;width:180px;word-wrap:break-word;white-space:pre-wrap">${esc(m.answer)}</td>`
-      if (hasImgA) html += `<td style="padding:4px;vertical-align:top;width:220px">${excelImgCell(m.answer_images)}</td>`
+      if (hasImgA) html += `<td style="padding:4px;vertical-align:top;width:100px">${excelImgCell(m.answer_images)}</td>`
       if (hasAnalysis) html += `<td style="padding:6px;vertical-align:top;width:180px;word-wrap:break-word;white-space:pre-wrap">${esc(m.analysis||'')}</td>`
     }
     html += `<td style="padding:6px;text-align:center;vertical-align:top;width:50px">${esc(difficultyCN(m.difficulty))}</td>`
@@ -169,7 +162,7 @@ function mistakesToExcel(mistakes, includeAnswer) {
     html += `</tr>`
   }
   html += `</table>`
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>错题本导出</title><style>body{font-family:'Microsoft YaHei',sans-serif;padding:10px;}td img{display:block;max-width:100%;}</style></head><body>${html}</body></html>`
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>错题本导出</title><style>body{font-family:'Microsoft YaHei',sans-serif;padding:10px;}</style></head><body>${html}</body></html>`
 }
 
 // ─── PDF HTML (portrait A4, vertical card layout) ───
