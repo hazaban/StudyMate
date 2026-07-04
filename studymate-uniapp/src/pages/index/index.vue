@@ -19,7 +19,7 @@
         <text class="motivation-text">"让知识进脑子，而不是走过场"</text>
         <view class="streak-badge">
           <text class="streak-icon">🔥</text>
-          <text class="streak-days">连续学习 3 天</text>
+          <text class="streak-days">连续学习 {{ streakDays }} 天</text>
         </view>
       </view>
     </view>
@@ -169,6 +169,36 @@ const farmStore = useFarmStore()
 const currentDate = ref('')
 const daysRemaining = ref(0)
 const progressPercent = ref(0)
+const streakDays = ref(0)
+
+function computeStreak() {
+  // Collect all active days from pomodoro records AND task completions
+  const activeDays = new Set()
+
+  // From pomodoro records
+  const allRecords = JSON.parse(uni.getStorageSync('studymate_pomodoro_records') || '[]')
+  allRecords.forEach(r => { if (r.date && (r.type === 'focus' || r.duration > 0)) activeDays.add(r.date) })
+
+  // From today's tasks (completed ones counted for today)
+  if (taskStore.completedCount > 0) {
+    activeDays.add(dateUtil.today())
+  }
+
+  // Walk backwards from today, count consecutive active days
+  let count = 0
+  const today = new Date()
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today)
+    d.setDate(d.getDate() - i)
+    const ds = d.toISOString().split('T')[0]
+    if (activeDays.has(ds)) {
+      count++
+    } else {
+      break  // streak broken
+    }
+  }
+  streakDays.value = count
+}
 
 const showTaskForm = ref(false)
 const editingForm = ref({})
@@ -219,6 +249,7 @@ async function saveTask() {
     if (planStore.currentPlan) {
       await taskStore.getTasksByDate(planStore.currentPlan.id, today)
     }
+    computeStreak()
   } catch (e) {
     uni.showToast({ title: '保存失败', icon: 'none' })
   }
@@ -235,6 +266,7 @@ async function toggleTaskComplete(task) {
     if (planStore.currentPlan) {
       await taskStore.getTasksByDate(planStore.currentPlan.id, today)
     }
+    computeStreak()
   } catch (e) {
     uni.showToast({ title: '操作失败', icon: 'none' })
   }
@@ -287,7 +319,7 @@ onMounted(async () => {
       await farmStore.getPlantsByPlanId(planStore.currentPlan.id)
 
       daysRemaining.value = dateUtil.getDaysBetween(today, planStore.currentPlan.exam_date)
-
+      computeStreak()
     }
   }
 })
@@ -298,6 +330,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
     await taskStore.getTasksByDate(planStore.currentPlan.id, today)
     await farmStore.getPlantsByPlanId(planStore.currentPlan.id)
     daysRemaining.value = dateUtil.getDaysBetween(today, planStore.currentPlan.exam_date)
+    computeStreak()
   }
 })
 </script>
