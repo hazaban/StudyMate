@@ -71,6 +71,7 @@ def get_post_signature(user_id: str, key_prefix: str = "",
         "conditions": [
             {"bucket": COS_BUCKET},
             ["starts-with", "$key", prefix],
+            ["starts-with", "$Content-Type", ""],
             ["content-length-range", 0, max_size],
         ]
     }
