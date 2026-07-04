@@ -68,12 +68,17 @@
       </view>
 
       <view class="filter-section" v-if="availableCardTags.length > 0">
-        <scroll-view scroll-x class="filter-scroll">
-          <view class="filter-list">
-            <view class="filter-item tag-item" :class="{ active: activeTags.length === 0 }" @click="activeTags = []">全部标签</view>
-            <view class="filter-item tag-item" v-for="t in availableCardTags" :key="t" :class="{ active: activeTags.includes(t) }" @click="toggleTag(t)">{{ t }}</view>
+        <view class="filter-row">
+          <scroll-view scroll-x class="filter-scroll">
+            <view class="filter-list">
+              <view class="filter-item tag-item" :class="{ active: activeTags.length === 0 }" @click="activeTags = []; tagLogic = 'or'">全部标签</view>
+              <view class="filter-item tag-item" v-for="t in availableCardTags" :key="t" :class="{ active: activeTags.includes(t) }" @click="toggleTag(t)">{{ t }}</view>
+            </view>
+          </scroll-view>
+          <view class="tag-logic-btn" v-if="activeTags.length > 1" @click="tagLogic = tagLogic === 'or' ? 'and' : 'or'">
+            <text>{{ tagLogic === 'or' ? '或' : '且' }}</text>
           </view>
-        </scroll-view>
+        </view>
       </view>
 
       <view class="filter-section">
@@ -181,23 +186,33 @@
             </view>
             <view class="form-group"><text class="form-label">问题</text><view class="input-wrapper"><textarea class="textarea-field" v-model="cardForm.question" placeholder="请输入复习问题..." maxlength="2000" /></view></view>
             <view class="form-group"><text class="form-label">答案</text><view class="input-wrapper"><textarea class="textarea-field" v-model="cardForm.answer" placeholder="请输入答案..." maxlength="2000" /></view></view>
-            <view class="form-group"><text class="form-label">问题图片</text>
-              <view class="img-preview-list" v-if="cardForm.questionImages.length > 0">
-                <view class="img-preview-item" v-for="(img, i) in cardForm.questionImages" :key="'q'+i">
-                  <image :src="img" mode="aspectFill" class="img-preview-thumb" @click="previewImage(img, cardForm.questionImages)" />
-                  <view class="img-preview-del" @click="cardForm.questionImages.splice(i, 1)">✕</view>
+            <view class="form-group"><text class="form-label">问题图片（可选）</text>
+              <view class="image-upload-area">
+                <view class="image-item" v-for="(img, idx) in cardForm.questionImages" :key="'q'+idx">
+                  <image :src="img" mode="aspectFill" class="uploaded-image" @click="previewImage(img, cardForm.questionImages)" />
+                  <view class="image-remove" @click="cardForm.questionImages.splice(idx, 1)">✕</view>
+                </view>
+                <view class="upload-actions">
+                  <view class="upload-action-btn" @click="takePhoto('card_q')"><text class="action-icon">📷</text><text class="action-text">拍照</text></view>
+                  <view class="upload-action-btn" @click="pickAlbum('card_q')"><text class="action-icon">🖼️</text><text class="action-text">相册</text></view>
+                  <view class="upload-action-btn paste-btn" :class="{ active: activePasteTarget === 'card_q' }" @click="setPasteTarget('card_q')"><text class="action-icon">📋</text><text class="action-text">粘贴</text></view>
                 </view>
               </view>
-              <view class="img-add-btn" @click="pickImages(cardForm.questionImages)"><text>+ 上传</text></view>
+              <text class="paste-hint">💡 手机端可拍照或从相册选择，电脑端点击「粘贴」后按 Ctrl+V</text>
             </view>
-            <view class="form-group"><text class="form-label">答案图片</text>
-              <view class="img-preview-list" v-if="cardForm.answerImages.length > 0">
-                <view class="img-preview-item" v-for="(img, i) in cardForm.answerImages" :key="'a'+i">
-                  <image :src="img" mode="aspectFill" class="img-preview-thumb" @click="previewImage(img, cardForm.answerImages)" />
-                  <view class="img-preview-del" @click="cardForm.answerImages.splice(i, 1)">✕</view>
+            <view class="form-group"><text class="form-label">答案图片（可选）</text>
+              <view class="image-upload-area">
+                <view class="image-item" v-for="(img, idx) in cardForm.answerImages" :key="'a'+idx">
+                  <image :src="img" mode="aspectFill" class="uploaded-image" @click="previewImage(img, cardForm.answerImages)" />
+                  <view class="image-remove" @click="cardForm.answerImages.splice(idx, 1)">✕</view>
+                </view>
+                <view class="upload-actions">
+                  <view class="upload-action-btn" @click="takePhoto('card_a')"><text class="action-icon">📷</text><text class="action-text">拍照</text></view>
+                  <view class="upload-action-btn" @click="pickAlbum('card_a')"><text class="action-icon">🖼️</text><text class="action-text">相册</text></view>
+                  <view class="upload-action-btn paste-btn" :class="{ active: activePasteTarget === 'card_a' }" @click="setPasteTarget('card_a')"><text class="action-icon">📋</text><text class="action-text">粘贴</text></view>
                 </view>
               </view>
-              <view class="img-add-btn" @click="pickImages(cardForm.answerImages)"><text>+ 上传</text></view>
+              <text class="paste-hint">💡 手机端可拍照或从相册选择，电脑端点击「粘贴」后按 Ctrl+V</text>
             </view>
           </scroll-view>
           <view class="modal-footer"><view class="cancel-btn" @click="showCardForm = false">取消</view><view class="submit-btn" @click="submitCard">提交</view></view>
@@ -218,23 +233,31 @@
             </view>
             <view class="form-group"><text class="form-label">问题</text><view class="input-wrapper"><textarea class="textarea-field" v-model="editForm.question" placeholder="请输入复习问题..." maxlength="2000" /></view></view>
             <view class="form-group"><text class="form-label">答案</text><view class="input-wrapper"><textarea class="textarea-field" v-model="editForm.answer" placeholder="请输入答案..." maxlength="2000" /></view></view>
-            <view class="form-group"><text class="form-label">问题图片</text>
-              <view class="img-preview-list" v-if="editForm.questionImages.length > 0">
-                <view class="img-preview-item" v-for="(img, i) in editForm.questionImages" :key="'eq'+i">
-                  <image :src="img" mode="aspectFill" class="img-preview-thumb" @click="previewImage(img, editForm.questionImages)" />
-                  <view class="img-preview-del" @click="editForm.questionImages.splice(i, 1)">✕</view>
+            <view class="form-group"><text class="form-label">问题图片（可选）</text>
+              <view class="image-upload-area">
+                <view class="image-item" v-for="(img, idx) in editForm.questionImages" :key="'eq'+idx">
+                  <image :src="img" mode="aspectFill" class="uploaded-image" @click="previewImage(img, editForm.questionImages)" />
+                  <view class="image-remove" @click="editForm.questionImages.splice(idx, 1)">✕</view>
+                </view>
+                <view class="upload-actions">
+                  <view class="upload-action-btn" @click="takePhoto('edit_card_q')"><text class="action-icon">📷</text><text class="action-text">拍照</text></view>
+                  <view class="upload-action-btn" @click="pickAlbum('edit_card_q')"><text class="action-icon">🖼️</text><text class="action-text">相册</text></view>
+                  <view class="upload-action-btn paste-btn" :class="{ active: activePasteTarget === 'edit_card_q' }" @click="setPasteTarget('edit_card_q')"><text class="action-icon">📋</text><text class="action-text">粘贴</text></view>
                 </view>
               </view>
-              <view class="img-add-btn" @click="pickImages(editForm.questionImages)"><text>+ 上传</text></view>
             </view>
-            <view class="form-group"><text class="form-label">答案图片</text>
-              <view class="img-preview-list" v-if="editForm.answerImages.length > 0">
-                <view class="img-preview-item" v-for="(img, i) in editForm.answerImages" :key="'ea'+i">
-                  <image :src="img" mode="aspectFill" class="img-preview-thumb" @click="previewImage(img, editForm.answerImages)" />
-                  <view class="img-preview-del" @click="editForm.answerImages.splice(i, 1)">✕</view>
+            <view class="form-group"><text class="form-label">答案图片（可选）</text>
+              <view class="image-upload-area">
+                <view class="image-item" v-for="(img, idx) in editForm.answerImages" :key="'ea'+idx">
+                  <image :src="img" mode="aspectFill" class="uploaded-image" @click="previewImage(img, editForm.answerImages)" />
+                  <view class="image-remove" @click="editForm.answerImages.splice(idx, 1)">✕</view>
+                </view>
+                <view class="upload-actions">
+                  <view class="upload-action-btn" @click="takePhoto('edit_card_a')"><text class="action-icon">📷</text><text class="action-text">拍照</text></view>
+                  <view class="upload-action-btn" @click="pickAlbum('edit_card_a')"><text class="action-icon">🖼️</text><text class="action-text">相册</text></view>
+                  <view class="upload-action-btn paste-btn" :class="{ active: activePasteTarget === 'edit_card_a' }" @click="setPasteTarget('edit_card_a')"><text class="action-icon">📋</text><text class="action-text">粘贴</text></view>
                 </view>
               </view>
-              <view class="img-add-btn" @click="pickImages(editForm.answerImages)"><text>+ 上传</text></view>
             </view>
           </scroll-view>
           <view class="modal-footer"><view class="cancel-btn" @click="showEditCard = false">取消</view><view class="submit-btn" @click="saveEditCard">保存</view></view>
@@ -267,12 +290,17 @@
 
       <!-- Mistake Tag Filter (二级，联动科目) -->
       <view class="filter-section" v-if="availableMistakeTags.length > 0">
-        <scroll-view scroll-x class="filter-scroll">
-          <view class="filter-list">
-            <view class="filter-item tag-item" :class="{ active: activeTags.length === 0 }" @click="activeTags = []">全部标签</view>
-            <view class="filter-item tag-item" v-for="t in availableMistakeTags" :key="t" :class="{ active: activeTags.includes(t) }" @click="toggleTag(t)">{{ t }}</view>
+        <view class="filter-row">
+          <scroll-view scroll-x class="filter-scroll">
+            <view class="filter-list">
+              <view class="filter-item tag-item" :class="{ active: activeTags.length === 0 }" @click="activeTags = []; tagLogic = 'or'">全部标签</view>
+              <view class="filter-item tag-item" v-for="t in availableMistakeTags" :key="t" :class="{ active: activeTags.includes(t) }" @click="toggleTag(t)">{{ t }}</view>
+            </view>
+          </scroll-view>
+          <view class="tag-logic-btn" v-if="activeTags.length > 1" @click="tagLogic = tagLogic === 'or' ? 'and' : 'or'">
+            <text>{{ tagLogic === 'or' ? '或' : '且' }}</text>
           </view>
-        </scroll-view>
+        </view>
       </view>
 
       <!-- Mistake Error Count Filter -->
@@ -381,23 +409,33 @@
                 <view class="diff-item" :class="{ active: mistakeForm.difficulty === 'hard' }" @click="mistakeForm.difficulty = 'hard'">困难</view>
               </view>
             </view>
-            <view class="form-group"><text class="form-label">题目图片</text>
-              <view class="img-preview-list red" v-if="mistakeForm.questionImages.length > 0">
-                <view class="img-preview-item" v-for="(img, i) in mistakeForm.questionImages" :key="'mq'+i">
-                  <image :src="img" mode="aspectFill" class="img-preview-thumb" @click="previewImage(img, mistakeForm.questionImages)" />
-                  <view class="img-preview-del" @click="mistakeForm.questionImages.splice(i, 1)">✕</view>
+            <view class="form-group"><text class="form-label">题目图片（可选）</text>
+              <view class="image-upload-area">
+                <view class="image-item" v-for="(img, idx) in mistakeForm.questionImages" :key="'mq'+idx">
+                  <image :src="img" mode="aspectFill" class="uploaded-image" @click="previewImage(img, mistakeForm.questionImages)" />
+                  <view class="image-remove" @click="mistakeForm.questionImages.splice(idx, 1)">✕</view>
+                </view>
+                <view class="upload-actions">
+                  <view class="upload-action-btn" @click="takePhoto('mistake_q')"><text class="action-icon">📷</text><text class="action-text">拍照</text></view>
+                  <view class="upload-action-btn" @click="pickAlbum('mistake_q')"><text class="action-icon">🖼️</text><text class="action-text">相册</text></view>
+                  <view class="upload-action-btn paste-btn" :class="{ active: activePasteTarget === 'mistake_q' }" @click="setPasteTarget('mistake_q')"><text class="action-icon">📋</text><text class="action-text">粘贴</text></view>
                 </view>
               </view>
-              <view class="img-add-btn red-add" @click="pickImages(mistakeForm.questionImages)"><text>+ 上传</text></view>
+              <text class="paste-hint">💡 手机端可拍照或从相册选择，电脑端点击「粘贴」后按 Ctrl+V</text>
             </view>
-            <view class="form-group"><text class="form-label">答案图片</text>
-              <view class="img-preview-list" v-if="mistakeForm.answerImages.length > 0">
-                <view class="img-preview-item" v-for="(img, i) in mistakeForm.answerImages" :key="'ma'+i">
-                  <image :src="img" mode="aspectFill" class="img-preview-thumb" @click="previewImage(img, mistakeForm.answerImages)" />
-                  <view class="img-preview-del" @click="mistakeForm.answerImages.splice(i, 1)">✕</view>
+            <view class="form-group"><text class="form-label">答案图片（可选）</text>
+              <view class="image-upload-area">
+                <view class="image-item" v-for="(img, idx) in mistakeForm.answerImages" :key="'ma'+idx">
+                  <image :src="img" mode="aspectFill" class="uploaded-image" @click="previewImage(img, mistakeForm.answerImages)" />
+                  <view class="image-remove" @click="mistakeForm.answerImages.splice(idx, 1)">✕</view>
+                </view>
+                <view class="upload-actions">
+                  <view class="upload-action-btn" @click="takePhoto('mistake_a')"><text class="action-icon">📷</text><text class="action-text">拍照</text></view>
+                  <view class="upload-action-btn" @click="pickAlbum('mistake_a')"><text class="action-icon">🖼️</text><text class="action-text">相册</text></view>
+                  <view class="upload-action-btn paste-btn" :class="{ active: activePasteTarget === 'mistake_a' }" @click="setPasteTarget('mistake_a')"><text class="action-icon">📋</text><text class="action-text">粘贴</text></view>
                 </view>
               </view>
-              <view class="img-add-btn" @click="pickImages(mistakeForm.answerImages)"><text>+ 上传</text></view>
+              <text class="paste-hint">💡 手机端可拍照或从相册选择，电脑端点击「粘贴」后按 Ctrl+V</text>
             </view>
           </scroll-view>
           <view class="modal-footer"><view class="cancel-btn" @click="showMistakeForm = false">取消</view><view class="submit-btn red-btn" @click="submitMistake">提交</view></view>
@@ -425,23 +463,31 @@
                 <view class="diff-item" :class="{ active: editMistakeForm.difficulty === 'hard' }" @click="editMistakeForm.difficulty = 'hard'">困难</view>
               </view>
             </view>
-            <view class="form-group"><text class="form-label">题目图片</text>
-              <view class="img-preview-list" v-if="editMistakeForm.questionImages.length > 0">
-                <view class="img-preview-item" v-for="(img, i) in editMistakeForm.questionImages" :key="'emq'+i">
-                  <image :src="img" mode="aspectFill" class="img-preview-thumb" @click="previewImage(img, editMistakeForm.questionImages)" />
-                  <view class="img-preview-del" @click="editMistakeForm.questionImages.splice(i, 1)">✕</view>
+            <view class="form-group"><text class="form-label">题目图片（可选）</text>
+              <view class="image-upload-area">
+                <view class="image-item" v-for="(img, idx) in editMistakeForm.questionImages" :key="'emq'+idx">
+                  <image :src="img" mode="aspectFill" class="uploaded-image" @click="previewImage(img, editMistakeForm.questionImages)" />
+                  <view class="image-remove" @click="editMistakeForm.questionImages.splice(idx, 1)">✕</view>
+                </view>
+                <view class="upload-actions">
+                  <view class="upload-action-btn" @click="takePhoto('edit_mistake_q')"><text class="action-icon">📷</text><text class="action-text">拍照</text></view>
+                  <view class="upload-action-btn" @click="pickAlbum('edit_mistake_q')"><text class="action-icon">🖼️</text><text class="action-text">相册</text></view>
+                  <view class="upload-action-btn paste-btn" :class="{ active: activePasteTarget === 'edit_mistake_q' }" @click="setPasteTarget('edit_mistake_q')"><text class="action-icon">📋</text><text class="action-text">粘贴</text></view>
                 </view>
               </view>
-              <view class="img-add-btn" @click="pickImages(editMistakeForm.questionImages)"><text>+ 上传</text></view>
             </view>
-            <view class="form-group"><text class="form-label">答案图片</text>
-              <view class="img-preview-list" v-if="editMistakeForm.answerImages.length > 0">
-                <view class="img-preview-item" v-for="(img, i) in editMistakeForm.answerImages" :key="'ema'+i">
-                  <image :src="img" mode="aspectFill" class="img-preview-thumb" @click="previewImage(img, editMistakeForm.answerImages)" />
-                  <view class="img-preview-del" @click="editMistakeForm.answerImages.splice(i, 1)">✕</view>
+            <view class="form-group"><text class="form-label">答案图片（可选）</text>
+              <view class="image-upload-area">
+                <view class="image-item" v-for="(img, idx) in editMistakeForm.answerImages" :key="'ema'+idx">
+                  <image :src="img" mode="aspectFill" class="uploaded-image" @click="previewImage(img, editMistakeForm.answerImages)" />
+                  <view class="image-remove" @click="editMistakeForm.answerImages.splice(idx, 1)">✕</view>
+                </view>
+                <view class="upload-actions">
+                  <view class="upload-action-btn" @click="takePhoto('edit_mistake_a')"><text class="action-icon">📷</text><text class="action-text">拍照</text></view>
+                  <view class="upload-action-btn" @click="pickAlbum('edit_mistake_a')"><text class="action-icon">🖼️</text><text class="action-text">相册</text></view>
+                  <view class="upload-action-btn paste-btn" :class="{ active: activePasteTarget === 'edit_mistake_a' }" @click="setPasteTarget('edit_mistake_a')"><text class="action-icon">📋</text><text class="action-text">粘贴</text></view>
                 </view>
               </view>
-              <view class="img-add-btn" @click="pickImages(editMistakeForm.answerImages)"><text>+ 上传</text></view>
             </view>
           </scroll-view>
           <view class="modal-footer"><view class="cancel-btn" @click="showEditMistake = false">取消</view><view class="submit-btn red-btn" @click="saveEditMistake">保存</view></view>
@@ -488,7 +534,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { usePlanStore } from '@/stores/plan'
 import { useUserStore } from '@/stores/user'
 import * as api from '@/api/client'
@@ -507,6 +553,7 @@ const showManageSubjects = ref(false)
 const manageNewSubject = ref('')
 const activeSubject = ref('')
 const activeTags = ref([])
+const tagLogic = ref('or') // 'or' = any tag match, 'and' = all tags must match
 
 const defaultSubjects = Object.keys(SUBJECT_TAGS)
 const allSubjects = ref([...defaultSubjects])
@@ -546,7 +593,11 @@ const availableMistakeTags = computed(() => {
 const filteredCards = computed(() => {
   let r = cards.value
   if (activeSubject.value) r = r.filter(c => c.subject === activeSubject.value)
-  if (activeTags.value.length > 0) r = r.filter(c => activeTags.value.every(t => (c.tags || []).includes(t)))
+  if (activeTags.value.length > 0) {
+    r = tagLogic.value === 'and'
+      ? r.filter(c => activeTags.value.every(t => (c.tags || []).includes(t)))
+      : r.filter(c => activeTags.value.some(t => (c.tags || []).includes(t)))
+  }
   if (activeMastery.value) r = r.filter(c => c.mastery_level === activeMastery.value)
   return r
 })
@@ -575,7 +626,11 @@ const activeMistakesCount = computed(() => mistakes.value.filter(m => m.mastered
 const filteredMistakes = computed(() => {
   let r = mistakes.value
   if (activeSubject.value) r = r.filter(m => m.subject === activeSubject.value)
-  if (activeTags.value.length > 0) r = r.filter(m => activeTags.value.every(t => (m.tags || []).includes(t)))
+  if (activeTags.value.length > 0) {
+    r = tagLogic.value === 'and'
+      ? r.filter(m => activeTags.value.every(t => (m.tags || []).includes(t)))
+      : r.filter(m => activeTags.value.some(t => (m.tags || []).includes(t)))
+  }
   if (activeErrorCount.value === '1') r = r.filter(m => m.error_count === 1)
   else if (activeErrorCount.value === '2') r = r.filter(m => m.error_count === 2)
   else if (activeErrorCount.value === '3+') r = r.filter(m => m.error_count >= 3)
@@ -598,7 +653,7 @@ function switchView(view) {
   else loadMistakes()
 }
 
-function onSubjectChange(s) { activeSubject.value = s; activeTags.value = []; activeMastery.value = ''; activeErrorCount.value = '' }
+function onSubjectChange(s) { activeSubject.value = s; activeTags.value = []; tagLogic.value = 'or'; activeMastery.value = ''; activeErrorCount.value = '' }
 function toggleTag(tag) {
   const idx = activeTags.value.indexOf(tag)
   if (idx >= 0) activeTags.value.splice(idx, 1)
@@ -620,27 +675,53 @@ function removeSubject(n) {
 
 // ── Cards functions ──
 function addCardCustomSubject() { const n = customSubject.value.trim(); if (!n) return; if (!allSubjects.value.includes(n)) allSubjects.value.push(n); cardForm.value.subject = n; customSubject.value = ''; showCardSubjectInput.value = false }
-// ── Image helpers ──
-function pickImages(targetArray) {
+// ── Image upload: 拍照 / 相册 / Ctrl+V 粘贴 ──
+const activePasteTarget = ref('')
+function setPasteTarget(target) {
+  activePasteTarget.value = target
+  // #ifdef H5
+  uni.showToast({ title: '请按 Ctrl+V 粘贴图片', icon: 'none', duration: 1500 })
+  // #endif
+}
+function getTargetArray(target) {
+  if (!target) return null
+  if (target === 'card_q') return cardForm.value.questionImages
+  if (target === 'card_a') return cardForm.value.answerImages
+  if (target === 'edit_card_q') return editForm.value.questionImages
+  if (target === 'edit_card_a') return editForm.value.answerImages
+  if (target === 'mistake_q') return mistakeForm.value.questionImages
+  if (target === 'mistake_a') return mistakeForm.value.answerImages
+  if (target === 'edit_mistake_q') return editMistakeForm.value.questionImages
+  if (target === 'edit_mistake_a') return editMistakeForm.value.answerImages
+  return null
+}
+function takePhoto(target) {
   uni.chooseImage({
-    count: 6, sizeType: ['compressed'], sourceType: ['album', 'camera'],
-    success: (res) => {
-      res.tempFilePaths.forEach(fp => {
-        // Convert to base64 data URL for local storage
-        // #ifdef H5
-        const canvas = document.createElement('canvas')
-        const img = new Image()
-        img.onload = () => { canvas.width = img.width; canvas.height = img.height; canvas.getContext('2d').drawImage(img, 0, 0); targetArray.push(canvas.toDataURL('image/jpeg', 0.7)) }
-        img.src = fp
-        // #endif
-        // #ifndef H5
-        const fs = uni.getFileSystemManager()
-        const data = fs.readFileSync(fp, 'base64')
-        targetArray.push(`data:image/jpeg;base64,${data}`)
-        // #endif
-      })
-    }
+    count: 1, sizeType: ['compressed'], sourceType: ['camera'],
+    success: (res) => { const arr = getTargetArray(target); if (arr) res.tempFilePaths.forEach(fp => arr.push(fp)) }
   })
+}
+function pickAlbum(target) {
+  uni.chooseImage({
+    count: 9, sizeType: ['compressed'], sourceType: ['album'],
+    success: (res) => { const arr = getTargetArray(target); if (arr) res.tempFilePaths.forEach(fp => arr.push(fp)) }
+  })
+}
+function handleGlobalPaste(e) {
+  if (!activePasteTarget.value) return
+  const items = e.clipboardData?.items
+  if (!items) return
+  const files = []
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile()
+      if (file) { const url = URL.createObjectURL(file); files.push(url) }
+    }
+  }
+  if (files.length === 0) return
+  e.preventDefault()
+  const arr = getTargetArray(activePasteTarget.value)
+  if (arr) { files.forEach(f => arr.push(f)); uni.showToast({ title: `已粘贴 ${files.length} 张图片`, icon: 'success' }) }
 }
 function parseTags() { if (!tagInput.value.trim()) return; const t = tagInput.value.split(/[,，]/).map(s => s.trim()).filter(Boolean); cardForm.value.tags = [...new Set([...cardForm.value.tags, ...t])]; tagInput.value = '' }
 function parseEditTags() { if (!editTagInput.value.trim()) return; const t = editTagInput.value.split(/[,，]/).map(s => s.trim()).filter(Boolean); editForm.value.tags = [...new Set([...editForm.value.tags, ...t])]; editTagInput.value = '' }
@@ -716,14 +797,22 @@ async function doExport(format) {
     if (currentView.value === 'cards') {
       const r = await api.getCards(planStore.currentPlan.id, activeSubject.value || null, null, false)
       let d = r.cards || []
-      if (activeTags.value.length > 0) d = d.filter(c => activeTags.value.every(t => (c.tags || []).includes(t)))
+      if (activeTags.value.length > 0) {
+        d = tagLogic.value === 'and'
+          ? d.filter(c => activeTags.value.every(t => (c.tags || []).includes(t)))
+          : d.filter(c => activeTags.value.some(t => (c.tags || []).includes(t)))
+      }
       if (activeMastery.value) d = d.filter(c => c.mastery_level === activeMastery.value)
       if (!d.length) { uni.showToast({ title: '没有可导出的数据', icon: 'none' }); return }
       if (format === 'csv') exportCardsCSV(d, opts); else if (format === 'excel') exportCardsExcel(d, opts); else if (format === 'pdf') exportCardsPDF(d, opts)
     } else {
       const r = await api.getMistakes(planStore.currentPlan.id, activeSubject.value || null, null, false)
       let d = r.mistakes || []
-      if (activeTags.value.length > 0) d = d.filter(m => activeTags.value.every(t => (m.tags || []).includes(t)))
+      if (activeTags.value.length > 0) {
+        d = tagLogic.value === 'and'
+          ? d.filter(m => activeTags.value.every(t => (m.tags || []).includes(t)))
+          : d.filter(m => activeTags.value.some(t => (m.tags || []).includes(t)))
+      }
       if (activeErrorCount.value === '1') d = d.filter(m => m.error_count === 1)
       else if (activeErrorCount.value === '2') d = d.filter(m => m.error_count === 2)
       else if (activeErrorCount.value === '3+') d = d.filter(m => m.error_count >= 3)
@@ -736,6 +825,10 @@ async function doExport(format) {
 onMounted(async () => {
   await userStore.getUserInfo()
   if (userStore.isLoggedIn) { await planStore.getPlansByUserId(); await loadCards(); await loadMistakes() }
+  document.addEventListener('paste', handleGlobalPaste)
+})
+onUnmounted(() => {
+  document.removeEventListener('paste', handleGlobalPaste)
 })
 watch(() => planStore.currentPlan?.id, async (n, o) => { if (n && n !== o) { await loadCards(); await loadMistakes() } })
 </script>
@@ -771,6 +864,11 @@ watch(() => planStore.currentPlan?.id, async (n, o) => { if (n && n !== o) { awa
 .mastery-item { &.active { background: #6b4ce6; color: #fff; } &.unmastered.active { background: #ef5350; } &.familiar.active { background: #ffb74d; } &.mastered.active { background: #66bb6a; } }
 .err-item { &.active { background: #ef5350; color: #fff; } &.err-1.active { background: #ffb74d; } &.err-2.active { background: #ef5350; } &.err-3.active { background: #c62828; } }
 .filter-manage-btn { width: 32px; height: 32px; border-radius: 50%; background: #f5f7f5; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; border: 1px solid #e0e0e0; &:active { background: #e8e0ff; } }
+.tag-logic-btn {
+  width: 36px; height: 36px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: #6b4ce6; font-weight: 700; flex-shrink: 0; border: 1.5px solid #6b4ce6;
+  &:active { background: #f3f0ff; }
+}
 
 /* ===== Section ===== */
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; .section-title { font-size: 18px; font-weight: 600; color: #1a1a2e; } .section-count { font-size: 13px; color: #999; } }
@@ -860,12 +958,23 @@ watch(() => planStore.currentPlan?.id, async (n, o) => { if (n && n !== o) { awa
 .diff-item { flex: 1; padding: 10px; text-align: center; border-radius: 12px; font-size: 14px; color: #65746d; background: #f5f7f5; transition: all 0.2s; &.active { background: #ef5350; color: #fff; } }
 
 /* ===== Image Upload ===== */
-.img-preview-list { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.img-preview-item { position: relative; width: 72px; height: 72px; }
-.img-preview-thumb { width: 72px; height: 72px; border-radius: 8px; border: 1px solid #e0e0e0; object-fit: cover; }
-.img-preview-del { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; background: #ef5350; color: #fff; font-size: 12px; display: flex; align-items: center; justify-content: center; }
-.img-add-btn { padding: 8px 16px; border-radius: 10px; border: 1.5px dashed #6b4ce6; color: #6b4ce6; text-align: center; font-size: 13px; display: inline-block; &:active { background: #f3f0ff; } }
-.red-add { border-color: #ef5350; color: #ef5350; &:active { background: #ffebee; } }
+.image-upload-area { display: flex; gap: 10px; flex-wrap: wrap; }
+.image-item { position: relative; width: 80px; height: 80px; }
+.uploaded-image { width: 80px; height: 80px; border-radius: 10px; object-fit: cover; }
+.image-remove { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: #ef5350; color: #fff; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+.upload-actions { display: flex; gap: 8px; }
+.upload-action-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  width: 80px; height: 80px; border-radius: 10px; border: 2px dashed #d0d5d2; background: #fafafa;
+  transition: all 0.15s;
+  &:active { background: #f3f0ff; border-color: #6b4ce6; }
+  .action-icon { font-size: 22px; }
+  .action-text { font-size: 11px; color: #999; }
+}
+.paste-btn {
+  &.active { border-color: #6b4ce6; background: #f3f0ff; .action-text { color: #6b4ce6; } }
+}
+.paste-hint { font-size: 11px; color: #999; margin-top: 6px; display: block; }
 
 /* ===== Image in list cards ===== */
 .card-images { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
