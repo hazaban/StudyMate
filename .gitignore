@@ -9,3 +9,5 @@ __pycache__/
 .playwright-mcp/
 .claude/settings.local.json
 .wrangler/
+.vercel
+.env*
