@@ -188,8 +188,9 @@
                   <text v-if="!showCardSubjectInput">+ 自定义</text><text v-else>收起</text>
                 </view>
               </view>
-              <view class="input-wrapper" v-if="showCardSubjectInput" style="margin-top: 10px;">
-                <input class="input-field" v-model="customSubject" placeholder="输入自定义科目..." @confirm="addCardCustomSubject" />
+              <view class="custom-subject-row" v-if="showCardSubjectInput">
+                <input class="custom-subject-input" v-model="customSubject" placeholder="输入自定义科目..." @confirm="addCardCustomSubject" @blur="addCardCustomSubject" />
+                <view class="custom-subject-add-btn" @click="addCardCustomSubject">添加</view>
               </view>
             </view>
             <view class="form-group"><text class="form-label">标签</text>
@@ -244,7 +245,16 @@
           <view class="modal-header"><text class="modal-title">编辑知识卡片</text><view class="modal-close" @click="showEditCard = false">✕</view></view>
           <scroll-view scroll-y class="modal-body">
             <view class="form-group"><text class="form-label">科目</text>
-              <view class="subject-grid"><view class="subject-item" v-for="s in allSubjects" :key="s" :class="{ active: editForm.subject === s }" @click="editForm.subject = s">{{ s }}</view></view>
+              <view class="subject-grid">
+                <view class="subject-item" v-for="s in allSubjects" :key="s" :class="{ active: editForm.subject === s }" @click="editForm.subject = s">{{ s }}</view>
+                <view class="subject-item subject-add" @click="showEditCardSubjectInput = !showEditCardSubjectInput">
+                  <text v-if="!showEditCardSubjectInput">+ 自定义</text><text v-else>收起</text>
+                </view>
+              </view>
+              <view class="custom-subject-row" v-if="showEditCardSubjectInput">
+                <input class="custom-subject-input" v-model="customEditCardSubject" placeholder="输入自定义科目..." @confirm="addEditCardCustomSubject" @blur="addEditCardCustomSubject" />
+                <view class="custom-subject-add-btn" @click="addEditCardCustomSubject">添加</view>
+              </view>
             </view>
             <view class="form-group"><text class="form-label">标签</text>
               <view class="tag-picker" v-if="cardAvailableTags.length > 0">
@@ -439,8 +449,9 @@
                   <text v-if="!showMistakeSubjectInput">+ 自定义</text><text v-else>收起</text>
                 </view>
               </view>
-              <view class="input-wrapper" v-if="showMistakeSubjectInput" style="margin-top: 10px;">
-                <input class="input-field" v-model="customMistakeSubject" placeholder="输入自定义科目..." @confirm="addMistakeCustomSubject" />
+              <view class="custom-subject-row" v-if="showMistakeSubjectInput">
+                <input class="custom-subject-input" v-model="customMistakeSubject" placeholder="输入自定义科目..." @confirm="addMistakeCustomSubject" @blur="addMistakeCustomSubject" />
+                <view class="custom-subject-add-btn mistake-btn" @click="addMistakeCustomSubject">添加</view>
               </view>
             </view>
             <view class="form-group"><text class="form-label">标签</text>
@@ -506,8 +517,9 @@
                   <text v-if="!showEditMistakeSubjectInput">+ 自定义</text><text v-else>收起</text>
                 </view>
               </view>
-              <view class="input-wrapper" v-if="showEditMistakeSubjectInput" style="margin-top: 10px;">
-                <input class="input-field" v-model="customEditMistakeSubject" placeholder="输入自定义科目..." @confirm="addEditMistakeCustomSubject" />
+              <view class="custom-subject-row" v-if="showEditMistakeSubjectInput">
+                <input class="custom-subject-input" v-model="customEditMistakeSubject" placeholder="输入自定义科目..." @confirm="addEditMistakeCustomSubject" @blur="addEditMistakeCustomSubject" />
+                <view class="custom-subject-add-btn mistake-btn" @click="addEditMistakeCustomSubject">添加</view>
               </view>
             </view>
             <view class="form-group"><text class="form-label">标签</text>
@@ -658,6 +670,9 @@ const showMistakeSubjectInput = ref(false)
 const customMistakeSubject = ref('')
 const showEditMistakeSubjectInput = ref(false)
 const customEditMistakeSubject = ref('')
+// Edit card form subject customization
+const showEditCardSubjectInput = ref(false)
+const customEditCardSubject = ref('')
 const reviewMode = ref(false)
 const reviewShowAnswer = ref(false)
 const reviewIndex = ref(0)
@@ -854,6 +869,7 @@ function removeSubject(n) {
 
 // ── Cards functions ──
 function addCardCustomSubject() { const n = customSubject.value.trim(); if (!n) return; if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n); saveSubjectToBackend(n) }; cardForm.value.subject = n; customSubject.value = ''; showCardSubjectInput.value = false }
+function addEditCardCustomSubject() { const n = customEditCardSubject.value.trim(); if (!n) return; if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n); saveSubjectToBackend(n) }; editForm.value.subject = n; customEditCardSubject.value = ''; showEditCardSubjectInput.value = false }
 // ── Image upload: 拍照 / 相册 / Ctrl+V 粘贴 ──
 const activePasteTarget = ref('')
 function setPasteTarget(target) {
@@ -1352,6 +1368,12 @@ watch(() => planStore.currentPlan?.id, async (n, o) => { if (n && n !== o) { awa
 .manage-add-row { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0; }
 .manage-add-input { flex: 1; padding: 10px 12px; border: 1.5px solid #e0e0e0; border-radius: 10px; font-size: 14px; color: #1a1a2e; background: #f5f7f5; height: 44px; line-height: 24px; &:focus { border-color: #6b4ce6; } }
 .manage-add-btn { padding: 10px 20px; border-radius: 10px; background: #6b4ce6; color: #fff; font-size: 14px; font-weight: 600; white-space: nowrap; &:active { opacity: 0.85; } }
+
+/* ===== Custom subject in forms ===== */
+.custom-subject-row { display: flex; gap: 8px; margin-top: 10px; }
+.custom-subject-input { flex: 1; padding: 10px 12px; border: 1.5px solid #e0e0e0; border-radius: 10px; font-size: 14px; color: #1a1a2e; background: #f5f7f5; height: 44px; line-height: 24px; &:focus { border-color: #6b4ce6; } }
+.custom-subject-add-btn { padding: 0 20px; border-radius: 10px; background: #6b4ce6; color: #fff; font-size: 14px; font-weight: 600; white-space: nowrap; display: flex; align-items: center; justify-content: center; &:active { opacity: 0.85; } }
+.custom-subject-add-btn.mistake-btn { background: #e74c3c; }
 
 .bottom-space { height: 100px; }
 </style>
