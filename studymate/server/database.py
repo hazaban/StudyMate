@@ -218,4 +218,8 @@ class UserSubject(Base):
 # Create tables
 # ---------------------------------------------------------------------------
 def init_db():
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        import sys
+        print(f"[WARN] Database init skipped: {e}", file=sys.stderr)

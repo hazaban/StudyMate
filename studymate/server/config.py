@@ -10,6 +10,7 @@ load_dotenv()
 IS_PRODUCTION = bool(
     os.getenv("RENDER")
     or os.getenv("IS_PRODUCTION")
+    or os.getenv("VERCEL")
     or os.getenv("TENCENTCLOUD_RUNENV")
     or os.getenv("SCF_NAMESPACE")
     or os.getenv("_SCF_TENCENTCLOUD_SESSIONTOKEN")
