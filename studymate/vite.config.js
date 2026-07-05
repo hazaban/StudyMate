@@ -25,6 +25,12 @@ export default defineConfig(({ mode }) => {
               console.log(`[cloudflare] Copied ${f} to build output`)
             }
           }
+          const workerSrc = resolve(__dirname, '_worker.js')
+          const workerDest = resolve(outDir, '_worker.js')
+          if (existsSync(workerSrc)) {
+            copyFileSync(workerSrc, workerDest)
+            console.log(`[cloudflare] Copied _worker.js to build output`)
+          }
         }
       }
     ],
