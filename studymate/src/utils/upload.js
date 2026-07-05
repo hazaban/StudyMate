@@ -31,7 +31,7 @@ async function compressImage(filePath) {
     if (blob.size < 200 * 1024) {
       return filePath
     }
-    const compressedBlob = await compressBlobWithCanvas(blob, 1080, 0.7)
+    const compressedBlob = await compressBlobWithCanvas(blob, 1920, 0.85)
     // 用压缩后的blob替换原blob
     blobUrlToFile.set(filePath, compressedBlob)
     return filePath
