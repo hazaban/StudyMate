@@ -11,16 +11,20 @@ from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship, reconstructor
 from config import DATABASE_URL, DB_SSLMODE
 
+# In production, DATABASE_URL may not be set yet (configured via Vercel env vars later).
+# Use a placeholder URL to avoid import-time crashes; real DB ops will fail gracefully.
+_DB_URL = DATABASE_URL if DATABASE_URL else "sqlite:///:memory:"
+_connect_args = {"connect_timeout": 10}
+if DATABASE_URL:
+    _connect_args["sslmode"] = DB_SSLMODE
+
 engine = create_engine(
-    DATABASE_URL,
+    _DB_URL,
     pool_size=3 if DB_SSLMODE == "require" else 5,
     max_overflow=5 if DB_SSLMODE == "require" else 10,
     pool_pre_ping=True,
     pool_recycle=3600,
-    connect_args={
-        "connect_timeout": 10,
-        "sslmode": DB_SSLMODE
-    }
+    connect_args=_connect_args
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

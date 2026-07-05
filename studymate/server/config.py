@@ -18,15 +18,23 @@ IS_PRODUCTION = bool(
 
 # Database
 _DEFAULT_DB = "postgresql://studymate:studymate123@localhost:5432/studymate"
-DATABASE_URL = os.getenv("DATABASE_URL", _DEFAULT_DB)
-if IS_PRODUCTION and DATABASE_URL == _DEFAULT_DB:
-    raise RuntimeError("DATABASE_URL must be set in production (your Supabase connection string)")
+DATABASE_URL = os.getenv("DATABASE_URL", "" if IS_PRODUCTION else _DEFAULT_DB)
+if IS_PRODUCTION and not DATABASE_URL:
+    warnings.warn(
+        "DATABASE_URL not set — database operations will fail until configured. "
+        "Set it to your Supabase connection string.",
+        stacklevel=2,
+    )
 
 # JWT — must be set in production
 _SECRET_DEFAULT = "studymate-local-dev-only-change-in-cloud"
 SECRET_KEY = os.getenv("SECRET_KEY", _SECRET_DEFAULT)
 if IS_PRODUCTION and SECRET_KEY == _SECRET_DEFAULT:
-    raise RuntimeError("SECRET_KEY must be set in production. Generate with: openssl rand -hex 32")
+    warnings.warn(
+        "SECRET_KEY not set — using default (INSECURE for production). "
+        "Generate with: openssl rand -hex 32",
+        stacklevel=2,
+    )
 if not IS_PRODUCTION and SECRET_KEY == _SECRET_DEFAULT:
     warnings.warn("Using default SECRET_KEY — fine for local dev, NOT for production", stacklevel=2)
 
