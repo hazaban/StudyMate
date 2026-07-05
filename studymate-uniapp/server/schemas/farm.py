@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class PlantCreate(BaseModel):
@@ -32,6 +32,12 @@ class PlantResponse(BaseModel):
     fertilize_count: int
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("water_count", "fertilize_count", mode="before")
+    @classmethod
+    def null_to_zero(cls, v: int | None) -> int:
+        """Fix old DB rows where migration left these columns NULL."""
+        return v if v is not None else 0
 
     model_config = {"from_attributes": True}
 

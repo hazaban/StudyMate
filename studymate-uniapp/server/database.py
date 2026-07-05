@@ -8,7 +8,7 @@ from sqlalchemy import (
     ForeignKey, Text, JSON, Enum as SAEnum, func
 )
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
-from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+from sqlalchemy.orm import declarative_base, sessionmaker, relationship, reconstructor
 from config import DATABASE_URL, DB_SSLMODE
 
 engine = create_engine(
@@ -159,6 +159,14 @@ class Plant(Base):
     fertilize_count = Column(Integer, default=0)      # 施肥次数（任务完成累计）
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    @reconstructor
+    def _null_to_zero_on_load(self):
+        """Fix old DB rows where migration left these columns NULL."""
+        if self.water_count is None:
+            self.water_count = 0
+        if self.fertilize_count is None:
+            self.fertilize_count = 0
 
     plan = relationship("StudyPlan", back_populates="plants")
 
