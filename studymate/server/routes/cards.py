@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from jose import jwt
 
 from database import get_db, FlashCard, StudyPlan
+from services.cos_service import delete_objects_by_urls
 from config import SECRET_KEY, ALGORITHM
 from schemas.card import CardCreate, CardUpdate, CardResponse, AICardGenerateRequest, CardListResponse
 from services.ai_service import generate_flash_cards
@@ -192,6 +193,10 @@ def delete_card(card_id: UUID, user_id: UUID = Depends(_get_user_id), db: Sessio
     ).first()
     if not card:
         raise HTTPException(status_code=404, detail="卡片不存在")
+    # 同步删除 COS 上的图片
+    all_images = (card.question_images or []) + (card.answer_images or [])
+    if all_images:
+        delete_objects_by_urls(all_images)
     db.delete(card)
     db.commit()
 

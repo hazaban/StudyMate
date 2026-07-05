@@ -9,6 +9,7 @@ from jose import jwt
 
 from database import get_db, Mistake, StudyPlan
 from config import SECRET_KEY, ALGORITHM
+from services.cos_service import delete_objects_by_urls
 from schemas.mistake import MistakeCreate, MistakeUpdate, MistakeResponse, MistakeListResponse
 
 router = APIRouter(prefix="/api/mistakes", tags=["mistakes"])
@@ -183,6 +184,10 @@ def delete_mistake(mistake_id: UUID, user_id: UUID = Depends(_get_user_id), db: 
     ).first()
     if not mistake:
         raise HTTPException(status_code=404, detail="错题不存在")
+    # 同步删除 COS 上的图片
+    all_images = (mistake.question_images or []) + (mistake.answer_images or [])
+    if all_images:
+        delete_objects_by_urls(all_images)
     db.delete(mistake)
     db.commit()
 

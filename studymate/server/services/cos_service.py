@@ -170,6 +170,53 @@ def get_presigned_put_url(user_id: str, filename: str, key_prefix: str = "proofs
         return {"upload_url": presigned_url, "file_url": file_url, "key": key}
 
 
+# ── Delete object ─────────────────────────────────────────────────────────
+
+def delete_object(key: str) -> bool:
+    """Delete a single object from COS. Returns True on success."""
+    if not COS_ENABLED:
+        return False
+    if not key:
+        return False
+    try:
+        from qcloud_cos import CosConfig, CosS3Client
+        config = CosConfig(
+            Region=COS_REGION,
+            SecretId=COS_SECRET_ID,
+            SecretKey=COS_SECRET_KEY,
+        )
+        client = CosS3Client(config)
+        client.delete_object(Bucket=COS_BUCKET, Key=key)
+        return True
+    except Exception:
+        return False
+
+
+def delete_objects_by_urls(urls: list) -> int:
+    """Delete multiple COS objects by their full URLs. Returns count deleted.
+
+    Extracts the object key from each URL, ignores non-COS URLs.
+    """
+    if not urls:
+        return 0
+    count = 0
+    for url in urls:
+        if not url or not isinstance(url, str):
+            continue
+        # Extract key from full COS URL
+        # URL format: https://{bucket}.cos.{region}.myqcloud.com/{key}
+        if ".myqcloud.com/" in url:
+            key = url.split(".myqcloud.com/", 1)[1]
+        elif url.startswith("http"):
+            # Non-COS URL, skip
+            continue
+        else:
+            key = url
+        if delete_object(key):
+            count += 1
+    return count
+
+
 # ── URL helpers ───────────────────────────────────────────────────────────
 
 def generate_upload_url(user_id: str, filename: str) -> str:
