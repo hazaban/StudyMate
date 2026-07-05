@@ -603,6 +603,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { usePlanStore } from '@/stores/plan'
 import { useUserStore } from '@/stores/user'
 import * as api from '@/api/client'
+import { uploadUtil } from '@/utils/upload'
 import { exportCardsCSV, exportCardsExcel, exportCardsPDF, exportMistakesCSV, exportMistakesExcel, exportMistakesPDF, getDefaultTags, SUBJECT_TAGS } from '@/utils/export'
 
 const planStore = usePlanStore()
@@ -912,7 +913,7 @@ function takePhoto(target) {
     success: async (res) => {
       const arr = getTargetArray(target)
       if (!arr) return
-      for (const fp of res.tempFilePaths) { arr.push(await imgSrcToBase64(fp)) }
+      for (const fp of res.tempFilePaths) { arr.push(fp) }
     }
   })
 }
@@ -922,31 +923,18 @@ function pickAlbum(target) {
     success: async (res) => {
       const arr = getTargetArray(target)
       if (!arr) return
-      for (const fp of res.tempFilePaths) { arr.push(await imgSrcToBase64(fp)) }
+      for (const fp of res.tempFilePaths) { arr.push(fp) }
     }
   })
 }
 async function handleGlobalPaste(e) {
   if (!activePasteTarget.value) return
-  const items = e.clipboardData?.items
-  if (!items) return
-  const files = []
-  for (const item of items) {
-    if (item.type.startsWith('image/')) {
-      const file = item.getAsFile()
-      if (file) files.push(file)
-    }
-  }
+  const files = await uploadUtil.pasteToFiles(e)
   if (files.length === 0) return
   e.preventDefault()
   const arr = getTargetArray(activePasteTarget.value)
   if (arr) {
-    for (const file of files) {
-      const blobUrl = URL.createObjectURL(file)
-      const b64 = await imgSrcToBase64(blobUrl)
-      URL.revokeObjectURL(blobUrl)
-      arr.push(b64)
-    }
+    for (const f of files) { arr.push(f) }
     uni.showToast({ title: `已粘贴 ${files.length} 张图片`, icon: 'success' })
   }
 }
@@ -973,15 +961,32 @@ function switchMistakeMode(m) {
 }
 function previewImage(c, u) { uni.previewImage({ current: c, urls: u }) }
 
+async function uploadNewImages(images, uploadFn, userId) {
+  const result = []
+  for (const img of images) {
+    if (typeof img === 'string' && (img.startsWith('http://') || img.startsWith('https://'))) {
+      result.push(img)
+    } else {
+      const url = await uploadFn(img, userId)
+      result.push(url)
+    }
+  }
+  return result
+}
+
 async function submitCard() {
   const hasQ = cardForm.value.question.trim() || cardForm.value.questionImages.length > 0
   const hasA = cardForm.value.answer.trim() || cardForm.value.answerImages.length > 0
   if (!hasQ) { uni.showToast({ title: '请至少填写问题或上传问题图片', icon: 'none' }); return }
   if (!hasA) { uni.showToast({ title: '请至少填写答案或上传答案图片', icon: 'none' }); return }
   if (!planStore.currentPlan) { uni.showToast({ title: '请先创建学习计划', icon: 'none' }); return }
-  uni.showLoading({ title: '保存中...' })
+  const userId = userStore.user?.id
+  uni.showLoading({ title: '上传图片中...', mask: true })
   try {
-    await api.createCard({ plan_id: planStore.currentPlan.id, question: cardForm.value.question, answer: cardForm.value.answer, subject: cardForm.value.subject, mastery_level: 'unmastered', next_review_date: today, question_images: cardForm.value.questionImages, answer_images: cardForm.value.answerImages, tags: cardForm.value.tags })
+    const questionImages = await uploadNewImages(cardForm.value.questionImages, uploadUtil.uploadCardQuestion, userId)
+    const answerImages = await uploadNewImages(cardForm.value.answerImages, uploadUtil.uploadCardAnswer, userId)
+    uni.showLoading({ title: '保存中...', mask: true })
+    await api.createCard({ plan_id: planStore.currentPlan.id, question: cardForm.value.question, answer: cardForm.value.answer, subject: cardForm.value.subject, mastery_level: 'unmastered', next_review_date: today, question_images: questionImages, answer_images: answerImages, tags: cardForm.value.tags })
     showCardForm.value = false; cardForm.value = { subject: '数据结构', question: '', answer: '', tags: [], questionImages: [], answerImages: [] }
     uni.showToast({ title: '添加成功', icon: 'success' }); await loadCards()
   } catch (e) { uni.showToast({ title: e.message || '保存失败', icon: 'none' }) } finally { uni.hideLoading() }
@@ -994,9 +999,15 @@ async function saveEditCard() {
   const hasQ = editForm.value.question.trim() || editForm.value.questionImages.length > 0
   const hasA = editForm.value.answer.trim() || editForm.value.answerImages.length > 0
   if (!hasQ || !hasA) { uni.showToast({ title: '请至少保证问题和答案有一方非空', icon: 'none' }); return }
-  uni.showLoading({ title: '保存中...' })
-  try { await api.updateCard(editingCardId.value, { question: editForm.value.question, answer: editForm.value.answer, subject: editForm.value.subject, tags: editForm.value.tags, question_images: editForm.value.questionImages, answer_images: editForm.value.answerImages }); showEditCard.value = false; uni.showToast({ title: '编辑成功', icon: 'success' }); await loadCards() }
-  catch (e) { uni.showToast({ title: e.message || '保存失败', icon: 'none' }) } finally { uni.hideLoading() }
+  const userId = userStore.user?.id
+  uni.showLoading({ title: '上传图片中...', mask: true })
+  try {
+    const questionImages = await uploadNewImages(editForm.value.questionImages, uploadUtil.uploadCardQuestion, userId)
+    const answerImages = await uploadNewImages(editForm.value.answerImages, uploadUtil.uploadCardAnswer, userId)
+    uni.showLoading({ title: '保存中...', mask: true })
+    await api.updateCard(editingCardId.value, { question: editForm.value.question, answer: editForm.value.answer, subject: editForm.value.subject, tags: editForm.value.tags, question_images: questionImages, answer_images: answerImages })
+    showEditCard.value = false; uni.showToast({ title: '编辑成功', icon: 'success' }); await loadCards()
+  } catch (e) { uni.showToast({ title: e.message || '保存失败', icon: 'none' }) } finally { uni.hideLoading() }
 }
 async function removeCard(card) {
   const r = await new Promise(r => uni.showModal({ title: '删除确认', content: '确定删除吗？', success: r }))
@@ -1028,9 +1039,13 @@ async function submitMistake() {
   if (!hasQ) { uni.showToast({ title: '请至少填写题目或上传题目图片', icon: 'none' }); return }
   if (!hasA) { uni.showToast({ title: '请至少填写答案或上传答案图片', icon: 'none' }); return }
   if (!planStore.currentPlan) { uni.showToast({ title: '请先创建学习计划', icon: 'none' }); return }
-  uni.showLoading({ title: '保存中...' })
+  const userId = userStore.user?.id
+  uni.showLoading({ title: '上传图片中...', mask: true })
   try {
-    await api.createMistake({ plan_id: planStore.currentPlan.id, question: mistakeForm.value.question, answer: mistakeForm.value.answer, analysis: mistakeForm.value.analysis, subject: mistakeForm.value.subject, difficulty: mistakeForm.value.difficulty, question_images: mistakeForm.value.questionImages, answer_images: mistakeForm.value.answerImages, tags: mistakeForm.value.tags })
+    const questionImages = await uploadNewImages(mistakeForm.value.questionImages, uploadUtil.uploadMistakeQuestion, userId)
+    const answerImages = await uploadNewImages(mistakeForm.value.answerImages, uploadUtil.uploadMistakeAnswer, userId)
+    uni.showLoading({ title: '保存中...', mask: true })
+    await api.createMistake({ plan_id: planStore.currentPlan.id, question: mistakeForm.value.question, answer: mistakeForm.value.answer, analysis: mistakeForm.value.analysis, subject: mistakeForm.value.subject, difficulty: mistakeForm.value.difficulty, question_images: questionImages, answer_images: answerImages, tags: mistakeForm.value.tags })
     showMistakeForm.value = false; mistakeForm.value = { subject: '数据结构', question: '', answer: '', analysis: '', difficulty: 'medium', tags: [], questionImages: [], answerImages: [] }
     uni.showToast({ title: '添加成功', icon: 'success' }); await loadMistakes()
   } catch (e) { uni.showToast({ title: e.message || '保存失败', icon: 'none' }) } finally { uni.hideLoading() }
@@ -1040,9 +1055,15 @@ async function saveEditMistake() {
   const hasQ = editMistakeForm.value.question.trim() || editMistakeForm.value.questionImages.length > 0
   const hasA = editMistakeForm.value.answer.trim() || editMistakeForm.value.answerImages.length > 0
   if (!hasQ || !hasA) { uni.showToast({ title: '请至少保证题目和答案有一方非空', icon: 'none' }); return }
-  uni.showLoading({ title: '保存中...' })
-  try { await api.updateMistake(editingMistakeId.value, { question: editMistakeForm.value.question, answer: editMistakeForm.value.answer, analysis: editMistakeForm.value.analysis, subject: editMistakeForm.value.subject, difficulty: editMistakeForm.value.difficulty, tags: editMistakeForm.value.tags, question_images: editMistakeForm.value.questionImages, answer_images: editMistakeForm.value.answerImages }); showEditMistake.value = false; uni.showToast({ title: '编辑成功', icon: 'success' }); await loadMistakes() }
-  catch (e) { uni.showToast({ title: e.message || '保存失败', icon: 'none' }) } finally { uni.hideLoading() }
+  const userId = userStore.user?.id
+  uni.showLoading({ title: '上传图片中...', mask: true })
+  try {
+    const questionImages = await uploadNewImages(editMistakeForm.value.questionImages, uploadUtil.uploadMistakeQuestion, userId)
+    const answerImages = await uploadNewImages(editMistakeForm.value.answerImages, uploadUtil.uploadMistakeAnswer, userId)
+    uni.showLoading({ title: '保存中...', mask: true })
+    await api.updateMistake(editingMistakeId.value, { question: editMistakeForm.value.question, answer: editMistakeForm.value.answer, analysis: editMistakeForm.value.analysis, subject: editMistakeForm.value.subject, difficulty: editMistakeForm.value.difficulty, tags: editMistakeForm.value.tags, question_images: questionImages, answer_images: answerImages })
+    showEditMistake.value = false; uni.showToast({ title: '编辑成功', icon: 'success' }); await loadMistakes()
+  } catch (e) { uni.showToast({ title: e.message || '保存失败', icon: 'none' }) } finally { uni.hideLoading() }
 }
 async function toggleMastered(m) {
   try {
