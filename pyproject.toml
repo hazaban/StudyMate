@@ -5,4 +5,4 @@ description = "StudyMate Backend API"
 requires-python = ">=3.9"
 
 [tool.vercel]
-entrypoint = "api.index:app"
+entrypoint = "studymate-uniapp.server.api.index:app"

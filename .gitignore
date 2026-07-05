@@ -8,3 +8,4 @@ __pycache__/
 .claude/memory/
 .playwright-mcp/
 .claude/settings.local.json
+.wrangler/
