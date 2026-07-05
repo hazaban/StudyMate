@@ -5,3 +5,6 @@ __pycache__/
 *.pyc
 .env
 .mcp.json
+.claude/memory/
+.playwright-mcp/
+.claude/settings.local.json
