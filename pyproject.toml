@@ -1,0 +1,2 @@
+[tool.vercel]
+entrypoint = "studymate-uniapp/server/api/index.py"
