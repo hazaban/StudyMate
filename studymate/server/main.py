@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="StudyMate 学习星球 API",
     description="AI抗遗忘备考工具后端服务",
-    version="1.0.2",
+    version="1.0.3",
     lifespan=lifespan
 )
 
