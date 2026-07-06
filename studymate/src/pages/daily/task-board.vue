@@ -67,7 +67,10 @@
           @click="selectDate(day.dateStr)"
           @contextmenu.prevent="handleCalRightClick(day.dateStr, $event)"
           @touchstart="onCalTouchStart(day.dateStr)"
-          @touchend="onCalTouchEnd">
+          @touchend="onCalTouchEnd"
+          @mousedown="onCalMouseDown(day.dateStr, $event)"
+          @mouseup="onCalMouseUp"
+          @mouseleave="onCalMouseUp">
           <text class="day-num">{{ day.day }}</text>
           <view class="day-dot" v-if="taskDates.has(day.dateStr)"></view>
         </view>
@@ -105,7 +108,7 @@
           <view class="week-column" v-for="(day, colIdx) in weekDays" :key="colIdx" :data-col="colIdx" :class="{ weekend: day.isWeekend }">
             <view class="week-cell" v-for="hour in timelineHours" :key="hour" :data-hour="hour" :data-date="day.dateStr">
               <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed', [getSubjectClass(task.subject)]: true }" @click.stop="editTask(task)">
-                <view class="task-importance-dot" :class="getImportanceClass(task.importance)" v-if="task.importance"></view>
+                <view class="task-importance-dot" :class="getImportanceClass(task.importance)" v-if="task.importance && enableQuadrant"></view>
                 <text class="week-task-content">{{ task.content }}</text>
                 <text class="week-task-duration">{{ task.duration }}min</text>
               </view>
@@ -169,7 +172,7 @@
           <view class="task-meta">
             <text class="task-subject">{{ task.subject }}</text>
             <text class="task-chapter" v-if="task.chapter">{{ task.chapter }}</text>
-            <view class="task-importance-tag" :class="getImportanceClass(task.importance)" v-if="task.importance">{{ getImportanceLabel(task.importance) }}</view>
+            <view class="task-importance-tag" :class="getImportanceClass(task.importance)" v-if="task.importance && enableQuadrant">{{ getImportanceLabel(task.importance) }}</view>
             <text class="task-repeat-tag" v-if="task.repeat_type && task.repeat_type !== 'none'">{{ getRepeatLabel(task.repeat_type) }}</text>
             <text class="task-duration">预计: {{ task.duration }}分钟</text>
             <text class="task-actual" v-if="task.actual_duration > 0">实际: {{ task.actual_duration }}分钟</text>
@@ -480,6 +483,7 @@ const calMenuX = ref(0)
 const calMenuY = ref(0)
 const calSelectedDate = ref('')
 const calLongPressTimer = ref(null)
+let calMouseTimer = null
 
 const isAddingTask = ref(false)
 const addTaskCol = ref(-1)
@@ -594,16 +598,11 @@ const calTitle = computed(() => {
 const weekTitle = computed(() => {
   const y = weekStartDate.value.getFullYear()
   const m = weekStartDate.value.getMonth() + 1
-  return `${y}年${m}月第${getWeekNumber(weekStartDate.value)}周`
+  const day = weekStartDate.value.getDate()
+  // 月内第几周：1-7日=第1周, 8-14日=第2周, ...
+  const weekOfMonth = Math.ceil(day / 7)
+  return `${y}年${m}月第${weekOfMonth}周`
 })
-
-function getWeekNumber(d) {
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
-  const dayNum = date.getUTCDay() || 7
-  date.setUTCDate(date.getUTCDate() + 4 - dayNum)
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
-  return Math.ceil((((date - yearStart) / 86400000) + 1) / 7)
-}
 
 const subjects = computed(() => {
   const set = new Set()
@@ -876,8 +875,10 @@ function switchWeek(delta) {
 function handleCalRightClick(date, event) {
   showCalMenu.value = false
   calSelectedDate.value = date
-  calMenuX.value = event.clientX
-  calMenuY.value = event.clientY
+  // UniApp H5 下事件可能被包装，从原生事件或 detail 中取坐标
+  const nativeEvent = event.detail || event
+  calMenuX.value = nativeEvent.clientX || event.x || 0
+  calMenuY.value = nativeEvent.clientY || event.y || 0
   showCalMenu.value = true
 }
 
@@ -893,6 +894,25 @@ function onCalTouchEnd() {
     clearTimeout(calLongPressTimer.value)
     calLongPressTimer.value = null
   }
+}
+
+function onCalMouseDown(date, e) {
+  calSelectedDate.value = date
+  clearTimeout(calMouseTimer)
+  // 右键点击（button === 2）直接弹出菜单
+  const nativeEvent = (e && e.detail) || e || window.event
+  if (nativeEvent && nativeEvent.button === 2) {
+    handleCalRightClick(date, nativeEvent)
+    return
+  }
+  // 左键长按 500ms 弹出菜单
+  calMouseTimer = setTimeout(() => {
+    addTaskFromCal()
+  }, 500)
+}
+
+function onCalMouseUp() {
+  clearTimeout(calMouseTimer)
 }
 
 function addTaskFromCal() {
@@ -993,7 +1013,9 @@ function onWeekTouchEnd() {
 function onWeekMouseDown(e) {
   startX = e.clientX
   startY = e.clientY
-  const weekScroll = e.target.closest('.week-scroll')
+  // UniApp H5 的 e.target 可能不是标准 DOM 元素（被 Vue/UniApp 包装），
+  // 所以用 document.querySelector 替代 e.target.closest
+  const weekScroll = document.querySelector('.week-scroll')
   weekScrollTop = weekScroll ? weekScroll.scrollTop : 0
   startAddTask(e.clientX, e.clientY, weekScrollTop)
 }
