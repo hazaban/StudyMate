@@ -90,7 +90,7 @@
           <view class="week-day-dot" v-if="taskDates.has(day.dateStr)"></view>
         </view>
       </view>
-      <scroll-view scroll-y class="week-scroll" @touchstart="onWeekTouchStart" @touchmove="onWeekTouchMove" @touchend="onWeekTouchEnd" @mousedown="onWeekMouseDown" @mousemove="onWeekMouseMove" @mouseup="onWeekMouseUp" @mouseleave="onWeekMouseUp">
+      <view class="week-scroll" @touchstart="onWeekTouchStart" @touchmove="onWeekTouchMove" @touchend="onWeekTouchEnd" @mousedown="onWeekMouseDown" @mousemove="onWeekMouseMove" @mouseup="onWeekMouseUp" @mouseleave="onWeekMouseUp" @contextmenu.prevent>
         <view class="week-timeline">
           <view class="time-label" v-for="hour in timelineHours" :key="hour">
             <text>{{ hour }}:00</text>
@@ -119,7 +119,7 @@
         <view class="week-hint" v-if="!isAddingTask">
           <text class="week-hint-text">长按并拖拽可快速添加任务</text>
         </view>
-      </scroll-view>
+      </view>
     </view>
 
     <view class="tabs" v-if="viewMode !== 'week'">
@@ -643,6 +643,44 @@ const getImportanceClass = (type) => {
   return map[type] || ''
 }
 
+const getSubjectClass = (subject) => {
+  if (!subject) return 'subject-default'
+  const map = {
+    '数据结构': 'subject-ds',
+    '操作系统': 'subject-os',
+    '计算机网络': 'subject-cn',
+    '计算机组成原理': 'subject-co',
+    '英语': 'subject-en',
+    '政治': 'subject-pol',
+    '数学': 'subject-math',
+    '数据库': 'subject-db',
+    'UML': 'subject-uml',
+    '算法': 'subject-algo',
+    'C语言': 'subject-c'
+  }
+  return map[subject] || 'subject-default'
+}
+
+const currentTimeLineStyle = computed(() => {
+  const now = new Date()
+  const hour = now.getHours()
+  const minute = now.getMinutes()
+  if (hour < timelineHours[0] || hour > timelineHours[timelineHours.length - 1]) return { display: 'none' }
+  const weekScroll = document?.querySelector?.('.week-scroll')
+  const scrollTop = weekScroll?.scrollTop || 0
+  const top = (hour - timelineHours[0]) * cellHeight + (minute / 60) * cellHeight - scrollTop
+  return {
+    position: 'absolute',
+    left: '50px',
+    right: '0',
+    top: top + 'px',
+    height: '2px',
+    background: '#ef5350',
+    zIndex: 6,
+    pointerEvents: 'none'
+  }
+})
+
 function getTasksAt(dateStr, hour) {
   return taskStore.weekTasks.filter(t => t.date === dateStr && t.start_hour === hour)
 }
@@ -883,7 +921,8 @@ function getColFromX(x) {
   const weekScroll = document.querySelector('.week-scroll')
   if (!weekScroll) return 0
   const rect = weekScroll.getBoundingClientRect()
-  const relativeX = x - rect.left - 50
+  const scrollLeft = weekScroll.scrollLeft || 0
+  const relativeX = x - rect.left - 50 + scrollLeft
   const colWidth = (rect.width - 50) / 7
   const col = Math.floor(relativeX / colWidth)
   return Math.max(0, Math.min(6, col))
@@ -893,7 +932,7 @@ function getHourFromY(y, scrollTop) {
   const weekScroll = document.querySelector('.week-scroll')
   if (!weekScroll) return 9
   const rect = weekScroll.getBoundingClientRect()
-  const relativeY = y - rect.top + scrollTop
+  const relativeY = y - rect.top + (scrollTop || weekScroll.scrollTop || 0)
   const hourIndex = Math.floor(relativeY / cellHeight)
   return timelineHours[hourIndex] || 9
 }
@@ -962,7 +1001,15 @@ function onWeekMouseUp(e) {
 function startAddTask(x, y, scrollTop) {
   clearTimeout(longPressTimer)
   longPressTimer = setTimeout(() => {
-    uni.vibrateShort && uni.vibrateShort()
+    try {
+      // #ifdef APP-PLUS || MP
+      uni.vibrateShort && uni.vibrateShort({ type: 'medium' })
+      // #endif
+      // #ifdef H5
+      if ('vibrate' in navigator) navigator.vibrate(30)
+      // #endif
+    } catch (e) { /* ignore */ }
+
     isAddingTask.value = true
     showAddPopover.value = false
     const col = getColFromX(x)
@@ -996,14 +1043,18 @@ function finishAddTask() {
 
 function getSelectionStyle() {
   if (addTaskCol.value < 0) return {}
-  const top = (addTaskStartHour.value - timelineHours[0]) * cellHeight
+  const weekScroll = document.querySelector('.week-scroll')
+  if (!weekScroll) return {}
+  const rect = weekScroll.getBoundingClientRect()
+  const scrollTop = weekScroll.scrollTop || 0
+  const colWidth = (rect.width - 50) / 7
+  const top = (addTaskStartHour.value - timelineHours[0]) * cellHeight - scrollTop
   const height = (addTaskEndHour.value - addTaskStartHour.value) * cellHeight
-  const left = 50 + addTaskCol.value * ((window.innerWidth - 50) / 7)
-  const width = (window.innerWidth - 50) / 7
+  const left = 50 + addTaskCol.value * colWidth
   return {
     top: top + 'px',
     left: left + 'px',
-    width: width + 'px',
+    width: colWidth + 'px',
     height: height + 'px'
   }
 }
@@ -1434,6 +1485,11 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 .week-scroll {
   height: 450px; position: relative; background: #fff;
+  overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .week-timeline {
   position: absolute; left: 0; top: 0; width: 50px; height: 100%; background: #fafafa; border-right: 1px solid #f0f0f0;
@@ -1465,7 +1521,19 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   border-radius: 8px; padding: 4px 5px; overflow: hidden; cursor: pointer;
   box-shadow: 0 1px 2px rgba(47,125,79,0.15);
   &:active { transform: scale(0.98); }
-  &.completed { background: #f0f0f0; box-shadow: none; }
+  &.completed { background: #f0f0f0; box-shadow: none; opacity: 0.7; }
+  &.subject-ds { background: #e3f2fd; .week-task-content { color: #1565c0; } }
+  &.subject-os { background: #f3e5f5; .week-task-content { color: #7b1fa2; } }
+  &.subject-cn { background: #e0f7fa; .week-task-content { color: #00838f; } }
+  &.subject-co { background: #fff3e0; .week-task-content { color: #e65100; } }
+  &.subject-en { background: #fce4ec; .week-task-content { color: #c62828; } }
+  &.subject-pol { background: #f1f8e9; .week-task-content { color: #558b2f; } }
+  &.subject-math { background: #ede7f6; .week-task-content { color: #4527a0; } }
+  &.subject-db { background: #e8f5e9; .week-task-content { color: #2e7d32; } }
+  &.subject-uml { background: #fff8e1; .week-task-content { color: #f57f17; } }
+  &.subject-algo { background: #e1f5fe; .week-task-content { color: #01579b; } }
+  &.subject-c { background: #fbe9e7; .week-task-content { color: #bf360c; } }
+  &.subject-default { background: #e8f5e9; .week-task-content { color: #2f7d4f; } }
 }
 .task-importance-dot {
   width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px;
