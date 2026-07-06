@@ -44,32 +44,27 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440
 # Database SSL — require in cloud, allow plaintext for local Docker PG
 DB_SSLMODE = os.getenv("DB_SSLMODE", "require" if IS_PRODUCTION else "prefer")
 
-# Tencent Hunyuan AI (replaces DeepSeek; uses CloudBase free 1B token quota)
-HUNYUAN_API_KEY = os.getenv("HUNYUAN_API_KEY", "")
-HUNYUAN_BASE_URL = os.getenv("HUNYUAN_BASE_URL", "https://api.hunyuan.cloud.tencent.com/v1")
-HUNYUAN_MODEL = os.getenv("HUNYUAN_MODEL", "hunyuan-pro")
+# =============================================================================
+# 智谱 GLM AI（OpenAI 兼容协议）
+# 文本对话 + 工具调用 + Agent（不需要看图）→ glm-4.5-air（性价比高、快速）
+# 传图 / 传视频 / GUI 理解           → glm-4.1v-thinking-flashx（便宜、极速）
+# =============================================================================
+GLM_API_KEY = os.getenv("GLM_API_KEY", "")
+GLM_BASE_URL = os.getenv("GLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4")
 
-# DeepSeek AI (kept for fallback if you have a key)
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
-DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
-DEEPSEEK_MODEL_FLASH = "deepseek-chat"
-DEEPSEEK_MODEL_PRO = "deepseek-reasoner"
+# 纯文本模型（计划生成、任务拆解、卡片生成、复盘总结）
+GLM_TEXT_MODEL = os.getenv("GLM_TEXT_MODEL", "glm-4.5-air")
 
-# Active AI provider: "hunyuan" or "deepseek" or "mock"
-# Priority: HUNYUAN_API_KEY > DEEPSEEK_API_KEY > mock
+# 多模态视觉模型（教材目录图片识别、视频理解、GUI 理解）
+GLM_VISION_MODEL = os.getenv("GLM_VISION_MODEL", "glm-4.1v-thinking-flashx")
+
+# Active AI provider: "glm" or "mock"
 AI_PROVIDER = os.getenv("AI_PROVIDER", "")
 if not AI_PROVIDER:
-    if HUNYUAN_API_KEY:
-        AI_PROVIDER = "hunyuan"
-    elif DEEPSEEK_API_KEY:
-        AI_PROVIDER = "deepseek"
+    if GLM_API_KEY:
+        AI_PROVIDER = "glm"
     else:
         AI_PROVIDER = "mock"
-
-# Qwen Vision AI (for image analysis)
-QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
-QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
-QWEN_VISION_MODEL = os.getenv("QWEN_VISION_MODEL", "qwen-vl-max")
 
 # Tencent COS — all optional; upload disabled without them
 COS_SECRET_ID = os.getenv("COS_SECRET_ID", "")
