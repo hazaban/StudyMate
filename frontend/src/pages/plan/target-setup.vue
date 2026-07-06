@@ -71,10 +71,12 @@
 import { ref, reactive, onMounted } from 'vue'
 import { usePlanStore } from '@/stores/plan'
 import { useUserStore } from '@/stores/user'
+import { useSubjectsStore } from '@/stores/subjects'
 import { dateUtil } from '@/utils/date'
 
 const planStore = usePlanStore()
 const userStore = useUserStore()
+const subjectsStore = useSubjectsStore()
 
 const isEdit = ref(false)
 
@@ -117,6 +119,13 @@ async function savePlan() {
       await planStore.updatePlan(planStore.currentPlan.id, data)
     } else {
       await planStore.createPlan(data)
+    }
+
+    // Sync the plan's subjects into the user's own subject list so they are
+    // available everywhere (task-board / quadrant / index) without re-adding.
+    for (const s of subjects) {
+      const name = (s.name || '').trim()
+      if (name) await subjectsStore.add(name)
     }
 
     uni.showToast({ title: '保存成功', icon: 'success' })

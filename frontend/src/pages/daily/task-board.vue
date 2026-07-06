@@ -308,6 +308,9 @@
                   <text v-else>收起</text>
                 </view>
               </view>
+              <view class="subject-empty-hint" v-if="subjectOptions.length === 0 && !showSubjectInput">
+                <text class="subject-empty-text">还没有科目，点击「+ 自定义」或「管理科目」添加你的科目</text>
+              </view>
               <view class="input-wrapper" v-if="showSubjectInput" style="margin-top: 10px;">
                 <input class="input-field" v-model="customSubject" placeholder="输入自定义科目..." @confirm="addCustomSubject" />
               </view>
@@ -414,15 +417,15 @@
           <view class="manage-dialog-close" @click="showManageSubjects = false">✕</view>
         </view>
         <view class="manage-dialog-body">
+          <view class="manage-empty" v-if="subjectOptions.length === 0">
+            <text class="manage-empty-text">还没有科目，在下方添加你的第一个科目吧</text>
+          </view>
           <view class="manage-item" v-for="s in subjectOptions" :key="s">
             <view class="manage-item-left">
               <text class="manage-item-name">{{ s }}</text>
-              <text class="manage-item-badge" v-if="!customSubjectOptions.includes(s)">预设</text>
-              <text class="manage-item-badge manage-custom-badge" v-else>自定义</text>
             </view>
             <view
               class="manage-item-del"
-              v-if="customSubjectOptions.includes(s)"
               @click="removeSubjectFromManager(s)"
             >删除</view>
           </view>
@@ -481,12 +484,14 @@ import { useTaskStore } from '@/stores/task'
 import { usePlanStore } from '@/stores/plan'
 import { useUserStore } from '@/stores/user'
 import { useFarmStore } from '@/stores/farm'
+import { useSubjectsStore } from '@/stores/subjects'
 import * as api from '@/api/client'
 
 const taskStore = useTaskStore()
 const planStore = usePlanStore()
 const userStore = useUserStore()
 const farmStore = useFarmStore()
+const subjectsStore = useSubjectsStore()
 
 const activeTab = ref('all')
 const activeFilter = ref('all')
@@ -543,9 +548,7 @@ const weekCellDate = ref('')
 const weekCellHour = ref(9)
 let weekCellTouchTimer = null
 
-const allSubjects = ['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络']
-const subjectOptions = ref([...allSubjects])
-const customSubjectOptions = ref([])
+const subjectOptions = computed(() => subjectsStore.subjects)
 const showManageSubjects = ref(false)
 const manageNewSubject = ref('')
 const showAIParseModal = ref(false)
@@ -555,35 +558,31 @@ const addMode = ref('manual')
 const hourOptions = Array.from({ length: 18 }, (_, i) => String(i + 6))
 
 async function loadTaskSubjects() {
-  try { const res = await api.getUserSubjects(); const saved = res.subjects || []; customSubjectOptions.value = saved.filter(s => !allSubjects.includes(s)); subjectOptions.value = [...allSubjects]; saved.forEach(s => { if (!subjectOptions.value.includes(s)) subjectOptions.value.push(s) }) } catch (e) { /* offline */ }
+  await subjectsStore.load()
 }
 function addCustomSubject() {
   const name = customSubject.value.trim()
   if (!name) return
-  if (!subjectOptions.value.includes(name)) { subjectOptions.value.push(name) }
-  if (!customSubjectOptions.value.includes(name)) { customSubjectOptions.value.push(name); api.addUserSubject(name).catch(()=>{}) }
+  subjectsStore.add(name)
   form.value.subject = name; customSubject.value = ''; showSubjectInput.value = false
 }
 function addManageSubject() {
   const name = manageNewSubject.value.trim()
   if (!name) return
-  if (!subjectOptions.value.includes(name)) { subjectOptions.value.push(name) }
-  if (!customSubjectOptions.value.includes(name)) { customSubjectOptions.value.push(name); api.addUserSubject(name).catch(()=>{}) }
+  subjectsStore.add(name)
   manageNewSubject.value = ''
 }
 function removeSubjectFromManager(name) {
   uni.showModal({ title: '删除科目', content: `确定要删除「${name}」吗？`, success: (res) => {
     if (res.confirm) {
-      customSubjectOptions.value = customSubjectOptions.value.filter(s => s !== name)
-      subjectOptions.value = subjectOptions.value.filter(s => s !== name)
-      api.removeUserSubject(name).catch(()=>{})
+      subjectsStore.remove(name)
       if (form.value.subject === name) form.value.subject = subjectOptions.value[0] || ''
     }
   }})
 }
 
 const defaultForm = {
-  subject: '数据结构',
+  subject: '',
   chapter: '',
   content: '',
   duration: 25,
@@ -802,6 +801,7 @@ function editTask(task) {
 
 function openManualAdd() {
   addMode.value = 'manual'
+  form.value = { ...defaultForm, subject: subjectOptions.value[0] || '' }
   showAddForm.value = true
 }
 
@@ -991,8 +991,10 @@ function onCalMouseUp() {
 function addTaskFromCal() {
   showCalMenu.value = false
   selectedDate.value = calSelectedDate.value
+  form.value = { ...defaultForm, subject: subjectOptions.value[0] || '' }
   showAddForm.value = true
   form.value.date = calSelectedDate.value
+  addMode.value = 'manual'
 }
 
 function selectCalDate() {
@@ -1063,10 +1065,12 @@ function handleWeekCellRightClick(dateStr, hour, event) {
 function addTaskFromWeekCell(dateStr, hour) {
   showWeekMenu.value = false
   selectedDate.value = dateStr
+  form.value = { ...defaultForm, subject: subjectOptions.value[0] || '' }
   showAddForm.value = true
   form.value.date = dateStr
   form.value.start_hour = hour
   form.value.duration = 60
+  addMode.value = 'manual'
 }
 
 // === 单元格交互：点击展开任务详情，长按编辑/添加 ===
@@ -1227,7 +1231,7 @@ async function parseWithAI() {
 }
 
 function mockParsePlan(text) {
-  const subjects = ['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络', '数据库', 'UML', '算法', '高等数学', 'C语言', '软件工程']
+  const subjects = subjectOptions.value.length ? [...subjectOptions.value] : []
   const chKeys = ['二叉树', '链表', '栈', '队列', '图', '排序', '查找', '哈希', '树', '进程', '内存', '文件系统', '设备', '网络层', '传输层', '应用层', '物理层', '数据链路', 'TCP', 'IP', 'HTTP', 'DNS', 'Cache', '流水线', '死锁', 'PV操作', '阅读', '写作', '词汇', '完形', '翻译', '马原', '毛中特', '史纲', '思修', '时政']
   const today = new Date()
   const formatDate = (d) => d.toISOString().split('T')[0]
@@ -1235,7 +1239,7 @@ function mockParsePlan(text) {
   const lines = text.split(/[,，。；;、\n]/).filter(l => l.trim())
   return lines.slice(0, 10).map(line => {
     const t = line.trim()
-    let subject = '数据结构'
+    let subject = subjects[0] || ''
     for (const s of subjects) { if (t.includes(s)) { subject = s; break } }
 
     let taskDate = formatDate(today)
@@ -1797,16 +1801,15 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 .manage-item-left { display: flex; align-items: center; gap: 8px; }
 .manage-item-name { font-size: 14px; color: #1a1a2e; font-weight: 500; }
-.manage-item-badge {
-  font-size: 10px; padding: 2px 8px; border-radius: 10px;
-  background: #edf7ee; color: #2f7d4f;
-}
-.manage-custom-badge { background: #fff3e0; color: #e65100; }
+.manage-empty { padding: 16px 12px; text-align: center; }
+.manage-empty-text { font-size: 13px; color: #999; }
 .manage-item-del {
   font-size: 12px; padding: 5px 12px; border-radius: 8px;
   background: #ffebee; color: #c62828; font-weight: 500;
   &:active { background: #ffcdd2; }
 }
+.subject-empty-hint { margin-top: 10px; padding: 10px 12px; background: #fff8e1; border-radius: 10px; }
+.subject-empty-text { font-size: 12px; color: #9a7b00; }
 .manage-add-row {
   display: flex; gap: 8px; margin-top: 12px; padding-top: 12px;
   border-top: 1px solid #e0e0e0;

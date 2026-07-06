@@ -105,6 +105,16 @@
             <text class="form-label">科目</text>
             <view class="subject-grid">
               <view class="subject-item" v-for="s in subjectOptions" :key="s" :class="{ active: form.subject === s }" @click="form.subject = s">{{ s }}</view>
+              <view class="subject-item subject-add" @click="showSubjectInput = !showSubjectInput">
+                <text v-if="!showSubjectInput">+ 自定义</text>
+                <text v-else>收起</text>
+              </view>
+            </view>
+            <view class="subject-empty-hint" v-if="subjectOptions.length === 0 && !showSubjectInput">
+              <text class="subject-empty-text">还没有科目，点击「+ 自定义」添加你的科目</text>
+            </view>
+            <view class="input-wrapper" v-if="showSubjectInput" style="margin-top: 10px;">
+              <input class="input-inner" v-model="customSubject" placeholder="输入自定义科目..." @confirm="addCustomSubject" />
             </view>
           </view>
           <view class="form-group">
@@ -161,24 +171,41 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useTaskStore } from '@/stores/task'
 import { usePlanStore } from '@/stores/plan'
+import { useSubjectsStore } from '@/stores/subjects'
 
 const taskStore = useTaskStore()
 const planStore = usePlanStore()
+const subjectsStore = useSubjectsStore()
 
 const viewRange = ref('day')
 const showAddForm = ref(false)
 const editingTask = ref(null)
 const selectedImportance = ref('')
+const showSubjectInput = ref(false)
+const customSubject = ref('')
 
 const form = ref({
-  subject: '数据结构',
+  subject: '',
   content: '',
   duration: 25,
   date: '',
   importance: ''
 })
 
-const subjectOptions = ['数据结构', '英语', '政治', '操作系统', '计算机组成原理', '计算机网络', '数学', 'C语言', '数据库', 'UML', '算法']
+const subjectOptions = computed(() => subjectsStore.subjects)
+
+async function loadSubjects() {
+  await subjectsStore.load()
+}
+
+function addCustomSubject() {
+  const name = customSubject.value.trim()
+  if (!name) return
+  subjectsStore.add(name)
+  form.value.subject = name
+  customSubject.value = ''
+  showSubjectInput.value = false
+}
 
 const today = computed(() => new Date().toISOString().split('T')[0])
 
@@ -221,7 +248,7 @@ function getTaskCount(importance) {
 function addTaskToQuadrant(importance) {
   selectedImportance.value = importance
   form.value = {
-    subject: '数据结构',
+    subject: subjectOptions.value[0] || '',
     content: '',
     duration: 25,
     date: today.value,
@@ -248,6 +275,10 @@ function onDateChange(e) {
 }
 
 async function submitForm() {
+  if (!form.value.subject) {
+    uni.showToast({ title: '请先选择或添加科目', icon: 'none' })
+    return
+  }
   if (!form.value.content.trim()) {
     uni.showToast({ title: '请输入任务内容', icon: 'none' })
     return
@@ -316,6 +347,7 @@ watch(viewRange, () => {
 
 onMounted(async () => {
   form.value.date = today.value
+  await loadSubjects()
   await loadTasks()
 })
 </script>
@@ -436,7 +468,10 @@ onMounted(async () => {
   padding: 6px 12px; border-radius: 20px; background: #f5f7f5;
   font-size: 13px; color: #1a1a2e; border: 1px solid #e8ece9;
   &.active { background: #2f7d4f; color: #fff; border-color: #2f7d4f; }
+  &.subject-add { background: #fff; border: 1.5px dashed #d0d5d2; color: #2f7d4f; }
 }
+.subject-empty-hint { margin-top: 10px; padding: 10px 12px; background: #fff8e1; border-radius: 10px; }
+.subject-empty-text { font-size: 12px; color: #9a7b00; }
 .textarea-field {
   width: 100%; min-height: 80px; padding: 12px; border: 1px solid #e8ece9;
   border-radius: 12px; font-size: 14px; color: #1a1a2e; background: #fafafa;

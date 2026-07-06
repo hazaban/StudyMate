@@ -114,6 +114,16 @@
             <text class="form-label">科目</text>
             <view class="subject-grid">
               <view class="subject-tag" :class="{ active: editingForm.subject === s }" v-for="s in subjectOptions" :key="s" @click="editingForm.subject = s">{{ s }}</view>
+              <view class="subject-tag subject-add" @click="showSubjectInput = !showSubjectInput">
+                <text v-if="!showSubjectInput">+ 自定义</text>
+                <text v-else>收起</text>
+              </view>
+            </view>
+            <view class="subject-empty-hint" v-if="subjectOptions.length === 0 && !showSubjectInput">
+              <text class="subject-empty-text">还没有科目，点击「+ 自定义」添加你的科目</text>
+            </view>
+            <view class="input-wrap" v-if="showSubjectInput" style="margin-top: 10px;">
+              <input class="input-inner" v-model="customSubject" placeholder="输入自定义科目..." @confirm="addCustomSubject" />
             </view>
           </view>
           <view class="form-group">
@@ -175,6 +185,7 @@ import { useUserStore } from '@/stores/user'
 import { usePlanStore } from '@/stores/plan'
 import { useTaskStore } from '@/stores/task'
 import { useFarmStore } from '@/stores/farm'
+import { useSubjectsStore } from '@/stores/subjects'
 import { dateUtil } from '@/utils/date'
 import * as api from '@/api/client'
 
@@ -182,6 +193,7 @@ const userStore = useUserStore()
 const planStore = usePlanStore()
 const taskStore = useTaskStore()
 const farmStore = useFarmStore()
+const subjectsStore = useSubjectsStore()
 
 const currentDate = ref('')
 const daysRemaining = ref(0)
@@ -226,7 +238,22 @@ async function computeStreak() {
 
 const showTaskForm = ref(false)
 const editingForm = ref({})
-const subjectOptions = ref(JSON.parse(uni.getStorageSync('studymate_subjects') || JSON.stringify(['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络'])))
+const subjectOptions = computed(() => subjectsStore.subjects)
+const showSubjectInput = ref(false)
+const customSubject = ref('')
+
+async function loadSubjects() {
+  await subjectsStore.load()
+}
+
+function addCustomSubject() {
+  const name = customSubject.value.trim()
+  if (!name) return
+  subjectsStore.add(name)
+  editingForm.value.subject = name
+  customSubject.value = ''
+  showSubjectInput.value = false
+}
 
 const previewTasks = computed(() => {
   return taskStore.todayTasks.slice(0, 3)
@@ -360,6 +387,7 @@ onMounted(async () => {
 
   if (userStore.isLoggedIn && userStore.user) {
     await planStore.getPlansByUserId()
+    await loadSubjects()
 
     if (planStore.currentPlan) {
       const today = dateUtil.today()
@@ -759,7 +787,9 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   border-radius: 10px; font-size: 14px; color: #1a1a2e; background: #fafafa;
 }
 .subject-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-.subject-tag { padding: 6px 14px; border-radius: 16px; font-size: 13px; color: #65746d; background: #f5f7f5; &.active { background: #2f7d4f; color: #fff; } }
+.subject-tag { padding: 6px 14px; border-radius: 16px; font-size: 13px; color: #65746d; background: #f5f7f5; &.active { background: #2f7d4f; color: #fff; } &.subject-add { background: #fff; border: 1.5px dashed #d0d5d2; color: #2f7d4f; } }
+.subject-empty-hint { margin-top: 10px; padding: 10px 12px; background: #fff8e1; border-radius: 10px; }
+.subject-empty-text { font-size: 12px; color: #9a7b00; }
 .type-row { display: flex; gap: 8px; }
 .type-tag { flex: 1; text-align: center; padding: 10px; border-radius: 10px; font-size: 14px; color: #65746d; background: #f5f7f5; &.active { background: #2f7d4f; color: #fff; } }
 .modal-footer { display: flex; gap: 12px; padding: 20px; border-top: 1px solid #f0f0f0; }

@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { login as apiLogin, register as apiRegister, getMe, logout as apiLogout } from '@/api/client'
 import { usePlanStore } from '@/stores/plan'
 import { useTaskStore } from '@/stores/task'
+import { useSubjectsStore } from '@/stores/subjects'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -43,7 +44,9 @@ export const useUserStore = defineStore('user', {
     async _preloadData() {
       try {
         const planStore = usePlanStore()
+        const subjectsStore = useSubjectsStore()
         await planStore.getPlansByUserId()
+        await subjectsStore.load(true)
         if (planStore.currentPlan) {
           const taskStore = useTaskStore()
           const today = new Date().toISOString().split('T')[0]
@@ -71,6 +74,8 @@ export const useUserStore = defineStore('user', {
       this.user = null
       this.token = null
       this.isLoggedIn = false
+      // Clear cached subjects so a different user logging in starts fresh
+      useSubjectsStore().clear()
     }
   }
 })

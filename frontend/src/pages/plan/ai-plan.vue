@@ -198,13 +198,15 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, computed, onMounted } from 'vue'
 import { usePlanStore } from '@/stores/plan'
 import { useUserStore } from '@/stores/user'
+import { useSubjectsStore } from '@/stores/subjects'
 import * as api from '@/api/client'
 
 const planStore = usePlanStore()
 const userStore = useUserStore()
+const subjectsStore = useSubjectsStore()
 
 const activeTab = ref('plan')
 const scrollToMsg = ref('')
@@ -340,8 +342,8 @@ async function scrollToBottom() {
 }
 
 // ========== 科目框架分析 ==========
-const subjectList = ref(['数据结构', '操作系统', '计算机网络', '数学', '英语'])
-const currentSubject = ref('数据结构')
+const subjectList = computed(() => subjectsStore.subjects)
+const currentSubject = ref('')
 const syllabusImage = ref('')
 const syllabusImageBase64 = ref('')
 const syllabusLoading = ref(false)
@@ -353,11 +355,18 @@ const syllabusMessages = ref([])
 
 function addSubject() {
   if (!newSubjectName.value.trim()) return
-  subjectList.value.push(newSubjectName.value.trim())
+  subjectsStore.add(newSubjectName.value.trim())
   currentSubject.value = newSubjectName.value.trim()
   newSubjectName.value = ''
   showAddSubject.value = false
 }
+
+onMounted(async () => {
+  await subjectsStore.load()
+  if (!currentSubject.value && subjectList.value.length) {
+    currentSubject.value = subjectList.value[0]
+  }
+})
 
 function chooseSyllabusImage() {
   uni.chooseImage({
