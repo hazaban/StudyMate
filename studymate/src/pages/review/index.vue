@@ -1172,8 +1172,20 @@ async function doExport(format) {
 }
 
 onMounted(async () => {
+  loadingCards.value = true
+  loadingMistakes.value = true
   await userStore.getUserInfo()
-  if (userStore.isLoggedIn) { await planStore.getPlansByUserId(); await loadSubjects() }
+  if (userStore.isLoggedIn) {
+    await planStore.getPlansByUserId()
+    await loadSubjects()
+    // 立即加载当前计划的数据
+    if (planStore.currentPlan) {
+      await loadCards()
+      await loadMistakes()
+    }
+  }
+  loadingCards.value = false
+  loadingMistakes.value = false
   document.addEventListener('paste', handleGlobalPaste)
 })
 onUnmounted(() => {
