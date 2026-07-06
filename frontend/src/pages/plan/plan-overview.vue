@@ -178,11 +178,11 @@
           <view class="ch-hint">💡 填写章节名和分钟/天，设置计划与实际起止日期</view>
           <view class="chapter-list">
             <view class="chapter-item" v-for="(ch, ci) in editingChapters" :key="ci">
-              <textarea class="ch-name" :value="ch.name" @input="e => ch.name = e.detail.value" placeholder="章节名" maxlength="50" />
+              <input class="ch-name" :value="ch.name" @input="e => ch.name = e.detail.value" placeholder="章节名" maxlength="50" />
               <view class="ch-row-2">
                 <view class="ch-min-wrap">
                   <text class="ch-min-label">分钟/天</text>
-                  <textarea class="ch-min" :value="String(ch.duration||30)" @input="e => ch.duration = parseInt(e.detail.value)||30" placeholder="30" />
+                  <input class="ch-min" :value="ch.duration || 30" @input="e => ch.duration = parseInt(e.detail.value)||30" type="number" placeholder="30" />
                 </view>
               </view>
               <view class="ch-dt-row">
@@ -641,15 +641,15 @@ onMounted(async () => {
 .ch-hint { font-size: 12px; color: #888; margin-bottom: 14px; text-align: center; background: #f0f7ff; padding: 8px; border-radius: 8px; }
 .chapter-list { display: flex; flex-direction: column; gap: 12px; }
 .chapter-item { background: #fff; border: 1.5px solid #e0e0e0; border-radius: 16px; padding: 16px; }
-.ch-name { width: 100%; min-height: 44px; padding: 12px 14px; border: 1.5px solid #d0d5d2; border-radius: 10px; font-size: 16px; color: #1a1a2e; background: #fafafa; resize: none; line-height: 1.4; margin-bottom: 10px; }
+.ch-name { width: 100%; height: 44px; padding: 0 14px; border: 1.5px solid #d0d5d2; border-radius: 10px; font-size: 17px; color: #1a1a2e; background: #fff; margin-bottom: 10px; outline: none; }
 .ch-row-2 { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
 .ch-min-wrap { display: flex; align-items: center; gap: 6px; }
 .ch-min-label { font-size: 12px; color: #888; }
-.ch-min { width: 60px; min-height: 36px; padding: 8px 6px; border: 1.5px solid #d0d5d2; border-radius: 8px; font-size: 15px; color: #1a1a2e; background: #fafafa; text-align: center; resize: none; }
+.ch-min { width: 72px; height: 40px; padding: 0 8px; border: 1.5px solid #d0d5d2; border-radius: 8px; font-size: 16px; color: #1a1a2e; background: #fff; text-align: center; outline: none; }
 
 .ch-dt-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 .ch-dt-label { font-size: 12px; font-weight: 600; color: #2f7d4f; min-width: 48px; .ch-dt-row.actual & { color: #c62828; } }
-.ch-dt { flex: 1; padding: 8px; border: 1.5px solid #d0d5d2; border-radius: 8px; font-size: 14px; color: #1a1a2e; background: #fafafa; min-width: 0; }
+.ch-dt { flex: 1; height: 40px; padding: 0 8px; border: 1.5px solid #d0d5d2; border-radius: 8px; font-size: 15px; color: #1a1a2e; background: #fff; min-width: 0; outline: none; }
 .ch-dt-arrow { font-size: 14px; color: #ccc; }
 .ch-del { text-align: center; font-size: 13px; color: #c62828; padding: 6px; margin-top: 6px; border-top: 1px dashed #e0e0e0; }
 
