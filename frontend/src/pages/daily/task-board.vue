@@ -90,46 +90,47 @@
         <text class="week-title">{{ weekTitle }}</text>
         <view class="week-arrow" @click="switchWeek(1)">›</view>
       </view>
-      <view class="week-days-header">
-        <view class="week-timeline-header"></view>
-        <view class="week-day-header" v-for="(day, idx) in weekDays" :key="idx" :class="{ today: day.isToday, weekend: day.isWeekend }">
-          <text class="week-day-name">{{ day.dayName }}</text>
-          <text class="week-day-num">{{ day.day }}</text>
-          <view class="week-day-dot" v-if="taskDates.has(day.dateStr)"></view>
-        </view>
-      </view>
-      <view class="week-scroll">
-        <view class="week-body">
-          <view class="week-timeline">
-            <view class="time-label" v-for="hour in timelineHours" :key="hour">
-              <text>{{ hour }}:00</text>
+      <!-- 统一的横向滚动容器：日期头+格子体一起滚 -->
+      <view class="week-hscroll">
+        <view class="week-table" :style="{ minWidth: 44 + 7 * colWidth + 'px' }">
+          <!-- 日期头行 -->
+          <view class="week-days-header">
+            <view class="week-timeline-header"></view>
+            <view class="week-day-header" v-for="(day, idx) in weekDays" :key="idx" :class="{ today: day.isToday, weekend: day.isWeekend }" :style="{ width: colWidth + 'px' }">
+              <text class="week-day-name">{{ day.dayName }}</text>
+              <text class="week-day-num">{{ day.day }}</text>
+              <view class="week-day-dot" v-if="taskDates.has(day.dateStr)"></view>
             </view>
           </view>
-          <view class="week-grid">
-          <view class="week-column" v-for="(day, colIdx) in weekDays" :key="colIdx" :data-col="colIdx" :class="{ weekend: day.isWeekend }">
-            <view
-              class="week-cell"
-              v-for="(hour, hourIdx) in timelineHours"
-              :key="hourIdx"
-              :data-hour="hour"
-              :data-date="day.dateStr"
-              :class="{ expanded: expandedCell === day.dateStr + '-' + hour }"
-              @click.stop="onWeekCellClick(day.dateStr, hour)"
-              @contextmenu.prevent="handleWeekCellRightClick(day.dateStr, hour, $event)"
-              @touchstart="onWeekCellTouchStart(day.dateStr, hour, $event)"
-              @touchmove="onWeekCellTouchCancel"
-              @touchend.prevent="onWeekCellTouchEnd"
-              @mousedown="onWeekCellMouseDown(day.dateStr, hour, $event)"
-              @mouseup="onWeekCellMouseUp">
-              <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed', [getSubjectClass(task.subject)]: true }">
-                <view class="task-importance-dot" :class="getImportanceClass(task.importance)" v-if="task.importance && enableQuadrant"></view>
-                <text class="week-task-content">{{ task.content }}</text>
-                <text class="week-task-duration">{{ task.duration }}min</text>
+          <!-- 格子体（纵向滚动） -->
+          <view class="week-scroll">
+            <view class="week-body">
+              <view class="week-timeline">
+                <view class="time-label" v-for="hour in timelineHours" :key="hour">
+                  <text>{{ hour }}:00</text>
+                </view>
+              </view>
+              <view class="week-grid">
+                <view class="week-column" v-for="(day, colIdx) in weekDays" :key="colIdx" :data-col="colIdx" :class="{ weekend: day.isWeekend }" :style="{ width: colWidth + 'px' }">
+                  <view class="week-cell" v-for="(hour, hourIdx) in timelineHours" :key="hourIdx" :data-hour="hour" :data-date="day.dateStr" :class="{ expanded: expandedCell === day.dateStr + '-' + hour }"
+                    @click.stop="onWeekCellClick(day.dateStr, hour)"
+                    @contextmenu.prevent="handleWeekCellRightClick(day.dateStr, hour, $event)"
+                    @touchstart="onWeekCellTouchStart(day.dateStr, hour, $event)"
+                    @touchmove="onWeekCellTouchCancel"
+                    @touchend.prevent="onWeekCellTouchEnd"
+                    @mousedown="onWeekCellMouseDown(day.dateStr, hour, $event)"
+                    @mouseup="onWeekCellMouseUp">
+                    <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed', [getSubjectClass(task.subject)]: true }">
+                      <view class="task-importance-dot" :class="getImportanceClass(task.importance)" v-if="task.importance && enableQuadrant"></view>
+                      <text class="week-task-content">{{ task.content }}</text>
+                      <text class="week-task-duration">{{ task.duration }}min</text>
+                    </view>
+                  </view>
+                </view>
               </view>
             </view>
           </view>
         </view>
-        </view><!-- .week-body -->
       </view>
     </view>
 
@@ -498,6 +499,15 @@ const taskDates = ref(new Set())
 const dateFocusRecords = ref([])
 
 const timelineHours = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+// 列宽：桌面端自适应，手机端最少100px保证可读
+const colWidth = computed(() => {
+  try {
+    const info = uni.getSystemInfoSync()
+    const w = info.windowWidth || 375
+    const usable = Math.max(w - 60, 320)
+    return Math.max(100, Math.floor(usable / 7))
+  } catch (e) { return 100 }
+})
 const weekStartDate = ref(getWeekStart(new Date()))
 const weekDays = ref([])
 
@@ -1509,6 +1519,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .cal-menu-icon { font-size: 16px; }
 .cal-menu-text { font-size: 14px; color: #333; }
 
+/* 周视图 */
 .week-view {
   background: #fff; border-radius: 12px; margin-bottom: 16px;
   border: 1px solid #e8ece9; box-shadow: 0 1px 4px rgba(0,0,0,0.03);
@@ -1522,19 +1533,20 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   &:active { background: #f5f7f5; } }
 .week-title { font-size: 15px; font-weight: 600; color: #1a1a2e; }
 
-/* 日期头 — 冻结在顶部 */
+/* 横向滚动容器：日期头+格子体一起滚 */
+.week-hscroll { overflow-x: auto; overflow-y: hidden; }
+.week-table { /* min-width 由 :style 动态设置 */ }
+
+/* 日期头行 */
 .week-days-header {
-  display: flex; background: #fff;
-  position: sticky; top: 0; z-index: 5;
-  border-bottom: 2px solid #f0f0f0;
+  display: flex; background: #fff; border-bottom: 2px solid #f0f0f0;
 }
 .week-timeline-header {
   width: 44px; flex-shrink: 0; background: #fafafa; border-right: 1px solid #f0f0f0;
-  position: sticky; left: 0; z-index: 6;
   display: flex; align-items: center; justify-content: center;
 }
 .week-day-header {
-  flex: 1; min-width: 90px; text-align: center; padding: 10px 2px;
+  flex-shrink: 0; text-align: center; padding: 10px 2px;
   border-right: 1px solid #f0f0f0;
   &:last-child { border-right: none; }
   &.today {
@@ -1543,40 +1555,36 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
     background: rgba(47,125,79,0.08); border-radius: 8px;
     margin: 2px; border: 1px solid rgba(47,125,79,0.2);
   }
-  &.weekend {
-    background: rgba(255,248,220,0.3);
-    .week-day-name, .week-day-num { color: #8b7355; }
-  }
-  &:active { background: rgba(47,125,79,0.06); }
+  &.weekend { background: rgba(255,248,220,0.3); .week-day-name, .week-day-num { color: #8b7355; } }
 }
 .week-day-name { display: block; font-size: 11px; color: #999; margin-bottom: 3px; }
 .week-day-num { font-size: 18px; color: #1a1a2e; font-weight: 600; }
-.week-day-dot { width: 8px; height: 8px; border-radius: 50%; background: #2f7d4f; margin: 4px auto 0; box-shadow: 0 0 4px rgba(47,125,79,0.4); }
+.week-day-dot { width: 8px; height: 8px; border-radius: 50%; background: #2f7d4f; margin: 4px auto 0; }
 
-.week-scroll { height: 480px; overflow: auto; }
-.week-body { display: flex; flex-direction: row; min-width: 744px; }
+/* 格子体：仅纵向滚动 */
+.week-scroll { height: 480px; overflow-y: auto; overflow-x: hidden; }
+.week-body { display: flex; flex-direction: row; }
 
-/* 左侧时间轴 — 水平冻结，垂直跟随滚动 */
+/* 时间轴列 — 横向不冻结，随整体横向滚动 */
 .week-timeline {
   width: 44px; flex-shrink: 0; background: #fafafa;
   border-right: 1px solid #f0f0f0;
-  position: sticky; left: 0; z-index: 2;
 }
 .time-label {
   height: 72px; display: flex; align-items: flex-start; justify-content: center;
   padding-top: 4px; font-size: 10px; color: #999; font-weight: 500;
 }
-.week-grid { display: flex; flex: 1; }
-.week-column { flex: 1; min-width: 90px; border-right: 1px solid #f0f0f0;
+.week-grid { display: flex; }
+.week-column { flex-shrink: 0; border-right: 1px solid #f0f0f0;
   &:last-child { border-right: none; }
   &.weekend { background: rgba(255,248,220,0.1); }
 }
 .week-cell {
-  min-height: 72px; max-height: 120px; border-bottom: 1px solid #f5f5f5;
+  height: 72px; border-bottom: 1px solid #f5f5f5;
   position: relative; padding: 3px; overflow-y: auto;
   &:nth-child(odd) { background: rgba(248,250,248,0.5); }
   &.expanded {
-    max-height: none; overflow: visible; background: rgba(47,125,79,0.06);
+    height: auto; overflow: visible; background: rgba(47,125,79,0.06);
     z-index: 3; box-shadow: 0 2px 10px rgba(0,0,0,0.12); border-radius: 4px;
     .week-task { white-space: normal; }
     .week-task-content { display: block; }
