@@ -117,6 +117,7 @@
               @click.stop="onWeekCellClick(day.dateStr, hour)"
               @contextmenu.prevent="handleWeekCellRightClick(day.dateStr, hour, $event)"
               @touchstart="onWeekCellTouchStart(day.dateStr, hour)"
+              @touchmove="onWeekCellTouchCancel"
               @touchend.prevent="onWeekCellTouchEnd"
               @mousedown="onWeekCellMouseDown(day.dateStr, hour)"
               @mouseup="onWeekCellMouseUp">
@@ -1036,8 +1037,16 @@ function onWeekCellTouchStart(dateStr, hour) {
   }, 300)
 }
 
+function onWeekCellTouchCancel() {
+  // 滑动时取消长按，防止误触
+  clearTimeout(weekCellTouchTimer)
+  weekCellDidLong = false
+}
+
 function onWeekCellTouchEnd() {
   clearTimeout(weekCellTouchTimer)
+  // 重置长按标记，恢复短按功能
+  setTimeout(() => { weekCellDidLong = false }, 50)
 }
 
 function onWeekCellMouseDown(dateStr, hour) {

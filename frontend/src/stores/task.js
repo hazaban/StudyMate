@@ -9,7 +9,9 @@ export const useTaskStore = defineStore('task', {
     currentTask: null,
     completedCount: 0,
     totalCount: 0,
-    _currentPlanId: null
+    _currentPlanId: null,
+    _todayFetchedAt: 0,
+    _weekFetchedAt: 0
   }),
 
   getters: {
@@ -25,12 +27,19 @@ export const useTaskStore = defineStore('task', {
     },
 
     async getTasksByDate(planId, date) {
+      // 缓存: 1秒内同日同计划不重复请求
+      const cacheKey = planId + '|' + date
+      if (this._todayCacheKey === cacheKey && Date.now() - this._todayFetchedAt < 1000) {
+        return { success: true, cached: true }
+      }
       try {
         const tasks = await api.getTasks(planId, date)
         this.todayTasks = tasks
         this.totalCount = tasks.length
         this.completedCount = tasks.filter(t => t.status === 'completed').length
         this._currentPlanId = planId
+        this._todayCacheKey = cacheKey
+        this._todayFetchedAt = Date.now()
         return { success: true }
       } catch (error) {
         return { success: false, error: error.message }

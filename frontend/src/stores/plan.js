@@ -51,11 +51,14 @@ export const usePlanStore = defineStore('plan', {
     },
 
     async getPlansByUserId() {
+      // 缓存: 如果2秒内已加载过，跳过重复请求
+      if (this.plans.length > 0 && this._plansFetchedAt && Date.now() - this._plansFetchedAt < 2000) {
+        return { success: true, cached: true }
+      }
       try {
         const plans = await api.getPlans()
         this.plans = plans
         if (plans.length > 0) {
-          // Restore last selected plan from storage, otherwise default to first
           const savedPlanId = uni.getStorageSync('studymate_current_plan_id')
           const target = savedPlanId
             ? (plans.find(p => p.id === savedPlanId) || plans[0])
@@ -65,6 +68,7 @@ export const usePlanStore = defineStore('plan', {
           this.dailyStudyTime = target.daily_study_time || 0
           this.weakPoints = target.weak_points || []
         }
+        this._plansFetchedAt = Date.now()
         return { success: true }
       } catch (error) {
         return { success: false, error: error.message }

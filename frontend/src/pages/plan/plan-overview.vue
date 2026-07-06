@@ -621,7 +621,7 @@ onMounted(async () => {
 .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #f0f0f0; }
 .modal-title { font-size: 18px; font-weight: 700; color: #1a1a2e; }
 .modal-close { font-size: 20px; color: #999; padding: 4px; }
-.modal-body { padding: 20px 24px; flex: 1; overflow-y: auto; }
+.modal-body { padding: 20px 24px; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; position: relative; z-index: 1; }
 .modal-footer { display: flex; gap: 12px; padding: 16px 24px; border-top: 1px solid #f0f0f0; }
 .cancel-btn { flex: 1; padding: 14px; text-align: center; border-radius: 14px; font-size: 16px; color: #65746d; background: #f5f7f5; font-weight: 500; }
 .submit-btn { flex: 2; padding: 14px; text-align: center; border-radius: 14px; font-size: 16px; color: #fff; background: $accent; font-weight: 600; }
@@ -630,19 +630,16 @@ onMounted(async () => {
 .input-wrapper { border: 1.5px solid #e8ece9; border-radius: 14px; padding: 12px 16px; background: #fafafa; }
 .input-field { width: 100%; font-size: 15px; color: #1a1a2e; border: none; outline: none; background: transparent; }
 .chapter-list { display: flex; flex-direction: column; gap: 8px; }
-.chapter-item { background: #f5f7f5; border-radius: 12px; padding: 12px; margin-bottom: 8px; }
-.chapter-row { display: flex; align-items: center; gap: 10px; }
+.chapter-item { background: #f5f7f5; border-radius: 12px; padding: 12px; margin-bottom: 8px; position: relative; z-index: 1; }
+.chapter-row { display: flex; align-items: center; gap: 10px; position: relative; z-index: 2; }
 .chapter-input {
   flex: 1; padding: 14px 14px; border: 1.5px solid #d0d5d2; border-radius: 10px;
   font-size: 16px; background: #fff; color: #1a1a2e; min-width: 0;
+  position: relative; z-index: 1; pointer-events: auto;
   &:focus, &:active { border-color: $accent; background: #fff; }
   &.chapter-dur { flex: 0 0 100px; }
-  /* UniApp H5 deep styles */
-  :deep(.uni-input-input) { font-size: 16px; color: #1a1a2e; }
-  :deep(.uni-input-placeholder) { color: #bbb; font-size: 14px; }
 }
 .chapter-remove { font-size: 20px; color: #ef5350; padding: 8px; flex-shrink: 0; }
-.chapter-remove { font-size: 16px; color: #ef5350; padding: 4px; }
 .add-chapter-btn { padding: 10px; text-align: center; border: 1.5px dashed #d0d5d2; border-radius: 10px; font-size: 14px; color: $accent; }
 
 .bottom-space { height: 60px; }
