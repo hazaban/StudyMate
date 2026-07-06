@@ -635,7 +635,7 @@ const activeSubject = ref('')
 const activeTags = ref([])
 const tagLogic = ref('or') // 'or' = any tag match, 'and' = all tags must match
 
-const allSubjects = computed(() => subjectsStore.subjects)
+const allSubjects = computed(() => subjectsStore.mergedSubjects)
 
 async function loadSubjects() {
   if (!userStore.isLoggedIn) return

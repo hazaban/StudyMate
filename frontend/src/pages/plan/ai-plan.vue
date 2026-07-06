@@ -342,7 +342,7 @@ async function scrollToBottom() {
 }
 
 // ========== 科目框架分析 ==========
-const subjectList = computed(() => subjectsStore.subjects)
+const subjectList = computed(() => subjectsStore.mergedSubjects)
 const currentSubject = ref('')
 const syllabusImage = ref('')
 const syllabusImageBase64 = ref('')

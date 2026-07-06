@@ -319,7 +319,7 @@ const weekCellDate = ref('')
 const weekCellHour = ref(9)
 let weekCellTouchTimer = null
 
-const subjectOptions = computed(() => subjectsStore.subjects)
+const subjectOptions = computed(() => subjectsStore.mergedSubjects)
 
 async function loadTaskSubjects() {
   await subjectsStore.load()

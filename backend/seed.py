@@ -244,10 +244,8 @@ db.add(FarmState(id=uuid4(), plan_id=pid408, coins=120, experience=70, level=2))
 db.add(FarmState(id=uuid4(), plan_id=pidSoft, coins=45, experience=25, level=1))
 
 # ═══════════════════════════════════════════════════════════════════
-# 7. User-defined subjects
+# 7. User-defined subjects — 已移除，科目统一从计划 subjects 字段提取
 # ═══════════════════════════════════════════════════════════════════
-for name in ["高等数学", "C语言", "软件工程"]:
-    db.add(UserSubject(id=uuid4(), user_id=uid, name=name))
 
 # ═══════════════════════════════════════════════════════════════════
 # 8. Focus records — 30天番茄钟记录

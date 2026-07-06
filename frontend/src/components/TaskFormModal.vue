@@ -225,7 +225,7 @@ const subjectsStore = useSubjectsStore()
 
 const isEdit = computed(() => !!props.task)
 
-const subjectOptions = computed(() => subjectsStore.subjects)
+const subjectOptions = computed(() => subjectsStore.mergedSubjects)
 const showManageSubjects = ref(false)
 const manageNewSubject = ref('')
 const showSubjectInput = ref(false)

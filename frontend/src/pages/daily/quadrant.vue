@@ -129,7 +129,7 @@ const editingTask = ref(null)
 // importance to pre-select when opening the modal to add a task in a quadrant
 const pendingImportance = ref('')
 
-const subjectOptions = computed(() => subjectsStore.subjects)
+const subjectOptions = computed(() => subjectsStore.mergedSubjects)
 
 const today = computed(() => new Date().toISOString().split('T')[0])
 
