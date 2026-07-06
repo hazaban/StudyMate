@@ -57,7 +57,7 @@ async def _call_glm(messages: list[dict], model: str = None, temperature: float 
     use_model = model or GLM_TEXT_MODEL
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             resp = await client.post(
                 url,
                 headers={
@@ -300,7 +300,7 @@ async def analyze_syllabus_image(image_data_url: str, subject: str = "", descrip
     ]
 
     try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             resp = await client.post(
                 f"{GLM_BASE_URL}/chat/completions",
                 headers={
