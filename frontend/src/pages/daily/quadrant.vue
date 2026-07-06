@@ -23,7 +23,7 @@
             <text class="quadrant-count">{{ getTaskCount('important_urgent') }}</text>
           </view>
           <view class="quadrant-body">
-            <view class="task-item" v-for="task in getTasks('important_urgent')" :key="task.id" :class="{ completed: task.status === 'completed' }" @click="editTask(task)">
+            <view class="task-item" v-for="task in getTasks('important_urgent')" :key="task.id" :class="{ completed: task.status === 'completed' }" @click="editTask(task)" @contextmenu.prevent="confirmDeleteTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
               <view class="task-subject">{{ task.subject }}</view>
               <text class="task-content">{{ task.content }}</text>
               <text class="task-time">{{ task.date }} · {{ task.duration }}min</text>
@@ -42,7 +42,7 @@
             <text class="quadrant-count">{{ getTaskCount('important_not_urgent') }}</text>
           </view>
           <view class="quadrant-body">
-            <view class="task-item" v-for="task in getTasks('important_not_urgent')" :key="task.id" :class="{ completed: task.status === 'completed' }" @click="editTask(task)">
+            <view class="task-item" v-for="task in getTasks('important_not_urgent')" :key="task.id" :class="{ completed: task.status === 'completed' }" @click="editTask(task)" @contextmenu.prevent="confirmDeleteTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
               <view class="task-subject">{{ task.subject }}</view>
               <text class="task-content">{{ task.content }}</text>
               <text class="task-time">{{ task.date }} · {{ task.duration }}min</text>
@@ -61,7 +61,7 @@
             <text class="quadrant-count">{{ getTaskCount('urgent_not_important') }}</text>
           </view>
           <view class="quadrant-body">
-            <view class="task-item" v-for="task in getTasks('urgent_not_important')" :key="task.id" :class="{ completed: task.status === 'completed' }" @click="editTask(task)">
+            <view class="task-item" v-for="task in getTasks('urgent_not_important')" :key="task.id" :class="{ completed: task.status === 'completed' }" @click="editTask(task)" @contextmenu.prevent="confirmDeleteTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
               <view class="task-subject">{{ task.subject }}</view>
               <text class="task-content">{{ task.content }}</text>
               <text class="task-time">{{ task.date }} · {{ task.duration }}min</text>
@@ -80,7 +80,7 @@
             <text class="quadrant-count">{{ getTaskCount('not_important_not_urgent') }}</text>
           </view>
           <view class="quadrant-body">
-            <view class="task-item" v-for="task in getTasks('not_important_not_urgent')" :key="task.id" :class="{ completed: task.status === 'completed' }" @click="editTask(task)">
+            <view class="task-item" v-for="task in getTasks('not_important_not_urgent')" :key="task.id" :class="{ completed: task.status === 'completed' }" @click="editTask(task)" @contextmenu.prevent="confirmDeleteTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
               <view class="task-subject">{{ task.subject }}</view>
               <text class="task-content">{{ task.content }}</text>
               <text class="task-time">{{ task.date }} · {{ task.duration }}min</text>
@@ -92,76 +92,21 @@
           </view>
         </view>
       </view>
+      <view class="delete-tip">
+        <text class="delete-tip-text">💡 单击任务编辑 · 长按或右键任务删除</text>
+      </view>
     </scroll-view>
 
-    <view class="modal-mask" v-if="showAddForm" @click="showAddForm = false">
-      <view class="modal-sheet" @click.stop>
-        <view class="modal-top">
-          <text class="modal-title">{{ editingTask ? '编辑任务' : '添加任务' }}</text>
-          <view class="modal-x" @click="showAddForm = false">✕</view>
-        </view>
-        <scroll-view scroll-y class="modal-body">
-          <view class="form-group">
-            <text class="form-label">科目</text>
-            <view class="subject-grid">
-              <view class="subject-item" v-for="s in subjectOptions" :key="s" :class="{ active: form.subject === s }" @click="form.subject = s">{{ s }}</view>
-              <view class="subject-item subject-add" @click="showSubjectInput = !showSubjectInput">
-                <text v-if="!showSubjectInput">+ 自定义</text>
-                <text v-else>收起</text>
-              </view>
-            </view>
-            <view class="subject-empty-hint" v-if="subjectOptions.length === 0 && !showSubjectInput">
-              <text class="subject-empty-text">还没有科目，点击「+ 自定义」添加你的科目</text>
-            </view>
-            <view class="input-wrapper" v-if="showSubjectInput" style="margin-top: 10px;">
-              <input class="input-inner" v-model="customSubject" placeholder="输入自定义科目..." @confirm="addCustomSubject" />
-            </view>
-          </view>
-          <view class="form-group">
-            <text class="form-label">任务内容</text>
-            <textarea class="textarea-field" v-model="form.content" placeholder="请输入任务内容..." />
-          </view>
-          <view class="form-group">
-            <text class="form-label">预计时间（分钟）</text>
-            <view class="input-wrapper">
-              <input class="input-inner" type="number" v-model="form.duration" placeholder="25" />
-            </view>
-          </view>
-          <view class="form-group">
-            <text class="form-label">重要 / 紧急</text>
-            <view class="importance-grid">
-              <view class="importance-item" :class="{ active: form.importance === 'important-urgent' }" @click="form.importance = 'important-urgent'">
-                <view class="imp-dot imp-red"></view>
-                <text>重要且紧急</text>
-              </view>
-              <view class="importance-item" :class="{ active: form.importance === 'important-not-urgent' }" @click="form.importance = 'important-not-urgent'">
-                <view class="imp-dot imp-blue"></view>
-                <text>重要不紧急</text>
-              </view>
-              <view class="importance-item" :class="{ active: form.importance === 'not-important-urgent' }" @click="form.importance = 'not-important-urgent'">
-                <view class="imp-dot imp-orange"></view>
-                <text>紧急不重要</text>
-              </view>
-              <view class="importance-item" :class="{ active: form.importance === 'not-important-not-urgent' }" @click="form.importance = 'not-important-not-urgent'">
-                <view class="imp-dot imp-gray"></view>
-                <text>不重要不紧急</text>
-              </view>
-            </view>
-          </view>
-          <view class="form-group">
-            <text class="form-label">日期</text>
-            <picker mode="date" :value="form.date" @change="onDateChange">
-              <view class="picker-value">{{ form.date }}</view>
-            </picker>
-          </view>
-        </scroll-view>
-        <view class="modal-bot">
-          <view class="btn-delete" v-if="editingTask" @click="deleteTask">删除</view>
-          <view class="btn-cancel" @click="showAddForm = false">取消</view>
-          <view class="btn-submit" @click="submitForm">保存</view>
-        </view>
-      </view>
-    </view>
+    <TaskFormModal
+      v-model:visible="showAddForm"
+      :task="editingTask"
+      :date="today"
+      :default-importance="pendingImportance"
+      :enable-quadrant="true"
+      :show-a-i-mode="false"
+      @saved="onTaskSaved"
+      @deleted="onTaskDeleted"
+    />
 
     <view class="bottom-space"></view>
   </view>
@@ -172,6 +117,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useTaskStore } from '@/stores/task'
 import { usePlanStore } from '@/stores/plan'
 import { useSubjectsStore } from '@/stores/subjects'
+import TaskFormModal from '@/components/TaskFormModal.vue'
 
 const taskStore = useTaskStore()
 const planStore = usePlanStore()
@@ -180,32 +126,10 @@ const subjectsStore = useSubjectsStore()
 const viewRange = ref('day')
 const showAddForm = ref(false)
 const editingTask = ref(null)
-const selectedImportance = ref('')
-const showSubjectInput = ref(false)
-const customSubject = ref('')
-
-const form = ref({
-  subject: '',
-  content: '',
-  duration: 25,
-  date: '',
-  importance: ''
-})
+// importance to pre-select when opening the modal to add a task in a quadrant
+const pendingImportance = ref('')
 
 const subjectOptions = computed(() => subjectsStore.subjects)
-
-async function loadSubjects() {
-  await subjectsStore.load()
-}
-
-function addCustomSubject() {
-  const name = customSubject.value.trim()
-  if (!name) return
-  subjectsStore.add(name)
-  form.value.subject = name
-  customSubject.value = ''
-  showSubjectInput.value = false
-}
 
 const today = computed(() => new Date().toISOString().split('T')[0])
 
@@ -216,10 +140,10 @@ function formatDate(date) {
 
 const filteredTasks = computed(() => {
   if (!taskStore.weekTasks.length) return []
-  
+
   const startDate = new Date()
   let endDate = new Date()
-  
+
   if (viewRange.value === 'day') {
     endDate = new Date(startDate)
   } else if (viewRange.value === 'week') {
@@ -230,10 +154,10 @@ const filteredTasks = computed(() => {
     startDate.setDate(1)
     endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0)
   }
-  
+
   const startStr = formatDate(startDate)
   const endStr = formatDate(endDate)
-  
+
   return taskStore.weekTasks.filter(t => t.date >= startStr && t.date <= endStr && t.importance)
 })
 
@@ -246,89 +170,54 @@ function getTaskCount(importance) {
 }
 
 function addTaskToQuadrant(importance) {
-  selectedImportance.value = importance
-  form.value = {
-    subject: subjectOptions.value[0] || '',
-    content: '',
-    duration: 25,
-    date: today.value,
-    importance
-  }
+  pendingImportance.value = importance
   editingTask.value = null
   showAddForm.value = true
 }
 
 function editTask(task) {
+  pendingImportance.value = task.importance || ''
   editingTask.value = task
-  form.value = {
-    subject: task.subject,
-    content: task.content,
-    duration: task.duration,
-    date: task.date,
-    importance: task.importance
-  }
   showAddForm.value = true
 }
 
-function onDateChange(e) {
-  form.value.date = e.detail.value
+// Long-press / right-click delete
+let taskLongPressTimer = null
+function onTaskTouchStart(task) {
+  taskLongPressTimer = setTimeout(() => {
+    taskLongPressTimer = null
+    confirmDeleteTask(task)
+  }, 600)
+}
+function onTaskTouchEnd() {
+  if (taskLongPressTimer) { clearTimeout(taskLongPressTimer); taskLongPressTimer = null }
 }
 
-async function submitForm() {
-  if (!form.value.subject) {
-    uni.showToast({ title: '请先选择或添加科目', icon: 'none' })
-    return
-  }
-  if (!form.value.content.trim()) {
-    uni.showToast({ title: '请输入任务内容', icon: 'none' })
-    return
-  }
-  
-  try {
-    if (editingTask.value) {
-      await taskStore.updateTask(editingTask.value.id, {
-        subject: form.value.subject,
-        content: form.value.content,
-        duration: parseInt(form.value.duration) || 25,
-        importance: form.value.importance,
-        date: form.value.date
-      })
-    } else {
-      await taskStore.createTask({
-        plan_id: planStore.currentPlan.id,
-        date: form.value.date,
-        type: 'new_study',
-        subject: form.value.subject,
-        content: form.value.content,
-        duration: parseInt(form.value.duration) || 25,
-        importance: form.value.importance
-      })
-    }
-    await taskStore.getAllTasks(planStore.currentPlan.id)
-    showAddForm.value = false
-    uni.showToast({ title: editingTask.value ? '保存成功' : '添加成功', icon: 'success' })
-  } catch (e) {
-    uni.showToast({ title: '操作失败', icon: 'none' })
-  }
-}
-
-async function deleteTask() {
-  if (!editingTask.value) return
+function confirmDeleteTask(task) {
   uni.showModal({
     title: '删除任务',
-    content: '确定删除这个任务吗？',
+    content: `确定要删除「${task.content}」吗？`,
     success: async (res) => {
       if (!res.confirm) return
       try {
-        await taskStore.deleteTask(editingTask.value.id)
-        await taskStore.getAllTasks(planStore.currentPlan.id)
-        showAddForm.value = false
-        uni.showToast({ title: '删除成功', icon: 'success' })
+        await taskStore.deleteTask(task.id)
+        if (planStore.currentPlan) await taskStore.getAllTasks(planStore.currentPlan.id)
+        uni.showToast({ title: '已删除', icon: 'success' })
       } catch (e) {
         uni.showToast({ title: '删除失败', icon: 'none' })
       }
     }
   })
+}
+
+async function onTaskSaved() {
+  if (planStore.currentPlan) await taskStore.getAllTasks(planStore.currentPlan.id)
+  editingTask.value = null
+}
+
+async function onTaskDeleted() {
+  if (planStore.currentPlan) await taskStore.getAllTasks(planStore.currentPlan.id)
+  editingTask.value = null
 }
 
 async function loadTasks() {
@@ -346,8 +235,7 @@ watch(viewRange, () => {
 })
 
 onMounted(async () => {
-  form.value.date = today.value
-  await loadSubjects()
+  await subjectsStore.load()
   await loadTasks()
 })
 </script>
@@ -437,87 +325,8 @@ onMounted(async () => {
 .add-icon { font-size: 18px; color: #2f7d4f; font-weight: 600; }
 .add-text { font-size: 13px; color: #999; }
 
-.modal-mask {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100;
-  display: flex; align-items: flex-end;
-}
-.modal-sheet {
-  background: #fff; border-radius: 24px 24px 0 0; width: 100%; max-height: 70vh;
-  display: flex; flex-direction: column;
-}
-.modal-top {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 18px 22px; border-bottom: 1px solid #f0f0f0;
-}
-.modal-title { font-size: 17px; font-weight: 700; color: #1a1a2e; }
-.modal-x {
-  width: 30px; height: 30px; border-radius: 50%; background: #f5f7f5;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 15px; color: #999;
-  &:active { background: #e8f0eb; }
-}
-.modal-body { padding: 16px 22px; flex: 1; overflow-y: auto; }
-.modal-bot { display: flex; gap: 12px; padding: 16px 22px; border-top: 1px solid #f0f0f0; }
-
-.form-group { margin-bottom: 16px; }
-.form-label { display: block; font-size: 13px; color: #999; margin-bottom: 8px; font-weight: 500; }
-.subject-grid {
-  display: flex; flex-wrap: wrap; gap: 8px;
-}
-.subject-item {
-  padding: 6px 12px; border-radius: 20px; background: #f5f7f5;
-  font-size: 13px; color: #1a1a2e; border: 1px solid #e8ece9;
-  &.active { background: #2f7d4f; color: #fff; border-color: #2f7d4f; }
-  &.subject-add { background: #fff; border: 1.5px dashed #d0d5d2; color: #2f7d4f; }
-}
-.subject-empty-hint { margin-top: 10px; padding: 10px 12px; background: #fff8e1; border-radius: 10px; }
-.subject-empty-text { font-size: 12px; color: #9a7b00; }
-.textarea-field {
-  width: 100%; min-height: 80px; padding: 12px; border: 1px solid #e8ece9;
-  border-radius: 12px; font-size: 14px; color: #1a1a2e; background: #fafafa;
-}
-.input-wrapper {
-  width: 100%; padding: 12px 14px; border: 1px solid #e8ece9;
-  border-radius: 12px; background: #fafafa;
-}
-.input-inner {
-  width: 100%; font-size: 14px; color: #1a1a2e; border: none; outline: none; background: transparent;
-}
-.picker-value {
-  padding: 12px; border: 1px solid #e8ece9; border-radius: 12px;
-  font-size: 14px; color: #1a1a2e; background: #fafafa;
-}
-.importance-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-}
-.importance-item {
-  display: flex; align-items: center; gap: 6px; padding: 10px 12px;
-  border: 1px solid #e8ece9; border-radius: 10px; font-size: 13px;
-  color: #1a1a2e; background: #fafafa;
-  &.active { border-color: #2f7d4f; background: #e8f5e9; color: #2f7d4f; font-weight: 600; }
-}
-.imp-dot { width: 8px; height: 8px; border-radius: 50%; }
-.imp-red { background: #ff4d4f; }
-.imp-blue { background: #1890ff; }
-.imp-orange { background: #fa8c16; }
-.imp-gray { background: #bfbfbf; }
-
-.btn-cancel {
-  flex: 1; padding: 13px; text-align: center; border-radius: 12px;
-  font-size: 15px; color: #999; background: #f5f7f5; font-weight: 500;
-  &:active { background: #e8f0eb; }
-}
-.btn-delete {
-  flex: 1; padding: 13px; text-align: center; border-radius: 12px;
-  font-size: 15px; color: #c62828; background: #ffebee; font-weight: 500;
-  &:active { background: #ffcdd2; }
-}
-.btn-submit {
-  flex: 2; padding: 13px; text-align: center; border-radius: 12px;
-  font-size: 15px; color: #fff; background: #2f7d4f; font-weight: 700;
-  box-shadow: 0 3px 10px rgba(47,125,79,0.2);
-  &:active { transform: scale(0.97); }
-}
+.delete-tip { padding: 16px 4px 4px; text-align: center; }
+.delete-tip-text { font-size: 12px; color: #999; }
 
 .bottom-space { height: 80px; }
 </style>

@@ -79,7 +79,7 @@
         <text class="section-link" @click="goToTaskBoard">全部任务</text>
       </view>
       <view class="task-list">
-        <view class="task-item" v-for="task in previewTasks" :key="task.id">
+        <view class="task-item" v-for="task in previewTasks" :key="task.id" @contextmenu.prevent="confirmDeleteTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
           <view class="task-checkbox" :class="{ checked: task.status === 'completed' }" @click="toggleTaskComplete(task)">
             <text v-if="task.status === 'completed'">✓</text>
           </view>
@@ -102,77 +102,16 @@
       </view>
     </view>
 
-    <!-- Task Edit Modal -->
-    <view class="modal-overlay" v-if="showTaskForm" @click="showTaskForm = false">
-      <view class="modal-content" @click.stop>
-        <view class="modal-header">
-          <text class="modal-title">编辑任务</text>
-          <view class="modal-close" @click="showTaskForm = false">✕</view>
-        </view>
-        <scroll-view scroll-y class="modal-body">
-          <view class="form-group">
-            <text class="form-label">科目</text>
-            <view class="subject-grid">
-              <view class="subject-tag" :class="{ active: editingForm.subject === s }" v-for="s in subjectOptions" :key="s" @click="editingForm.subject = s">{{ s }}</view>
-              <view class="subject-tag subject-add" @click="showSubjectInput = !showSubjectInput">
-                <text v-if="!showSubjectInput">+ 自定义</text>
-                <text v-else>收起</text>
-              </view>
-            </view>
-            <view class="subject-empty-hint" v-if="subjectOptions.length === 0 && !showSubjectInput">
-              <text class="subject-empty-text">还没有科目，点击「+ 自定义」添加你的科目</text>
-            </view>
-            <view class="input-wrap" v-if="showSubjectInput" style="margin-top: 10px;">
-              <input class="input-inner" v-model="customSubject" placeholder="输入自定义科目..." @confirm="addCustomSubject" />
-            </view>
-          </view>
-          <view class="form-group">
-            <text class="form-label">章节</text>
-            <view class="input-wrap">
-              <input class="input-inner" v-model="editingForm.chapter" placeholder="如：第3章 二叉树" />
-            </view>
-          </view>
-          <view class="form-group">
-            <text class="form-label">任务内容</text>
-            <textarea class="modal-textarea" v-model="editingForm.content" placeholder="今天要完成的内容..." />
-          </view>
-          <view class="form-group">
-            <text class="form-label">类型</text>
-            <view class="type-row">
-              <view class="type-tag" :class="{ active: editingForm.type === 'new_study' }" @click="editingForm.type = 'new_study'">新学</view>
-              <view class="type-tag" :class="{ active: editingForm.type === 'review' }" @click="editingForm.type = 'review'">复习</view>
-              <view class="type-tag" :class="{ active: editingForm.type === 'mistake' }" @click="editingForm.type = 'mistake'">错题</view>
-            </view>
-          </view>
-          <view class="form-group">
-            <text class="form-label">预计时间（分钟）</text>
-            <view class="input-wrap">
-              <input class="input-inner" type="number" v-model="editingForm.duration" />
-            </view>
-          </view>
-          <view class="form-group">
-            <text class="form-label">循环</text>
-            <view class="type-row repeat-row">
-              <view class="type-tag" :class="{ active: (editingForm.repeat_type || 'none') === 'none' }" @click="editingForm.repeat_type = 'none'">不循环</view>
-              <view class="type-tag" :class="{ active: editingForm.repeat_type === 'daily' }" @click="editingForm.repeat_type = 'daily'">每天</view>
-              <view class="type-tag" :class="{ active: editingForm.repeat_type === 'weekday' }" @click="editingForm.repeat_type = 'weekday'">工作日</view>
-              <view class="type-tag" :class="{ active: editingForm.repeat_type === 'holiday' }" @click="editingForm.repeat_type = 'holiday'">节假日</view>
-            </view>
-          </view>
-          <view class="form-group" v-if="editingForm.actual_duration !== undefined">
-            <text class="form-label">实际用时（分钟，系统自动记录）</text>
-            <view class="input-wrap">
-              <input class="input-inner" type="number" v-model="editingForm.actual_duration" disabled />
-            </view>
-          </view>
-        </scroll-view>
-        <view class="modal-footer">
-          <view class="delete-btn" @click="deleteTask">删除</view>
-          <view class="cancel-btn" @click="showTaskForm = false">取消</view>
-          <view class="submit-btn" @click="saveTask">保存</view>
-        </view>
-      </view>
-    </view>
+    <!-- Shared Task Form Modal -->
+    <TaskFormModal
+      v-model:visible="showTaskForm"
+      :task="editingTask"
+      :date="todayStr"
+      :enable-quadrant="false"
+      :show-a-i-mode="false"
+      @saved="onTaskSaved"
+      @deleted="onTaskDeleted"
+    />
 
     <view class="bottom-space"></view>
   </view>
@@ -186,6 +125,7 @@ import { usePlanStore } from '@/stores/plan'
 import { useTaskStore } from '@/stores/task'
 import { useFarmStore } from '@/stores/farm'
 import { useSubjectsStore } from '@/stores/subjects'
+import TaskFormModal from '@/components/TaskFormModal.vue'
 import { dateUtil } from '@/utils/date'
 import * as api from '@/api/client'
 
@@ -237,22 +177,11 @@ async function computeStreak() {
 }
 
 const showTaskForm = ref(false)
-const editingForm = ref({})
-const subjectOptions = computed(() => subjectsStore.subjects)
-const showSubjectInput = ref(false)
-const customSubject = ref('')
+const editingTask = ref(null)
+const todayStr = computed(() => dateUtil.today())
 
 async function loadSubjects() {
   await subjectsStore.load()
-}
-
-function addCustomSubject() {
-  const name = customSubject.value.trim()
-  if (!name) return
-  subjectsStore.add(name)
-  editingForm.value.subject = name
-  customSubject.value = ''
-  showSubjectInput.value = false
 }
 
 const previewTasks = computed(() => {
@@ -269,54 +198,30 @@ function taskTypeText(type) {
 }
 
 function editTask(task) {
-  editingForm.value = {
-    id: task.id,
-    subject: task.subject,
-    chapter: task.chapter || '',
-    content: task.content,
-    type: task.type,
-    duration: task.duration,
-    actual_duration: task.actual_duration,
-    repeat_type: task.repeat_type || 'none'
-  }
+  editingTask.value = task
   showTaskForm.value = true
 }
 
-async function saveTask() {
-  if (!editingForm.value.content || !editingForm.value.subject) {
-    uni.showToast({ title: '请填写科目和内容', icon: 'none' })
-    return
-  }
-  try {
-    await api.updateTask(editingForm.value.id, {
-      subject: editingForm.value.subject,
-      chapter: editingForm.value.chapter,
-      content: editingForm.value.content,
-      type: editingForm.value.type,
-      duration: parseInt(editingForm.value.duration) || 25,
-      repeat_type: editingForm.value.repeat_type || 'none'
-    })
-    showTaskForm.value = false
-    uni.showToast({ title: '保存成功', icon: 'success' })
-    const today = dateUtil.today()
-    if (planStore.currentPlan) {
-      await taskStore.getTasksByDate(planStore.currentPlan.id, today)
-    }
-    await computeStreak()
-  } catch (e) {
-    uni.showToast({ title: '保存失败', icon: 'none' })
-  }
+// Long-press / right-click delete
+let taskLongPressTimer = null
+function onTaskTouchStart(task) {
+  taskLongPressTimer = setTimeout(() => {
+    taskLongPressTimer = null
+    confirmDeleteTask(task)
+  }, 600)
+}
+function onTaskTouchEnd() {
+  if (taskLongPressTimer) { clearTimeout(taskLongPressTimer); taskLongPressTimer = null }
 }
 
-async function deleteTask() {
+function confirmDeleteTask(task) {
   uni.showModal({
     title: '删除任务',
-    content: '确定删除这个任务吗？',
+    content: `确定要删除「${task.content}」吗？`,
     success: async (res) => {
       if (!res.confirm) return
       try {
-        await api.deleteTask(editingForm.value.id)
-        showTaskForm.value = false
+        await api.deleteTask(task.id)
         uni.showToast({ title: '删除成功', icon: 'success' })
         const today = dateUtil.today()
         if (planStore.currentPlan) {
@@ -328,6 +233,24 @@ async function deleteTask() {
       }
     }
   })
+}
+
+async function onTaskSaved() {
+  const today = dateUtil.today()
+  if (planStore.currentPlan) {
+    await taskStore.getTasksByDate(planStore.currentPlan.id, today)
+  }
+  await computeStreak()
+  editingTask.value = null
+}
+
+async function onTaskDeleted() {
+  const today = dateUtil.today()
+  if (planStore.currentPlan) {
+    await taskStore.getTasksByDate(planStore.currentPlan.id, today)
+  }
+  await computeStreak()
+  editingTask.value = null
 }
 
 async function toggleTaskComplete(task) {
@@ -747,53 +670,4 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .bottom-space {
   height: 100px;
 }
-
-.modal-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 999;
-  display: flex;
-  align-items: flex-end;
-}
-.modal-content {
-  width: 100%;
-  max-height: 85vh;
-  background: #fff;
-  border-radius: 24px 24px 0 0;
-  display: flex;
-  flex-direction: column;
-}
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #f0f0f0;
-  .modal-title { font-size: 18px; font-weight: 600; color: #1a1a2e; }
-  .modal-close { font-size: 20px; color: #999; padding: 4px 8px; }
-}
-.modal-body { padding: 20px; max-height: 60vh; }
-.form-group { margin-bottom: 16px; }
-.form-label { display: block; font-size: 14px; font-weight: 600; color: #1a1a2e; margin-bottom: 8px; }
-.input-wrap {
-  width: 100%; padding: 10px 14px; border: 1px solid #e8ece9; border-radius: 10px; background: #fafafa;
-}
-.input-inner {
-  width: 100%; font-size: 14px; color: #1a1a2e; border: none; outline: none; background: transparent;
-}
-.modal-textarea {
-  width: 100%; min-height: 80px; padding: 10px 14px; border: 1px solid #e8ece9;
-  border-radius: 10px; font-size: 14px; color: #1a1a2e; background: #fafafa;
-}
-.subject-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-.subject-tag { padding: 6px 14px; border-radius: 16px; font-size: 13px; color: #65746d; background: #f5f7f5; &.active { background: #2f7d4f; color: #fff; } &.subject-add { background: #fff; border: 1.5px dashed #d0d5d2; color: #2f7d4f; } }
-.subject-empty-hint { margin-top: 10px; padding: 10px 12px; background: #fff8e1; border-radius: 10px; }
-.subject-empty-text { font-size: 12px; color: #9a7b00; }
-.type-row { display: flex; gap: 8px; }
-.type-tag { flex: 1; text-align: center; padding: 10px; border-radius: 10px; font-size: 14px; color: #65746d; background: #f5f7f5; &.active { background: #2f7d4f; color: #fff; } }
-.modal-footer { display: flex; gap: 12px; padding: 20px; border-top: 1px solid #f0f0f0; }
-.cancel-btn { flex: 1; text-align: center; padding: 14px; border-radius: 12px; background: #f5f7f5; font-size: 16px; color: #65746d; }
-.delete-btn { flex: 1; text-align: center; padding: 14px; border-radius: 12px; background: #ffebee; font-size: 16px; color: #c62828; }
-.submit-btn { flex: 1; text-align: center; padding: 14px; border-radius: 12px; background: #2f7d4f; font-size: 16px; color: #fff; font-weight: 500; }
 </style>
