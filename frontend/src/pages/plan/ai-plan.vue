@@ -58,7 +58,17 @@
           </view>
         </view>
         <view class="input-row">
-          <input class="chat-input" v-model="planInput" placeholder="告诉我你的考试目标，AI 帮你规划..." @confirm="sendPlanMessage" />
+          <view class="chat-hint" v-if="planMessages.length <= 1">
+            <text class="chat-hint-title">💡 请尽量包含以下信息，AI规划更精准：</text>
+            <view class="chat-hint-tags">
+              <text class="hint-tag">考试名称（如：考研408）</text>
+              <text class="hint-tag">考试日期（如：2026年12月）</text>
+              <text class="hint-tag">目标分数（如：数学130分）</text>
+              <text class="hint-tag">每天可用时间（如：每天8小时）</text>
+              <text class="hint-tag">薄弱科目（如：算法题较弱）</text>
+            </view>
+          </view>
+          <input class="chat-input" v-model="planInput" placeholder="比如：我要备战考研408，考试在2026年12月，每天能学8小时..." @confirm="sendPlanMessage" />
           <view class="send-btn" :class="{ disabled: !planInput.trim() || planLoading }" @click="sendPlanMessage">
             <text class="send-icon">➤</text>
           </view>
@@ -146,7 +156,7 @@
         </scroll-view>
 
         <view class="chat-input-row">
-          <input class="chat-input" v-model="syllabusInput" placeholder="对章节安排有疑问？问我..." @confirm="sendSyllabusMessage" />
+          <input class="chat-input" v-model="syllabusInput" placeholder="补充说明：比如哪些章节已掌握、哪些是重点..." @confirm="sendSyllabusMessage" />
           <view class="send-btn small" :class="{ disabled: !syllabusInput.trim() || syllabusChatLoading }" @click="sendSyllabusMessage">
             <text>发送</text>
           </view>
@@ -692,6 +702,14 @@ function goBack() {
   padding: 12px 0 20px;
   background: $bg2;
 }
+
+.chat-hint {
+  background: #f0f7ff; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
+  border: 1px solid #bbdefb;
+}
+.chat-hint-title { display: block; font-size: 13px; color: #1565c0; font-weight: 600; margin-bottom: 8px; }
+.chat-hint-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.hint-tag { font-size: 11px; padding: 3px 10px; background: #fff; color: #555; border-radius: 10px; border: 1px solid #e0e0e0; }
 
 .quick-tips {
   display: flex;

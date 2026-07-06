@@ -239,10 +239,17 @@
 
           <view v-if="addMode === 'ai' && !editingTask" class="ai-section">
             <view class="ai-hint-box">
-              <text class="ai-hint-title">粘贴文字计划，AI自动生成任务</text>
-              <text class="ai-hint-desc">例如：明天上午9点复习数学第三章，下午2点做英语阅读</text>
+              <text class="ai-hint-title">🤖 描述你的学习计划，AI自动解析为任务</text>
+              <view class="ai-fields-guide">
+                <text class="ai-field">📚 科目</text>
+                <text class="ai-field">📖 章节</text>
+                <text class="ai-field">⏱ 时长</text>
+                <text class="ai-field">🕘 时间</text>
+                <text class="ai-field">📅 日期</text>
+              </view>
+              <text class="ai-hint-example">💡 试试：明天上午9点复习数据结构二叉树章节，45分钟；下午2点做英语阅读理解30分钟</text>
             </view>
-            <textarea class="ai-textarea-large" v-model="aiParseInput" placeholder="请粘贴您的文字计划..." />
+            <textarea class="ai-textarea-large" v-model="aiParseInput" placeholder="请描述你的学习安排，包含科目、内容、时间等信息..." />
             <view class="ai-parse-btn-primary" @click="parseWithAI">
               <text class="btn-icon">🔍</text>
               <text class="btn-text">开始解析</text>
@@ -1148,55 +1155,41 @@ async function parseWithAI() {
 }
 
 function mockParsePlan(text) {
-  const subjects = ['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络']
+  const subjects = ['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络', '数据库', 'UML', '算法', '高等数学', 'C语言', '软件工程']
+  const chKeys = ['二叉树', '链表', '栈', '队列', '图', '排序', '查找', '哈希', '树', '进程', '内存', '文件系统', '设备', '网络层', '传输层', '应用层', '物理层', '数据链路', 'TCP', 'IP', 'HTTP', 'DNS', 'Cache', '流水线', '死锁', 'PV操作', '阅读', '写作', '词汇', '完形', '翻译', '马原', '毛中特', '史纲', '思修', '时政']
   const today = new Date()
-  const result = []
-  
+  const formatDate = (d) => d.toISOString().split('T')[0]
+
   const lines = text.split(/[,，。；;、\n]/).filter(l => l.trim())
-  lines.forEach(line => {
-    const lineTrim = line.trim()
-    if (!lineTrim) return
-    
+  return lines.slice(0, 10).map(line => {
+    const t = line.trim()
     let subject = '数据结构'
-    for (const s of subjects) {
-      if (lineTrim.includes(s)) {
-        subject = s
-        break
-      }
-    }
-    
-    let date = formatDate(today)
-    if (lineTrim.includes('明天') || lineTrim.includes('明日')) {
-      const tmr = new Date(today)
-      tmr.setDate(tmr.getDate() + 1)
-      date = formatDate(tmr)
-    } else if (lineTrim.includes('后天')) {
-      const day = new Date(today)
-      day.setDate(day.getDate() + 2)
-      date = formatDate(day)
-    }
-    
-    const durationMatch = lineTrim.match(/(\d+)\s*分钟|(\d+)\s*小时|(\d+)\s*min/)
+    for (const s of subjects) { if (t.includes(s)) { subject = s; break } }
+
+    let taskDate = formatDate(today)
+    if (t.includes('明天') || t.includes('明日')) { const d = new Date(today); d.setDate(d.getDate() + 1); taskDate = formatDate(d) }
+    else if (t.includes('后天')) { const d = new Date(today); d.setDate(d.getDate() + 2); taskDate = formatDate(d) }
+
+    let chapter = ''
+    for (const k of chKeys) { if (t.includes(k)) { chapter = k; break } }
+
+    const durMatch = t.match(/(\d+)\s*(分钟|小时|min)/)
     let duration = 30
-    if (durationMatch) {
-      const num = parseInt(durationMatch[1] || durationMatch[2] || durationMatch[3])
-      if (lineTrim.includes('小时')) {
-        duration = num * 60
-      } else {
-        duration = num
-      }
-    }
-    
-    result.push({
-      content: lineTrim,
-      subject,
-      date,
-      duration,
-      selected: true
-    })
+    if (durMatch) { duration = t.includes('小时') ? parseInt(durMatch[1]) * 60 : parseInt(durMatch[1]) }
+
+    let start_hour = 9
+    const tm = t.match(/(\d+)点|(\d+):00|上午(\d+)|下午(\d+)/)
+    if (tm) { let h = parseInt(tm[1] || tm[2] || tm[3] || tm[4] || 9); if (t.includes('下午') && h < 12) h += 12; start_hour = Math.min(23, Math.max(6, h)) }
+
+    let type = 'new_study'
+    if (t.includes('复习')) type = 'review'
+    else if (t.includes('错题') || t.includes('重做')) type = 'mistake'
+
+    // 生成简洁摘要
+    let content = t.length > 25 ? t.substring(0, 22) + '...' : t
+
+    return { content, subject, chapter, duration, type, date: taskDate, start_hour, importance: '', repeat_type: 'none', selected: true }
   })
-  
-  return result.slice(0, 10)
 }
 
 async function addParsedTasks() {
@@ -1217,12 +1210,15 @@ async function addParsedTasks() {
     try {
       await taskStore.createTask({
         plan_id: planStore.currentPlan.id,
-        date: task.date,
-        type: 'new_study',
-        subject: task.subject,
+        date: task.date || formatDate(new Date()),
+        type: task.type || 'new_study',
+        subject: task.subject || '数据结构',
         content: task.content,
-        duration: task.duration,
-        repeat_type: 'none'
+        chapter: task.chapter || '',
+        duration: task.duration || 30,
+        repeat_type: task.repeat_type || 'none',
+        start_hour: task.start_hour || 9,
+        importance: task.importance || ''
       })
       taskDates.value.add(task.date)
       added++
@@ -1764,8 +1760,10 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
     background: linear-gradient(135deg, #f3f0ff, #e8f5ff);
     border-radius: 12px; padding: 14px; margin-bottom: 16px;
   }
-  .ai-hint-title { display: block; font-size: 14px; font-weight: 600; color: #333; margin-bottom: 4px; }
-  .ai-hint-desc { font-size: 12px; color: #888; }
+  .ai-hint-title { display: block; font-size: 15px; font-weight: 600; color: #333; margin-bottom: 10px; }
+  .ai-fields-guide { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .ai-field { font-size: 12px; padding: 4px 10px; background: #f0f7ff; color: #1565c0; border-radius: 12px; font-weight: 500; }
+  .ai-hint-example { display: block; font-size: 12px; color: #888; background: #fef9e7; padding: 8px 12px; border-radius: 8px; line-height: 1.5; }
   .ai-textarea-large {
     width: 100%; min-height: 120px; padding: 14px;
     border: 1px solid #e8ece9; border-radius: 12px;

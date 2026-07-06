@@ -65,11 +65,9 @@
       <view class="gantt-section" v-if="subjects.length > 0">
         <view class="section-header">
           <text class="section-title">📐 甘特图绘制</text>
-          <view class="header-actions">
-            <text class="header-btn" @click="showActual = !showActual">
-              {{ showActual ? '📊 实际时间' : '📋 计划时间' }}
-            </text>
-          </view>
+          <text class="header-btn" @click="showActual = !showActual">
+            {{ showActual ? '📊 实际时间' : '📋 计划时间' }}
+          </text>
         </view>
 
         <scroll-view scroll-x class="gantt-scroll" v-if="allChapters.length > 0">
@@ -256,7 +254,6 @@ const editingPhaseSubject = ref('')
 const editingPhaseSubjIdx = ref(-1)
 const newSubject = ref({ name: '', target_score: '' })
 const allTasks = ref([])
-const phaseLoading = ref(false)
 const showActual = ref(false)
 
 const editingSubject = computed(() => {

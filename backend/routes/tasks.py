@@ -9,7 +9,7 @@ from jose import jwt
 from database import get_db, DailyTask, StudyPlan
 from config import SECRET_KEY, ALGORITHM
 from schemas.task import TaskCreate, TaskUpdate, TaskResponse, AITaskGenerateRequest
-from services.ai_service import generate_daily_tasks
+from services.ai_service import generate_daily_tasks, parse_task_text
 from routes.farm import add_fertilize_count
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -176,4 +176,13 @@ def uncomplete_task(task_id: UUID, task_date: date = Query(None), user_id: UUID 
 @router.post("/ai/generate")
 async def ai_generate_tasks(data: AITaskGenerateRequest, user_id: UUID = Depends(_get_user_id)):
     result = await generate_daily_tasks(data.model_dump())
+    return result
+
+
+@router.post("/ai/parse-plan")
+async def ai_parse_plan(data: dict, user_id: UUID = Depends(_get_user_id)):
+    """AI解析用户输入的文字计划，提取科目/章节/任务/时长等信息"""
+    text = data.get("text", "")
+    plan_id = data.get("plan_id", "")
+    result = await parse_task_text(text, plan_id)
     return result

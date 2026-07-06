@@ -233,8 +233,131 @@ async def generate_flash_cards(content: str, subject: str = "通用") -> dict:
     return json.loads(result)
 
 
+async def parse_task_text(text: str, plan_id: str = "") -> dict:
+    """GLM 解析用户文字计划，提取每个字段。返回 {tasks: [{...}]}"""
+    from datetime import date as dt_date, timedelta
+    today = dt_date.today().isoformat()
+    tomorrow = (dt_date.today() + timedelta(days=1)).isoformat()
+
+    prompt = f"""你是 StudyMate 学习星球的 NLP 解析器。请把用户输入的自然语言计划拆成结构化的任务列表。
+
+当前日期：{today}，明天：{tomorrow}
+
+用户输入：
+{text}
+
+每个任务必须包含以下字段，缺什么就用默认值填：
+- content: 任务内容摘要（10-20字，概括用户要做什么）
+- subject: 科目名（数学/英语/政治/数据结构/计算机组成原理/操作系统/计算机网络/数据库/算法/UML/高等数学/C语言/软件工程 之一，根据语义判断）
+- chapter: 章节名（如"二叉树"、"线性表"、"第三章"，用户提到了就提取；没提到填空字符串""）
+- duration: 预计分钟数整数（25/30/45/50/60/90/120，用户说了就按说的，没说明默认 30）
+- type: "new_study"(新学) / "review"(复习) / "mistake"(错题)，根据动词判断
+- date: YYYY-MM-DD，提到"明天"={tomorrow}，"今天"或无时间={today}，"后天"={tomorrow}+1天
+- start_hour: 0-23，用户说"上午9点"→9，"下午2点"→14，"晚上7点"→19，没说→9
+- repeat_type: "none"/"daily"/"weekday"/"holiday"，提到"每天"→daily，"工作日"→weekday；默认为 "none"
+
+**极其重要**：content 字段必须是20字以内的简洁摘要，不能把用户原话照搬。chapter必须单独提取到chapter字段。
+
+返回例子：
+{{"tasks":[{{"content":"复习二叉树遍历算法","subject":"数据结构","chapter":"二叉树","duration":45,"type":"review","date":"{today}","start_hour":9,"repeat_type":"none","selected":true}}]}}
+
+严格返回纯JSON，不带```标记。"""
+
+    messages = [
+        {"role": "system", "content": "你是 Strict JSON 输出器。只输出合法 JSON，不要任何解释。"},
+        {"role": "user", "content": prompt}
+    ]
+    try:
+        result = await _call_glm(messages, temperature=0.1)
+        data = json.loads(result)
+        if "tasks" not in data:
+            data = {"tasks": []}
+        for t in data.get("tasks", []):
+            t.setdefault("selected", True)
+            t.setdefault("chapter", "")
+            t.setdefault("start_hour", 9)
+            t.setdefault("date", today)
+            t.setdefault("duration", 30)
+            t.setdefault("type", "new_study")
+            t.setdefault("repeat_type", "none")
+        return data
+    except Exception:
+        return _mock_parse_plan(text)
+
+def _mock_parse_plan(text: str) -> dict:
+    """Mock 解析文字计划（无 AI Key 时使用）"""
+    import re
+    from datetime import date as dt_date, timedelta
+    today = dt_date.today().isoformat()
+    tomorrow = (dt_date.today() + timedelta(days=1)).isoformat()
+
+    subjects = ['数学', '英语', '政治', '数据结构', '操作系统', '计算机网络', '计算机组成原理', '数据库', 'UML', '算法']
+    ch_keywords = ['章节', '二叉树', '栈', '队列', '链表', '排序', '查找', '图论', '哈希', '进程', '内存', '文件系统', '网络', 'TCP', 'IP', 'HTTP', 'DNS', 'Cache', '流水线', '阅读', '写作', '词汇', '完形', '翻译', '毛中特', '马原', '史纲']
+    result = []
+
+    lines = re.split(r'[,，。；;、\n]', text)
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+
+        # 匹配科目
+        subject = '数据结构'
+        for s in subjects:
+            if s in line:
+                subject = s
+                break
+
+        # 匹配日期
+        task_date = today
+        if '明天' in line or '明日' in line:
+            task_date = tomorrow
+
+        # 匹配章节
+        chapter = ''
+        for kw in ch_keywords:
+            if kw in line:
+                chapter = kw
+                break
+
+        # 匹配时长
+        dur_match = re.search(r'(\d+)\s*(分钟|小时|min)', line)
+        duration = 30
+        if dur_match:
+            num = int(dur_match.group(1))
+            duration = num * 60 if '小时' in dur_match.group(2) else num
+
+        # 匹配开始时间
+        start_hour = 9
+        time_match = re.search(r'(\d+)点|(\d+):00|上午(\d+)|下午(\d+)', line)
+        if time_match:
+            h = int(time_match.group(1) or time_match.group(2) or time_match.group(3) or time_match.group(4) or 9)
+            if '下午' in line and h < 12:
+                h += 12
+            start_hour = min(23, max(6, h))
+
+        # 匹配类型
+        task_type = 'new_study'
+        if '复习' in line:
+            task_type = 'review'
+        elif '错题' in line or '重做' in line:
+            task_type = 'mistake'
+
+        result.append({
+            'content': line,
+            'subject': subject,
+            'chapter': chapter,
+            'duration': duration,
+            'type': task_type,
+            'date': task_date,
+            'start_hour': start_hour,
+            'selected': True,
+        })
+
+    return {'tasks': result}
+
+
 async def generate_daily_review(
-    planned_tasks: list,
     completed_tasks: list,
     planned_time: int,
     actual_time: int
