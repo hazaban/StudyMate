@@ -172,15 +172,16 @@ onMounted(async () => {
 .picker-text { font-size: 15px; color: #1a1a2e; &.placeholder { color: #999; } }
 
 .subject-list { display: flex; flex-direction: column; gap: 10px; }
-.subject-item { background: #f5f7f5; border-radius: 12px; padding: 12px; }
-.subject-row { display: flex; align-items: center; gap: 10px; }
+.subject-item { background: #f5f7f5; border-radius: 12px; padding: 12px; position: relative; z-index: 1; }
+.subject-row { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
 .subject-input {
-  flex: 1; padding: 12px 14px; border: 1.5px solid #e8ece9; border-radius: 10px; font-size: 16px; background: #fff; color: #1a1a2e; min-width: 0;
+  flex: 1; padding: 14px 16px; border: 1.5px solid #e8ece9; border-radius: 12px; font-size: 16px; background: #fff !important; color: #1a1a2e; min-width: 0;
+  pointer-events: auto; cursor: text; z-index: 10;
   &.score { flex: 0 0 120px; }
-  :deep(.uni-input-wrapper) { background: transparent; }
-  :deep(.uni-input-input) { color: #1a1a2e; font-size: 16px; background: transparent; }
-  :deep(.uni-input-placeholder) { color: #999; font-size: 14px; }
 }
+.subject-input :deep(.uni-input-wrapper) { background: transparent !important; width: 100%; }
+.subject-input :deep(.uni-input-input) { color: #1a1a2e !important; font-size: 16px; background: transparent !important; }
+.subject-input :deep(.uni-input-placeholder) { color: #999; font-size: 14px; }
 .subject-remove { font-size: 18px; color: #ef5350; padding: 6px; flex-shrink: 0; }
 .add-subject-btn { padding: 12px; text-align: center; border: 2px dashed #d0d5d2; border-radius: 12px; font-size: 15px; color: $accent; }
 
