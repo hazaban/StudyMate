@@ -1386,16 +1386,15 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .week-title { font-size: 15px; font-weight: 600; color: #1a1a2e; }
 .week-days-header {
   display: flex; background: #fff; position: sticky; top: 0; z-index: 10;
-  border-bottom: 2px solid #f0f0f0;
+  border-bottom: 2px solid #f0f0f0; overflow: hidden;
 }
 .week-timeline-header {
-  width: 50px; background: #fafafa; border-right: 1px solid #f0f0f0;
+  width: 50px; flex-shrink: 0; background: #fafafa; border-right: 1px solid #f0f0f0;
   display: flex; align-items: center; justify-content: center;
 }
 .week-day-header {
-  flex: 1; text-align: center; padding: 12px 2px; position: relative;
+  width: 130px; flex-shrink: 0; text-align: center; padding: 12px 2px; position: relative;
   border-right: 1px solid #f0f0f0;
-  min-width: 0;
   &:last-child { border-right: none; }
   &.today {
     .week-day-num { color: #2f7d4f; font-weight: 700; }
@@ -1418,42 +1417,35 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   box-shadow: 0 0 4px rgba(47,125,79,0.4);
 }
 .week-scroll {
-  height: 450px; position: relative; background: #fff;
-  overflow-y: auto; overflow-x: hidden;
+  height: 480px; position: relative; background: #fff;
+  overflow: auto;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
-  user-select: none;
-  -webkit-user-select: none;
 }
+
 .week-timeline {
-  position: absolute; left: 0; top: 0; width: 50px; height: 100%; background: #fafafa; border-right: 1px solid #f0f0f0;
+  position: sticky; left: 0; top: 0; width: 50px; height: 100%;
+  background: #fafafa; border-right: 1px solid #f0f0f0; z-index: 2;
 }
 .time-label {
-  height: 60px; display: flex; align-items: flex-start; justify-content: center; padding-top: 6px;
-  font-size: 12px; color: #999; font-weight: 500;
+  height: 80px; display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 6px; font-size: 12px; color: #999; font-weight: 500;
 }
 .week-grid {
-  margin-left: 50px; display: flex;
+  margin-left: 50px; display: inline-flex; min-width: 100%;
 }
 .week-column {
-  flex: 1; border-right: 1px solid #f0f0f0;
+  width: 130px; flex-shrink: 0; border-right: 1px solid #f0f0f0;
   &:last-child { border-right: none; }
-  &.weekend {
-    background: rgba(255,248,220,0.1);
-    .week-cell {
-      border-bottom-color: #fff8dc;
-    }
-  }
+  &.weekend { background: rgba(255,248,220,0.1); }
 }
 .week-cell {
-  height: 60px; border-bottom: 1px solid #f5f5f5; position: relative;
-  &:active { background: rgba(47,125,79,0.04); }
+  height: 80px; border-bottom: 1px solid #f5f5f5; position: relative; padding: 4px;
   &:nth-child(odd) { background: rgba(248,250,248,0.5); }
 }
 .week-task {
-  position: absolute; top: 4px; left: 4px; right: 4px; background: #e8f5e9;
-  border-radius: 8px; padding: 4px 5px; overflow: hidden; cursor: pointer;
-  box-shadow: 0 1px 2px rgba(47,125,79,0.15);
+  position: relative; background: #e8f5e9; border-radius: 8px; padding: 5px 6px;
+  margin-bottom: 3px; cursor: pointer; box-shadow: 0 1px 2px rgba(47,125,79,0.12);
+  display: flex; flex-wrap: wrap; align-items: flex-start; gap: 2px;
   &:active { transform: scale(0.98); }
   &.completed { background: #f0f0f0; box-shadow: none; opacity: 0.7; }
   &.subject-ds { background: #e3f2fd; .week-task-content { color: #1565c0; } }
@@ -1477,9 +1469,9 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   &.importance-gray { background: #9e9e9e; }
 }
 .week-task-content {
-  display: block; font-size: 12px; color: #2f7d4f;
-  overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap; font-weight: 500; line-height: 1.3;
+  display: block; font-size: 13px; color: #2f7d4f;
+  white-space: normal; word-break: break-all;
+  font-weight: 500; line-height: 1.3; flex: 1; min-width: 0;
 }
 .week-task-duration { font-size: 10px; color: #999; flex-shrink: 0; }
 
