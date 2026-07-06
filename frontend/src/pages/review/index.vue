@@ -598,8 +598,8 @@
         <view class="export-dialog-top"><text class="export-dialog-title">管理科目</text><view class="export-dialog-close" @click="showManageSubjects = false">✕</view></view>
         <view class="export-dialog-body">
           <view class="manage-item" v-for="s in allSubjects" :key="s">
-            <view class="manage-left"><text class="manage-name">{{ s }}</text><text class="manage-badge" v-if="!customSubjects.includes(s)">预设</text><text class="manage-badge custom-badge" v-else>自定义</text></view>
-            <view class="manage-del-btn" v-if="customSubjects.includes(s)" @click="removeSubject(s)">删除</view>
+            <view class="manage-left"><text class="manage-name">{{ s }}</text></view>
+            <view class="manage-del-btn" @click="removeSubject(s)">删除</view>
           </view>
           <view class="manage-add-row"><input class="manage-add-input" v-model="manageNewSubject" placeholder="输入新科目名称" @confirm="addManageSubject" /><view class="manage-add-btn" @click="addManageSubject">添加</view></view>
         </view>
@@ -614,12 +614,14 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { usePlanStore } from '@/stores/plan'
 import { useUserStore } from '@/stores/user'
+import { useSubjectsStore } from '@/stores/subjects'
 import * as api from '@/api/client'
 import { uploadUtil } from '@/utils/upload'
-import { exportCardsCSV, exportCardsExcel, exportCardsPDF, exportMistakesCSV, exportMistakesExcel, exportMistakesPDF, getDefaultTags, SUBJECT_TAGS } from '@/utils/export'
+import { exportCardsCSV, exportCardsExcel, exportCardsPDF, exportMistakesCSV, exportMistakesExcel, exportMistakesPDF, getDefaultTags } from '@/utils/export'
 
 const planStore = usePlanStore()
 const userStore = useUserStore()
+const subjectsStore = useSubjectsStore()
 
 const currentView = ref('cards')  // 'cards' | 'mistakes'
 const today = new Date().toISOString().split('T')[0]
@@ -633,26 +635,18 @@ const activeSubject = ref('')
 const activeTags = ref([])
 const tagLogic = ref('or') // 'or' = any tag match, 'and' = all tags must match
 
-const defaultSubjects = Object.keys(SUBJECT_TAGS)
-const allSubjects = ref([...defaultSubjects])
-const customSubjects = ref([])
+const defaultSubjects = [] // No preset subjects - each user defines their own
+const allSubjects = computed(() => subjectsStore.subjects)
 
 async function loadSubjects() {
   if (!userStore.isLoggedIn) return
-  try {
-    const res = await api.getUserSubjects()
-    const saved = res.subjects || []
-    customSubjects.value = saved.filter(s => !defaultSubjects.includes(s))
-    // Merge: defaults first, then custom
-    allSubjects.value = [...defaultSubjects]
-    saved.forEach(s => { if (!allSubjects.value.includes(s)) allSubjects.value.push(s) })
-  } catch (e) { /* offline: keep defaults */ }
+  await subjectsStore.load()
 }
 async function saveSubjectToBackend(name) {
-  try { await api.addUserSubject(name) } catch (e) { /* ignore */ }
+  await subjectsStore.add(name)
 }
 async function deleteSubjectFromBackend(name) {
-  try { await api.removeUserSubject(name) } catch (e) { /* ignore */ }
+  await subjectsStore.remove(name)
 }
 
 // ── Cards state ──
@@ -678,7 +672,7 @@ const reviewShowAnswer = ref(false)
 const reviewIndex = ref(0)
 const reviewComplete = ref(false)
 
-const cardForm = ref({ subject: '数据结构', question: '', answer: '', tags: [], questionImages: [], answerImages: [] })
+const cardForm = ref({ subject: '', question: '', answer: '', tags: [], questionImages: [], answerImages: [] })
 const editForm = ref({ subject: '', question: '', answer: '', tags: [], questionImages: [], answerImages: [] })
 const editTagInput = ref('')
 const showEditCard = ref(false)
