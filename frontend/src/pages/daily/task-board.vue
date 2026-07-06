@@ -181,7 +181,7 @@
     </view>
 
     <view class="task-list" v-if="viewMode !== 'week'">
-      <view class="task-item" v-for="task in filteredTasks" :key="task.id" :class="{ completed: task.status === 'completed' }">
+      <view class="task-item" v-for="task in filteredTasks" :key="task.id" :class="{ completed: task.status === 'completed' }" @contextmenu.prevent="confirmDeleteTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
         <view class="task-check" @click="toggleTask(task)">
           <view class="check-circle" :class="{ checked: task.status === 'completed' }">
             <text v-if="task.status === 'completed'" class="check-icon">✓</text>
@@ -484,14 +484,13 @@ import { useTaskStore } from '@/stores/task'
 import { usePlanStore } from '@/stores/plan'
 import { useUserStore } from '@/stores/user'
 import { useFarmStore } from '@/stores/farm'
-import { useSubjectsStore } from '@/stores/subjects'
 import * as api from '@/api/client'
+import TaskFormModal from '@/components/TaskFormModal.vue'
 
 const taskStore = useTaskStore()
 const planStore = usePlanStore()
 const userStore = useUserStore()
 const farmStore = useFarmStore()
-const subjectsStore = useSubjectsStore()
 
 const activeTab = ref('all')
 const activeFilter = ref('all')
