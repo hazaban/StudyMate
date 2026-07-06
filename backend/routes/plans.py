@@ -74,3 +74,11 @@ def delete_plan(plan_id: UUID, user_id: UUID = Depends(_get_user_id), db: Sessio
 async def ai_generate_plan(data: AIPlanGenerateRequest, user_id: UUID = Depends(_get_user_id)):
     result = await generate_study_plan(data.model_dump())
     return {"plan": result}
+
+
+@router.post("/ai/phases")
+async def ai_generate_phases(data: dict, user_id: UUID = Depends(_get_user_id)):
+    """AI 为每个科目建议阶段划分（第几周到第几周做什么）"""
+    from services.ai_service import generate_subject_phases
+    result = await generate_subject_phases(data)
+    return result

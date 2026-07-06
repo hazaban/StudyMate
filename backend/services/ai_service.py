@@ -351,6 +351,60 @@ async def analyze_syllabus_image(image_data_url: str, subject: str = "", descrip
         return {"error": str(e), "chapters": [], "suggestion": "AI分析失败，请重试"}
 
 
+async def generate_subject_phases(plan_info: dict) -> dict:
+    """AI 为每个科目建议阶段划分（第几周到第几周做什么）。"""
+    subjects = plan_info.get("subjects", [])
+    total_weeks = plan_info.get("total_weeks", 20)
+    exam_name = plan_info.get("exam_name", "")
+
+    if AI_PROVIDER == "mock" or not GLM_API_KEY:
+        return _mock_subject_phases(subjects, total_weeks)
+
+    subject_names = [s.get("name", s) if isinstance(s, dict) else s for s in subjects]
+    prompt = f"""请为以下备考计划的每个科目设计阶段划分：
+
+考试：{exam_name}
+总备考周期：{total_weeks} 周
+科目：{", ".join(subject_names)}
+
+为每个科目设计 2-4 个学习阶段（如基础、强化、真题冲刺），每阶段指定起止周数和颜色。
+颜色从以下取：基础=#4caf50(绿)，强化=#2196f3(蓝)，真题=#ff9800(橙)，冲刺=#f44336(红)
+
+按JSON格式返回（不要markdown代码块）：
+{{"phases": {{"科目名": [{{"name":"阶段名","start_week":1,"end_week":4,"color":"#4caf50"}},...]}}}}"""
+
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": prompt}
+    ]
+    try:
+        result = await _call_glm(messages, temperature=0.3)
+        return json.loads(result)
+    except Exception:
+        return _mock_subject_phases(subjects, total_weeks)
+
+
+def _mock_subject_phases(subjects: list, total_weeks: int) -> dict:
+    """Mock subject phase plan."""
+    colors = ["#4caf50", "#2196f3", "#ff9800", "#f44336"]
+    phase_names = ["基础阶段", "强化阶段", "真题冲刺", "查漏补缺"]
+    result = {}
+    for idx, s in enumerate(subjects):
+        name = s.get("name", s) if isinstance(s, dict) else s
+        n = min(len(phase_names), 3)
+        step = total_weeks // n if n > 0 else total_weeks
+        items = []
+        for i in range(n):
+            items.append({
+                "name": phase_names[i],
+                "start_week": i * step + 1,
+                "end_week": (i + 1) * step if i < n - 1 else total_weeks,
+                "color": colors[i % len(colors)]
+            })
+        result[name] = items
+    return {"phases": result}
+
+
 def _mock_syllabus_analysis(subject: str, description: str) -> dict:
     """Mock syllabus analysis for demo when no API key."""
     return {
