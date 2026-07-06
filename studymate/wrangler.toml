@@ -1,6 +1,12 @@
-[build]
-command = "./build.sh"
-publish = "dist/build/h5"
+# Cloudflare Pages 配置
+# 替换原来错误的 wrangler.toml，阻止 Pages 自动检测 Python 浪费时间
 
-[env]
+name = "studymate"
+pages_build_output_dir = "dist/build/h5"
+compatibility_date = "2025-07-06"
+
+[build]
+command = "npm run build:h5"
+
+[env.production]
 NODE_VERSION = "22"
