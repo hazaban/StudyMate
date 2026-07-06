@@ -25,6 +25,55 @@ for email in ["test@studymate.com", "test@example.com"]:
     u = db.query(User).filter(User.email == email).first()
     if u: db.delete(u); db.commit(); print(f"  cleaned: {email}")
 
+def _408_subjects(today):
+    from datetime import date
+    d = today
+    def ps(offset_start, offset_end):
+        return {'planned_start': (d+timedelta(days=offset_start)).isoformat(), 'planned_end': (d+timedelta(days=offset_end)).isoformat(),
+                'actual_start': (d+timedelta(days=offset_start)).isoformat(), 'actual_end': (d+timedelta(days=offset_end+5)).isoformat()}
+    def ch(name, dur, os, oe): return dict(name=name, duration=dur, **ps(os, oe))
+    return [
+        {'name': '数据结构', 'target_score': '130', 'chapters': [
+            ch('第一章 绪论', 30, 0, 3), ch('第二章 线性表', 45, 4, 10), ch('第三章 栈与队列', 45, 11, 17),
+            ch('第四章 树与二叉树', 60, 18, 28), ch('第五章 图', 60, 29, 40), ch('第六章 查找', 45, 41, 48),
+            ch('第七章 排序', 45, 49, 55),
+        ], 'phases': []},
+        {'name': '英语', 'target_score': '80', 'chapters': [
+            ch('词汇背诵', 30, 7, 20), ch('阅读理解', 45, 21, 45), ch('写作练习', 40, 46, 65),
+            ch('完形填空', 30, 66, 80),
+        ], 'phases': []},
+        {'name': '操作系统', 'target_score': '120', 'chapters': [
+            ch('进程管理', 50, 3, 14), ch('内存管理', 60, 15, 30), ch('文件系统', 45, 31, 42),
+            ch('设备管理', 30, 43, 52),
+        ], 'phases': []},
+        {'name': '计算机网络', 'target_score': '120', 'chapters': [
+            ch('物理层', 30, 5, 12), ch('数据链路层', 40, 13, 22), ch('网络层', 60, 23, 38),
+            ch('传输层', 50, 39, 52), ch('应用层', 30, 53, 62),
+        ], 'phases': []},
+    ]
+
+def _soft_subjects(today):
+    from datetime import date
+    d = today
+    def ps(offset_start, offset_end):
+        return {'planned_start': (d+timedelta(days=offset_start)).isoformat(), 'planned_end': (d+timedelta(days=offset_end)).isoformat(),
+                'actual_start': (d+timedelta(days=offset_start)).isoformat(), 'actual_end': (d+timedelta(days=offset_end+3)).isoformat()}
+    def ch(name, dur, os, oe): return dict(name=name, duration=dur, **ps(os, oe))
+    return [
+        {'name': '数据库', 'target_score': '75', 'chapters': [
+            ch('关系模型', 40, 0, 5), ch('SQL语言', 45, 6, 14), ch('范式设计', 50, 15, 25),
+            ch('数据库安全', 30, 26, 35),
+        ], 'phases': []},
+        {'name': 'UML', 'target_score': '75', 'chapters': [
+            ch('类图', 40, 0, 8), ch('时序图', 35, 9, 18), ch('用例图', 30, 19, 28),
+            ch('设计模式', 50, 29, 45),
+        ], 'phases': []},
+        {'name': '算法', 'target_score': '75', 'chapters': [
+            ch('排序算法', 45, 0, 10), ch('查找算法', 40, 11, 22), ch('动态规划', 60, 23, 40),
+            ch('贪心算法', 45, 41, 55),
+        ], 'phases': []},
+    ]
+
 # ═══════════════════════════════════════════════════════════════════
 # 1. User
 # ═══════════════════════════════════════════════════════════════════
@@ -37,11 +86,11 @@ db.flush()
 # 2. Two plans
 # ═══════════════════════════════════════════════════════════════════
 pid408 = uuid4()
-db.add(StudyPlan(id=pid408, user_id=uid, exam_name="考研408计算机专业基础综合", exam_date=today+timedelta(days=150), target_scores={"数学":130,"英语":80,"政治":70,"408专业课":120}, daily_study_time=480, weak_points=["算法题","PV操作","子网划分"], notes="每天8小时，重点攻克数据结构和操作系统"))
+db.add(StudyPlan(id=pid408, user_id=uid, exam_name="考研408计算机专业基础综合", exam_date=today+timedelta(days=150), target_scores={"数学":130,"英语":80,"政治":70,"408专业课":120}, daily_study_time=480, weak_points=["算法题","PV操作","子网划分"], notes="每天8小时，重点攻克数据结构和操作系统", subjects=_408_subjects(today)))
 db.flush()
 
 pidSoft = uuid4()
-db.add(StudyPlan(id=pidSoft, user_id=uid, exam_name="软考中级-软件设计师", exam_date=today+timedelta(days=90), target_scores={"基础知识":75,"应用技术":75}, daily_study_time=240, weak_points=["数据库设计","UML建模"], notes="利用碎片时间备考软考"))
+db.add(StudyPlan(id=pidSoft, user_id=uid, exam_name="软考中级-软件设计师", exam_date=today+timedelta(days=90), target_scores={"基础知识":75,"应用技术":75}, daily_study_time=240, weak_points=["数据库设计","UML建模"], notes="利用碎片时间备考软考", subjects=_soft_subjects(today)))
 db.flush()
 
 # ═══════════════════════════════════════════════════════════════════

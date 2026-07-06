@@ -168,36 +168,46 @@
     </view>
 
     <!-- 科目章节编辑弹窗 -->
-    <view class="modal-overlay" v-if="showSubjectModal" @click="showSubjectModal = false">
-      <view class="modal-content chapter-modal" @click.stop>
+    <view class="modal-overlay" v-if="showSubjectModal" @click.self="showSubjectModal = false">
+      <view class="modal-content chapter-modal">
         <view class="modal-header">
           <text class="modal-title">编辑「{{ editingSubject?.name }}」章节</text>
+          <text class="modal-hint">💡 章节的"分钟/天"值会被"应用到今日任务"使用</text>
           <view class="modal-close" @click="showSubjectModal = false">✕</view>
         </view>
         <view class="modal-body">
-          <view class="ch-hint">💡 填写章节名和分钟/天，设置计划与实际起止日期</view>
           <view class="chapter-list">
             <view class="chapter-item" v-for="(ch, ci) in editingChapters" :key="ci">
-              <input class="ch-name" v-model="ch.name" placeholder="章节名" maxlength="50" />
-              <view class="ch-row-2">
-                <view class="ch-min-wrap">
-                  <text class="ch-min-label">分钟/天</text>
-                  <input class="ch-min" v-model.number="ch.duration" type="number" placeholder="30" />
+              <view class="ch-top-row">
+                <input class="ch-name" v-model="ch.name" placeholder="章节名" />
+                <view class="ch-dur-wrap">
+                  <text class="ch-dur-label">分钟/天</text>
+                  <input class="ch-dur" v-model.number="ch.duration" type="number" placeholder="30" />
+                </view>
+                <view class="ch-remove" @click="editingChapters.splice(ci, 1)">✕</view>
+              </view>
+              <view class="ch-dates-row">
+                <view class="ch-date-block planned">
+                  <text class="ch-date-tag">📋 计划</text>
+                  <picker mode="date" :value="ch.planned_start" @change="onChapterDateChange($event, ch, 'planned_start')">
+                    <view class="ch-picker">{{ ch.planned_start || '开始日期' }}</view>
+                  </picker>
+                  <text class="ch-date-arrow">→</text>
+                  <picker mode="date" :value="ch.planned_end" @change="onChapterDateChange($event, ch, 'planned_end')">
+                    <view class="ch-picker">{{ ch.planned_end || '结束日期' }}</view>
+                  </picker>
+                </view>
+                <view class="ch-date-block actual">
+                  <text class="ch-date-tag">✅ 实际</text>
+                  <picker mode="date" :value="ch.actual_start" @change="onChapterDateChange($event, ch, 'actual_start')">
+                    <view class="ch-picker">{{ ch.actual_start || '开始日期' }}</view>
+                  </picker>
+                  <text class="ch-date-arrow">→</text>
+                  <picker mode="date" :value="ch.actual_end" @change="onChapterDateChange($event, ch, 'actual_end')">
+                    <view class="ch-picker">{{ ch.actual_end || '结束日期' }}</view>
+                  </picker>
                 </view>
               </view>
-              <view class="ch-dt-row">
-                <text class="ch-dt-label">📋 计划</text>
-                <input class="ch-dt" type="date" v-model="ch.planned_start" />
-                <text class="ch-dt-arrow">→</text>
-                <input class="ch-dt" type="date" v-model="ch.planned_end" />
-              </view>
-              <view class="ch-dt-row actual">
-                <text class="ch-dt-label">✅ 实际</text>
-                <input class="ch-dt" type="date" v-model="ch.actual_start" />
-                <text class="ch-dt-arrow">→</text>
-                <input class="ch-dt" type="date" v-model="ch.actual_end" />
-              </view>
-              <view class="ch-del" @click="editingChapters.splice(ci, 1)">删除此章节 ✕</view>
             </view>
           </view>
           <view class="add-chapter-btn" @click="editingChapters.push({ name:'', duration:30, planned_start:'', planned_end:'', actual_start:'', actual_end:'' })">+ 添加章节</view>
@@ -451,6 +461,10 @@ async function saveSubjectPhase() {
   uni.showToast({ title: '保存成功', icon: 'success' })
 }
 
+function onChapterDateChange(e, chapter, field) {
+  chapter[field] = e.detail.value
+}
+
 async function applyChaptersToTasks(subjIdx) {
   const subj = subjects.value[subjIdx]
   if (!subj?.chapters?.length) { uni.showToast({ title: '该科目没有章节', icon: 'none' }); return }
@@ -637,23 +651,37 @@ onMounted(async () => {
 .input-wrapper { border: 1.5px solid #e8ece9; border-radius: 14px; padding: 12px 16px; background: #fafafa; }
 .input-field { width: 100%; font-size: 15px; color: #1a1a2e; border: none; outline: none; background: transparent; }
 /* 章节编辑弹窗 */
-.chapter-modal { max-width: 520px; }
-.ch-hint { font-size: 12px; color: #888; margin-bottom: 14px; text-align: center; background: #f0f7ff; padding: 8px; border-radius: 8px; }
+.modal-hint { font-size: 11px; color: #888; margin-left: 8px; flex: 1; }
+.chapter-modal { max-width: 500px; }
 .chapter-list { display: flex; flex-direction: column; gap: 12px; }
-.chapter-item { background: #fff; border: 1.5px solid #e0e0e0; border-radius: 16px; padding: 16px; }
-.ch-name { width: 100%; height: 44px; padding: 0 14px; border: 1.5px solid #d0d5d2; border-radius: 10px; font-size: 17px; color: #1a1a2e; background: #fff; margin-bottom: 10px; outline: none; }
-.ch-row-2 { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
-.ch-min-wrap { display: flex; align-items: center; gap: 6px; }
-.ch-min-label { font-size: 12px; color: #888; }
-.ch-min { width: 72px; height: 40px; padding: 0 8px; border: 1.5px solid #d0d5d2; border-radius: 8px; font-size: 16px; color: #1a1a2e; background: #fff; text-align: center; outline: none; }
+.chapter-item {
+  background: #fff; border: 1.5px solid #e8ece9; border-radius: 16px; padding: 18px; margin-bottom: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+.ch-top-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.ch-name { flex: 1; padding: 14px 16px; border: 1.5px solid #d0d5d2; border-radius: 12px; font-size: 17px; background: #fff; color: #1a1a2e; min-width: 0; position: relative; z-index: 5;
+  &:active, &:focus { border-color: $accent; } }
+.ch-dur-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; position: relative; z-index: 5; }
+.ch-dur-label { font-size: 11px; color: #888; white-space: nowrap; }
+.ch-dur { width: 64px; padding: 14px 8px; border: 1.5px solid #d0d5d2; border-radius: 12px; font-size: 17px; background: #fff; color: #1a1a2e; text-align: center; position: relative; z-index: 5;
+  &:focus { border-color: $accent; } }
+.ch-remove { font-size: 22px; color: #ef5350; padding: 6px 4px; flex-shrink: 0; }
 
-.ch-dt-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-.ch-dt-label { font-size: 12px; font-weight: 600; color: #2f7d4f; min-width: 48px; .ch-dt-row.actual & { color: #c62828; } }
-.ch-dt { flex: 1; height: 40px; padding: 0 8px; border: 1.5px solid #d0d5d2; border-radius: 8px; font-size: 15px; color: #1a1a2e; background: #fff; min-width: 0; outline: none; }
-.ch-dt-arrow { font-size: 14px; color: #ccc; }
-.ch-del { text-align: center; font-size: 13px; color: #c62828; padding: 6px; margin-top: 6px; border-top: 1px dashed #e0e0e0; }
+.ch-dates-row { display: flex; flex-direction: column; gap: 8px; }
+.ch-date-block { display: flex; align-items: center; gap: 8px; }
+.ch-date-tag { font-size: 13px; font-weight: 600; min-width: 56px; white-space: nowrap;
+  .ch-date-block.planned & { color: #2f7d4f; }
+  .ch-date-block.actual & { color: #c62828; }
+}
+.ch-date-arrow { font-size: 16px; color: #ccc; }
+.ch-picker {
+  flex: 1; padding: 12px 14px; border: 1.5px solid #d0d5d2; border-radius: 10px;
+  font-size: 16px; background: #fafafa; color: #1a1a2e; text-align: center; min-width: 100px;
+  overflow: hidden; position: relative;
+  :deep(input), :deep(.uni-input-input) { display: none; }
+}
 
-.add-chapter-btn { padding: 14px; text-align: center; border: 2px dashed #ccc; border-radius: 12px; font-size: 15px; color: $accent; font-weight: 500; margin-top: 8px; }
+.add-chapter-btn { padding: 16px; text-align: center; border: 2px dashed #d0d5d2; border-radius: 14px; font-size: 16px; color: $accent; font-weight: 500; margin-top: 10px; }
 
 .bottom-space { height: 60px; }
 </style>
