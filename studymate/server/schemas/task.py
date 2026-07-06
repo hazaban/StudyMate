@@ -17,6 +17,7 @@ class TaskCreate(BaseModel):
     repeat_type: str = "none"  # none / daily / weekday / holiday
     actual_duration: int = 0
     chapter: str = ""
+    importance: str = ""  # important_urgent / important_not_urgent / urgent_not_important / not_important_not_urgent
 
 
 class TaskUpdate(BaseModel):
@@ -30,6 +31,7 @@ class TaskUpdate(BaseModel):
     repeat_type: Optional[str] = None
     actual_duration: Optional[int] = None
     chapter: Optional[str] = None
+    importance: Optional[str] = None
 
 
 class TaskResponse(BaseModel):
@@ -47,6 +49,7 @@ class TaskResponse(BaseModel):
     completed_dates: list[str] = []
     actual_duration: int = 0
     chapter: str = ""
+    importance: str = ""
     created_at: datetime
 
     model_config = {"from_attributes": True}

@@ -103,7 +103,8 @@ export async function createTask(data) {
 }
 
 export async function getTasks(planId, date) {
-  return request(`/tasks?plan_id=${planId}&date=${date}`)
+  const params = date ? `plan_id=${planId}&date=${date}` : `plan_id=${planId}`
+  return request(`/tasks?${params}`)
 }
 
 export async function getTask(id) {
@@ -132,6 +133,10 @@ export async function uncompleteTask(id, taskDate) {
 
 export async function aiGenerateTasks(data) {
   return request('/tasks/ai/generate', { method: 'POST', data })
+}
+
+export async function aiParsePlan(data) {
+  return request('/tasks/ai/parse-plan', { method: 'POST', data })
 }
 
 // ==================== Cards ====================

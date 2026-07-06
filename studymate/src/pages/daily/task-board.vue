@@ -5,12 +5,19 @@
         <view class="header-left">
           <view class="view-toggle">
             <view class="toggle-btn" :class="{ active: viewMode === 'today' }" @click="switchView('today')">今日</view>
-            <view class="toggle-btn" :class="{ active: viewMode === 'history' }" @click="switchView('history')">历史</view>
+            <view class="toggle-btn" :class="{ active: viewMode === 'week' }" @click="switchView('week')">周视图</view>
+            <view class="toggle-btn" :class="{ active: viewMode === 'month' }" @click="switchView('month')">月视图</view>
           </view>
           <text class="title">{{ headerTitle }}</text>
           <text class="date">{{ currentDate }}</text>
         </view>
         <view class="header-actions">
+          <view class="quadrant-switch" @click="toggleQuadrant">
+            <view class="switch-track" :class="{ active: enableQuadrant }">
+              <view class="switch-thumb"></view>
+            </view>
+            <text class="switch-label">四象限</text>
+          </view>
           <view class="add-btn" @click="showAddForm = true">
             <text class="add-icon">+</text>
             <text class="add-text">添加任务</text>
@@ -35,7 +42,7 @@
       </view>
     </view>
 
-    <view class="calendar" v-if="viewMode === 'history'">
+    <view class="calendar" v-if="viewMode === 'month'">
       <view class="cal-header">
         <view class="cal-arrow" @click="switchMonth(-1)">‹</view>
         <text class="cal-title">{{ calTitle }}</text>
@@ -61,7 +68,47 @@
       </view>
     </view>
 
-    <view class="tabs">
+    <view class="week-view" v-if="viewMode === 'week'">
+      <view class="week-header">
+        <view class="week-arrow" @click="switchWeek(-1)">‹</view>
+        <text class="week-title">{{ weekTitle }}</text>
+        <view class="week-arrow" @click="switchWeek(1)">›</view>
+      </view>
+      <view class="week-days-header">
+        <view class="week-day-header" v-for="(day, idx) in weekDays" :key="idx" :class="{ today: day.isToday, selected: day.dateStr === selectedDate }" @click="selectDate(day.dateStr)">
+          <text class="week-day-name">{{ day.dayName }}</text>
+          <text class="week-day-num">{{ day.day }}</text>
+          <view class="week-day-dot" v-if="taskDates.has(day.dateStr)"></view>
+        </view>
+      </view>
+      <scroll-view scroll-y class="week-scroll" @touchstart="onWeekTouchStart" @touchmove="onWeekTouchMove" @touchend="onWeekTouchEnd" @mousedown="onWeekMouseDown" @mousemove="onWeekMouseMove" @mouseup="onWeekMouseUp" @mouseleave="onWeekMouseUp">
+        <view class="week-timeline">
+          <view class="time-label" v-for="hour in timelineHours" :key="hour">
+            <text>{{ hour }}:00</text>
+          </view>
+        </view>
+        <view class="week-grid">
+          <view class="week-column" v-for="(day, colIdx) in weekDays" :key="colIdx">
+            <view class="week-cell" v-for="hour in timelineHours" :key="hour" :data-hour="hour" :data-date="day.dateStr">
+              <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed' }" @click="editTask(task)">
+                <view class="task-importance-dot" :class="getImportanceClass(task.importance)" v-if="task.importance"></view>
+                <text class="week-task-content">{{ task.content }}</text>
+                <text class="week-task-duration">{{ task.duration }}min</text>
+              </view>
+            </view>
+          </view>
+        </view>
+        <view class="week-add-hint" v-if="isAddingTask" :style="{ top: addTaskY + 'px', left: addTaskX + 'px' }">
+          <view class="add-hint-content">
+            <text>{{ addTaskStartHour }}:00 - {{ addTaskEndHour }}:00</text>
+            <text>{{ addTaskDate }}</text>
+            <view class="add-hint-btn" @click="confirmWeekAdd">添加</view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <view class="tabs" v-if="viewMode !== 'week'">
       <view class="tab" :class="{ active: activeTab === 'all' }" @click="activeTab = 'all'">
         <text class="tab-text">全部</text>
       </view>
@@ -73,7 +120,7 @@
       </view>
     </view>
 
-    <view class="filter-section">
+    <view class="filter-section" v-if="viewMode !== 'week'">
       <scroll-view scroll-x class="filter-scroll">
         <view class="filter-list">
           <view class="filter-item" :class="{ active: activeFilter === 'all' }" @click="activeFilter = 'all'">
@@ -86,7 +133,7 @@
       </scroll-view>
     </view>
 
-    <view class="task-list">
+    <view class="task-list" v-if="viewMode !== 'week'">
       <view class="task-item" v-for="task in filteredTasks" :key="task.id" :class="{ completed: task.status === 'completed' }">
         <view class="task-check" @click="toggleTask(task)">
           <view class="check-circle" :class="{ checked: task.status === 'completed' }">
@@ -103,6 +150,7 @@
           <view class="task-meta">
             <text class="task-subject">{{ task.subject }}</text>
             <text class="task-chapter" v-if="task.chapter">{{ task.chapter }}</text>
+            <view class="task-importance-tag" :class="getImportanceClass(task.importance)" v-if="task.importance">{{ getImportanceLabel(task.importance) }}</view>
             <text class="task-repeat-tag" v-if="task.repeat_type && task.repeat_type !== 'none'">{{ getRepeatLabel(task.repeat_type) }}</text>
             <text class="task-duration">预计: {{ task.duration }}分钟</text>
             <text class="task-actual" v-if="task.actual_duration > 0">实际: {{ task.actual_duration }}分钟</text>
@@ -114,14 +162,13 @@
       </view>
     </view>
 
-    <view class="empty" v-if="filteredTasks.length === 0">
+    <view class="empty" v-if="viewMode !== 'week' && filteredTasks.length === 0">
       <text class="empty-icon">📋</text>
       <text class="empty-text">暂无任务</text>
       <text class="empty-hint">点击上方「添加任务」按钮手动创建任务</text>
     </view>
 
-    <!-- 番茄钟专注记录（历史视图或当天有记录时显示） -->
-    <view class="focus-records-section" v-if="dateFocusRecords.length > 0">
+    <view class="focus-records-section" v-if="viewMode !== 'week' && dateFocusRecords.length > 0">
       <view class="focus-records-header">
         <text class="focus-records-title">🍅 番茄钟专注记录</text>
         <text class="focus-records-count">共 {{ dateFocusRecords.length }} 条 · {{ totalFocusMinutes }}分钟</text>
@@ -141,7 +188,6 @@
       </view>
     </view>
 
-    <!-- Add/Edit Task Modal -->
     <view class="modal-overlay" v-if="showAddForm || editingTask" @click="closeForm">
       <view class="modal-content" @click.stop>
         <view class="modal-header">
@@ -150,7 +196,6 @@
         </view>
         <scroll-view scroll-y class="modal-body">
           <view class="form-group">
-            <text class="form-label">科目</text>
             <view class="form-label-row">
               <text class="form-label">科目</text>
               <text class="form-manage-link" @click="showManageSubjects = true">管理科目</text>
@@ -185,6 +230,10 @@
             <view class="input-wrapper">
               <textarea class="textarea-field" v-model="form.content" placeholder="请输入任务内容..." maxlength="500" />
             </view>
+            <view class="ai-parse-btn" @click="showAIParseModal = true">
+              <text class="ai-icon">🤖</text>
+              <text class="ai-text">AI解析文字计划</text>
+            </view>
           </view>
 
           <view class="form-row">
@@ -201,6 +250,16 @@
                 <view class="type-item" :class="{ active: form.type === 'review' }" @click="form.type = 'review'">复习</view>
                 <view class="type-item" :class="{ active: form.type === 'mistake' }" @click="form.type = 'mistake'">错题</view>
               </view>
+            </view>
+          </view>
+
+          <view class="form-group" v-if="enableQuadrant">
+            <text class="form-label">四象限分类</text>
+            <view class="type-row">
+              <view class="type-item" :class="{ active: form.importance === 'important_urgent' }" @click="form.importance = 'important_urgent'">重要紧急</view>
+              <view class="type-item" :class="{ active: form.importance === 'important_not_urgent' }" @click="form.importance = 'important_not_urgent'">重要不紧急</view>
+              <view class="type-item" :class="{ active: form.importance === 'urgent_not_important' }" @click="form.importance = 'urgent_not_important'">紧急不重要</view>
+              <view class="type-item" :class="{ active: form.importance === 'not_important_not_urgent' }" @click="form.importance = 'not_important_not_urgent'">不紧急不重要</view>
             </view>
           </view>
 
@@ -228,7 +287,6 @@
       </view>
     </view>
 
-    <!-- Manage Subjects Modal -->
     <view class="manage-overlay" v-if="showManageSubjects" @click="showManageSubjects = false">
       <view class="manage-dialog" @click.stop>
         <view class="manage-dialog-top">
@@ -261,6 +319,37 @@
       </view>
     </view>
 
+    <view class="manage-overlay" v-if="showAIParseModal" @click="showAIParseModal = false">
+      <view class="manage-dialog ai-dialog" @click.stop>
+        <view class="manage-dialog-top">
+          <text class="manage-dialog-title">🤖 AI解析文字计划</text>
+          <view class="manage-dialog-close" @click="showAIParseModal = false">✕</view>
+        </view>
+        <view class="manage-dialog-body">
+          <view class="ai-hint">
+            <text class="ai-hint-text">粘贴您的文字计划，AI会自动解析并生成任务列表</text>
+            <text class="ai-hint-example">例如："明天上午9点复习数学第三章，下午2点做英语阅读"</text>
+          </view>
+          <textarea class="ai-textarea" v-model="aiParseInput" placeholder="请粘贴您的文字计划..." />
+          <view class="ai-parse-btn-large" @click="parseWithAI">
+            <text class="ai-icon">🔍</text>
+            <text class="ai-text">开始解析</text>
+          </view>
+          <view class="ai-result" v-if="aiParseResult.length > 0">
+            <text class="ai-result-title">解析结果</text>
+            <view class="ai-task-item" v-for="(task, idx) in aiParseResult" :key="idx">
+              <view class="ai-task-checkbox" :class="{ checked: task.selected }" @click="task.selected = !task.selected"></view>
+              <view class="ai-task-info">
+                <text class="ai-task-content">{{ task.content }}</text>
+                <text class="ai-task-meta">{{ task.subject }} · {{ task.date }} · {{ task.duration }}分钟</text>
+              </view>
+            </view>
+            <view class="ai-add-all-btn" @click="addParsedTasks">添加选中任务</view>
+          </view>
+        </view>
+      </view>
+    </view>
+
     <view class="bottom-space"></view>
   </view>
 </template>
@@ -285,22 +374,35 @@ const showAddForm = ref(false)
 const editingTask = ref(null)
 const showSubjectInput = ref(false)
 const customSubject = ref('')
+const enableQuadrant = ref(false)
 
-// 视图模式与日历相关状态
-const viewMode = ref('today')  // 'today' | 'history'
+const viewMode = ref('today')
 const selectedDate = ref(formatDate(new Date()))
-const calendarMonth = ref(new Date())  // 当前显示的月份
+const calendarMonth = ref(new Date())
 const calendarDays = ref([])
-const taskDates = ref(new Set())  // 有任务的日期集合
-
-// 番茄钟记录（历史视图用）
+const taskDates = ref(new Set())
 const dateFocusRecords = ref([])
+
+const timelineHours = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+const weekStartDate = ref(getWeekStart(new Date()))
+const weekDays = ref([])
+
+const isAddingTask = ref(false)
+const addTaskStartHour = ref(9)
+const addTaskEndHour = ref(10)
+const addTaskDate = ref('')
+const addTaskX = ref(0)
+const addTaskY = ref(0)
+const addTaskStartTime = ref(null)
 
 const allSubjects = ['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络']
 const subjectOptions = ref([...allSubjects])
 const customSubjectOptions = ref([])
 const showManageSubjects = ref(false)
 const manageNewSubject = ref('')
+const showAIParseModal = ref(false)
+const aiParseInput = ref('')
+const aiParseResult = ref([])
 
 async function loadTaskSubjects() {
   try { const res = await api.getUserSubjects(); const saved = res.subjects || []; customSubjectOptions.value = saved.filter(s => !allSubjects.includes(s)); subjectOptions.value = [...allSubjects]; saved.forEach(s => { if (!subjectOptions.value.includes(s)) subjectOptions.value.push(s) }) } catch (e) { /* offline */ }
@@ -337,7 +439,8 @@ const defaultForm = {
   duration: 25,
   actual_duration: 0,
   type: 'new_study',
-  repeat_type: 'none'
+  repeat_type: 'none',
+  importance: ''
 }
 
 const form = ref({ ...defaultForm })
@@ -353,20 +456,49 @@ function formatDateLabel(d) {
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${['日','一','二','三','四','五','六'][d.getDay()]}`
 }
 
+function getWeekStart(d) {
+  const date = new Date(d)
+  const day = date.getDay()
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1)
+  return new Date(date.setDate(diff))
+}
+
 const currentDate = computed(() => {
-  if (viewMode.value === 'history') {
-    return formatDateLabel(new Date(selectedDate.value))
+  if (viewMode.value === 'today') {
+    return formatDateLabel(new Date())
+  } else if (viewMode.value === 'week') {
+    const end = new Date(weekStartDate.value)
+    end.setDate(end.getDate() + 6)
+    return `${weekStartDate.value.getMonth() + 1}/${weekStartDate.value.getDate()} - ${end.getMonth() + 1}/${end.getDate()}`
   }
-  return formatDateLabel(new Date())
+  return formatDateLabel(new Date(selectedDate.value))
 })
 
-const headerTitle = computed(() => viewMode.value === 'today' ? '今日任务' : '历史任务')
+const headerTitle = computed(() => {
+  if (viewMode.value === 'today') return '今日任务'
+  if (viewMode.value === 'week') return '周视图'
+  return '月视图'
+})
 
 const calTitle = computed(() => {
   const y = calendarMonth.value.getFullYear()
   const m = calendarMonth.value.getMonth() + 1
   return `${y}年${m}月`
 })
+
+const weekTitle = computed(() => {
+  const y = weekStartDate.value.getFullYear()
+  const m = weekStartDate.value.getMonth() + 1
+  return `${y}年${m}月第${getWeekNumber(weekStartDate.value)}周`
+})
+
+function getWeekNumber(d) {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+  const dayNum = date.getUTCDay() || 7
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum)
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
+  return Math.ceil((((date - yearStart) / 86400000) + 1) / 7)
+}
 
 const subjects = computed(() => {
   const set = new Set()
@@ -409,12 +541,25 @@ const getRepeatLabel = (type) => {
   return map[type] || ''
 }
 
+const getImportanceLabel = (type) => {
+  const map = { important_urgent: '重要紧急', important_not_urgent: '重要不紧急', urgent_not_important: '紧急不重要', not_important_not_urgent: '不紧急不重要' }
+  return map[type] || ''
+}
+
+const getImportanceClass = (type) => {
+  const map = { important_urgent: 'importance-red', important_not_urgent: 'importance-blue', urgent_not_important: 'importance-orange', not_important_not_urgent: 'importance-gray' }
+  return map[type] || ''
+}
+
+function getTasksAt(dateStr, hour) {
+  return taskStore.todayTasks.filter(t => t.date === dateStr)
+}
+
 async function toggleTask(task) {
   if (task.status === 'completed') {
     await taskStore.uncompleteTask(task.id, selectedDate.value)
   } else {
     await taskStore.completeTask(task.id, selectedDate.value)
-    // Auto-link to farm: fertilize the crop
     if (planStore.currentPlan) {
       try {
         const crop = await farmStore.ensureCrop(planStore.currentPlan.id, task.subject)
@@ -441,7 +586,8 @@ function editTask(task) {
     duration: task.duration,
     actual_duration: task.actual_duration || 0,
     type: task.type,
-    repeat_type: task.repeat_type || 'none'
+    repeat_type: task.repeat_type || 'none',
+    importance: task.importance || ''
   }
   showAddForm.value = false
 }
@@ -450,6 +596,10 @@ function closeForm() {
   showAddForm.value = false
   editingTask.value = null
   form.value = { ...defaultForm }
+}
+
+function toggleQuadrant() {
+  enableQuadrant.value = !enableQuadrant.value
 }
 
 async function submitForm() {
@@ -475,9 +625,9 @@ async function submitForm() {
         chapter: form.value.chapter,
         content: form.value.content,
         duration: parseInt(form.value.duration) || 25,
-        repeat_type: form.value.repeat_type
+        repeat_type: form.value.repeat_type,
+        importance: form.value.importance
       })
-      // 新增任务后标记该日期有任务
       taskDates.value.add(selectedDate.value)
       saveTaskDatesToStorage()
       generateCalendar()
@@ -491,48 +641,46 @@ async function submitForm() {
   }
 }
 
-// ============ 日历逻辑 ============
-
 function generateCalendar() {
   const year = calendarMonth.value.getFullYear()
   const month = calendarMonth.value.getMonth()
-  const firstWeekday = new Date(year, month, 1).getDay()  // 0-6, Sunday=0
+  const firstWeekday = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const today = formatDate(new Date())
 
   const days = []
-  // 上月补齐
   for (let i = firstWeekday - 1; i >= 0; i--) {
     const d = new Date(year, month, -i)
-    days.push({
-      day: d.getDate(),
-      dateStr: formatDate(d),
-      currentMonth: false,
-      isToday: formatDate(d) === today
-    })
+    days.push({ day: d.getDate(), dateStr: formatDate(d), currentMonth: false, isToday: formatDate(d) === today })
   }
-  // 当月
   for (let i = 1; i <= daysInMonth; i++) {
     const d = new Date(year, month, i)
-    days.push({
-      day: i,
-      dateStr: formatDate(d),
-      currentMonth: true,
-      isToday: formatDate(d) === today
-    })
+    days.push({ day: i, dateStr: formatDate(d), currentMonth: true, isToday: formatDate(d) === today })
   }
-  // 下月补齐至完整周
   const trailingNeeded = (7 - (days.length % 7)) % 7
   for (let i = 1; i <= trailingNeeded; i++) {
     const d = new Date(year, month + 1, i)
-    days.push({
-      day: d.getDate(),
-      dateStr: formatDate(d),
-      currentMonth: false,
-      isToday: formatDate(d) === today
-    })
+    days.push({ day: d.getDate(), dateStr: formatDate(d), currentMonth: false, isToday: formatDate(d) === today })
   }
   calendarDays.value = days
+}
+
+function generateWeekDays() {
+  const days = []
+  const dayNames = ['一', '二', '三', '四', '五', '六', '日']
+  const todayStr = formatDate(new Date())
+  
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStartDate.value)
+    d.setDate(d.getDate() + i)
+    days.push({
+      day: d.getDate(),
+      dayName: dayNames[i],
+      dateStr: formatDate(d),
+      isToday: formatDate(d) === todayStr
+    })
+  }
+  weekDays.value = days
 }
 
 function switchMonth(delta) {
@@ -541,6 +689,15 @@ function switchMonth(delta) {
   calendarMonth.value = d
   generateCalendar()
   loadTaskDates()
+}
+
+function switchWeek(delta) {
+  const d = new Date(weekStartDate.value)
+  d.setDate(d.getDate() + delta * 7)
+  weekStartDate.value = d
+  generateWeekDays()
+  selectedDate.value = formatDate(d)
+  loadTasks()
 }
 
 function selectDate(date) {
@@ -570,15 +727,201 @@ function loadTaskDates() {
   }
 }
 
+function getHourFromY(y, scrollTop) {
+  const cellHeight = 60
+  const adjustedY = y + scrollTop - 50
+  const hourIndex = Math.floor(adjustedY / cellHeight)
+  return timelineHours[hourIndex] || 9
+}
+
+function onWeekTouchStart(e) {
+  const touch = e.touches[0]
+  startAddTask(touch.clientX, touch.clientY)
+}
+
+function onWeekTouchMove(e) {
+  if (!isAddingTask.value) return
+  const touch = e.touches[0]
+  updateAddTask(touch.clientX, touch.clientY)
+}
+
+function onWeekTouchEnd() {
+  finishAddTask()
+}
+
+function onWeekMouseDown(e) {
+  startAddTask(e.clientX, e.clientY)
+}
+
+function onWeekMouseMove(e) {
+  if (!isAddingTask.value) return
+  updateAddTask(e.clientX, e.clientY)
+}
+
+function onWeekMouseUp() {
+  finishAddTask()
+}
+
+function startAddTask(x, y) {
+  addTaskStartTime = Date.now()
+  setTimeout(() => {
+    if (Date.now() - addTaskStartTime > 300) {
+      isAddingTask.value = true
+      addTaskStartHour.value = getHourFromY(y, 0)
+      addTaskEndHour.value = addTaskStartHour.value + 1
+      addTaskX.value = x
+      addTaskY.value = y
+      addTaskDate.value = weekDays.value[0]?.dateStr || selectedDate.value
+    }
+  }, 300)
+}
+
+function updateAddTask(x, y) {
+  if (!isAddingTask.value) return
+  addTaskX.value = x
+  addTaskY.value = y
+  const hour = getHourFromY(y, 0)
+  addTaskEndHour.value = Math.max(addTaskStartHour.value + 1, hour)
+}
+
+function finishAddTask() {
+  if (!isAddingTask.value) return
+  setTimeout(() => {
+    isAddingTask.value = false
+  }, 300)
+}
+
+function confirmWeekAdd() {
+  showAddForm.value = true
+  form.value.date = addTaskDate.value
+  form.value.duration = (addTaskEndHour.value - addTaskStartHour.value) * 60
+}
+
+async function parseWithAI() {
+  if (!aiParseInput.value.trim()) {
+    uni.showToast({ title: '请输入文字计划', icon: 'none' })
+    return
+  }
+
+  uni.showLoading({ title: 'AI解析中...' })
+  try {
+    const result = await api.aiParsePlan({
+      text: aiParseInput.value.trim(),
+      plan_id: planStore.currentPlan?.id
+    })
+    aiParseResult.value = (result.tasks || []).map(t => ({
+      ...t,
+      selected: true
+    }))
+  } catch (e) {
+    uni.showToast({ title: 'AI服务暂不可用', icon: 'none' })
+    aiParseResult.value = mockParsePlan(aiParseInput.value.trim())
+  } finally {
+    uni.hideLoading()
+  }
+}
+
+function mockParsePlan(text) {
+  const subjects = ['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络']
+  const today = new Date()
+  const result = []
+  
+  const lines = text.split(/[,，。；;、\n]/).filter(l => l.trim())
+  lines.forEach(line => {
+    const lineTrim = line.trim()
+    if (!lineTrim) return
+    
+    let subject = '数据结构'
+    for (const s of subjects) {
+      if (lineTrim.includes(s)) {
+        subject = s
+        break
+      }
+    }
+    
+    let date = formatDate(today)
+    if (lineTrim.includes('明天') || lineTrim.includes('明日')) {
+      const tmr = new Date(today)
+      tmr.setDate(tmr.getDate() + 1)
+      date = formatDate(tmr)
+    } else if (lineTrim.includes('后天')) {
+      const day = new Date(today)
+      day.setDate(day.getDate() + 2)
+      date = formatDate(day)
+    }
+    
+    const durationMatch = lineTrim.match(/(\d+)\s*分钟|(\d+)\s*小时|(\d+)\s*min/)
+    let duration = 30
+    if (durationMatch) {
+      const num = parseInt(durationMatch[1] || durationMatch[2] || durationMatch[3])
+      if (lineTrim.includes('小时')) {
+        duration = num * 60
+      } else {
+        duration = num
+      }
+    }
+    
+    result.push({
+      content: lineTrim,
+      subject,
+      date,
+      duration,
+      selected: true
+    })
+  })
+  
+  return result.slice(0, 10)
+}
+
+async function addParsedTasks() {
+  if (!planStore.currentPlan) {
+    uni.showToast({ title: '请先创建学习计划', icon: 'none' })
+    return
+  }
+
+  const selected = aiParseResult.value.filter(t => t.selected)
+  if (selected.length === 0) {
+    uni.showToast({ title: '请选择要添加的任务', icon: 'none' })
+    return
+  }
+
+  uni.showLoading({ title: '添加中...' })
+  let added = 0
+  for (const task of selected) {
+    try {
+      await taskStore.createTask({
+        plan_id: planStore.currentPlan.id,
+        date: task.date,
+        type: 'new_study',
+        subject: task.subject,
+        content: task.content,
+        duration: task.duration,
+        repeat_type: 'none'
+      })
+      taskDates.value.add(task.date)
+      added++
+    } catch (e) { /* skip */ }
+  }
+  uni.hideLoading()
+  saveTaskDatesToStorage()
+  generateCalendar()
+  showAIParseModal.value = false
+  aiParseInput.value = ''
+  aiParseResult.value = []
+  uni.showToast({ title: `已添加 ${added} 个任务`, icon: 'success' })
+}
+
 async function switchView(mode) {
   if (viewMode.value === mode) return
   viewMode.value = mode
-  if (mode === 'history') {
+  if (mode === 'month') {
     loadTaskDates()
     generateCalendar()
     await loadTasks()
+  } else if (mode === 'week') {
+    generateWeekDays()
+    await loadTasks()
   } else {
-    // 切回今日：重置为今天
     selectedDate.value = formatDate(new Date())
     calendarMonth.value = new Date()
     await loadTasks()
@@ -589,7 +932,6 @@ async function loadTasks() {
   if (!planStore.currentPlan) return
   const result = await taskStore.getTasksByDate(planStore.currentPlan.id, selectedDate.value)
   if (result.success) {
-    // 根据当天是否有任务更新缓存
     if (taskStore.todayTasks.length > 0) {
       taskDates.value.add(selectedDate.value)
     } else {
@@ -598,7 +940,6 @@ async function loadTasks() {
     saveTaskDatesToStorage()
     generateCalendar()
   }
-  // 加载该日期的番茄钟记录
   await loadFocusRecords()
 }
 
@@ -624,7 +965,6 @@ onMounted(async () => {
   }
 })
 
-// 页面每次显示时刷新数据（从番茄钟页面返回时触发，同步 actual_duration）
 onShow(async () => {
   if (planStore.currentPlan && userStore.isLoggedIn) {
     await loadTasks()
@@ -672,9 +1012,9 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   gap: 2px;
 }
 .toggle-btn {
-  padding: 5px 16px;
+  padding: 5px 14px;
   border-radius: 17px;
-  font-size: 13px;
+  font-size: 12px;
   color: rgba(255,255,255,0.85);
   font-weight: 500;
   transition: all 0.2s;
@@ -687,7 +1027,20 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 
 .header-actions {
-  display: flex; gap: 8px;
+  display: flex; gap: 8px; align-items: center;
+}
+
+.quadrant-switch {
+  display: flex; align-items: center; gap: 6px;
+  .switch-track {
+    width: 36px; height: 20px; border-radius: 10px; background: rgba(255,255,255,0.3); transition: all 0.3s; position: relative;
+    &.active { background: #fff; }
+    .switch-thumb {
+      width: 16px; height: 16px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: all 0.3s;
+    }
+    &.active .switch-thumb { left: 18px; }
+  }
+  .switch-label { font-size: 12px; color: rgba(255,255,255,0.85); }
 }
 
 .add-btn {
@@ -703,7 +1056,6 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .progress-item { flex: 1; text-align: center; .progress-num { display: block; font-size: 22px; font-weight: 700; color: #fff; } .progress-label { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 2px; } }
 .progress-divider { width: 1px; height: 32px; background: rgba(255,255,255,0.2); }
 
-/* Calendar */
 .calendar {
   background: #fff;
   border-radius: 12px;
@@ -782,6 +1134,75 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 .cal-day.selected .day-dot { background: #fff; }
 
+.week-view {
+  background: #fff;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  border: 1px solid #e8ece9;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+  overflow: hidden;
+}
+.week-header {
+  display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #f0f0f0;
+}
+.week-arrow {
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #2f7d4f; border-radius: 50%; font-weight: 600;
+  &:active { background: #f5f7f5; }
+}
+.week-title { font-size: 15px; font-weight: 600; color: #1a1a2e; }
+.week-days-header {
+  display: flex; border-bottom: 1px solid #f0f0f0;
+}
+.week-day-header {
+  flex: 1; text-align: center; padding: 10px 0; position: relative;
+  &.today { .week-day-num { color: #2f7d4f; font-weight: 700; } }
+  &.selected { background: rgba(47,125,79,0.06); }
+}
+.week-day-name { display: block; font-size: 12px; color: #999; margin-bottom: 2px; }
+.week-day-num { font-size: 16px; color: #1a1a2e; font-weight: 500; }
+.week-day-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: #2f7d4f; margin: 4px auto 0;
+}
+.week-scroll {
+  height: 400px; position: relative;
+}
+.week-timeline {
+  position: absolute; left: 0; top: 0; width: 50px; height: 100%; background: #fafafa; border-right: 1px solid #f0f0f0;
+}
+.time-label {
+  height: 60px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #999;
+}
+.week-grid {
+  margin-left: 50px; display: flex;
+}
+.week-column { flex: 1; border-right: 1px solid #f0f0f0; &:last-child { border-right: none; } }
+.week-cell {
+  height: 60px; border-bottom: 1px solid #f5f5f5; position: relative;
+  &:active { background: rgba(47,125,79,0.04); }
+}
+.week-task {
+  position: absolute; top: 4px; left: 4px; right: 4px; background: #e8f5e9; border-radius: 6px; padding: 4px; overflow: hidden;
+  &.completed { background: #f0f0f0; opacity: 0.7; }
+}
+.task-importance-dot {
+  width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px;
+  &.importance-red { background: #ef5350; }
+  &.importance-blue { background: #42a5f5; }
+  &.importance-orange { background: #ff9800; }
+  &.importance-gray { background: #9e9e9e; }
+}
+.week-task-content { display: block; font-size: 11px; color: #2f7d4f; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.week-task-duration { font-size: 10px; color: #999; }
+.week-add-hint {
+  position: absolute; z-index: 10; background: #fff; border: 1px solid #2f7d4f; border-radius: 8px; padding: 8px 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+.add-hint-content {
+  text-align: center; font-size: 13px; color: #2f7d4f; margin-bottom: 8px;
+}
+.add-hint-btn {
+  background: #2f7d4f; color: #fff; padding: 6px 16px; border-radius: 6px; font-size: 13px; margin-top: 8px;
+}
+
 .tabs { display: flex; margin-bottom: 16px; background: #f5f7f5; border-radius: 12px; padding: 4px; }
 .tab { flex: 1; text-align: center; padding: 10px; border-radius: 10px; transition: all 0.2s;
   &.active { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.08); .tab-text { color: #2f7d4f; font-weight: 600; } }
@@ -808,13 +1229,18 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .task-meta { display: flex; gap: 8px; flex-wrap: wrap; }
 .task-subject { font-size: 12px; color: #2f7d4f; background: #e8f5e9; padding: 2px 8px; border-radius: 8px; }
 .task-chapter { font-size: 12px; color: #6b4ce6; background: #f3f0ff; padding: 2px 8px; border-radius: 8px; }
+.task-importance-tag { font-size: 11px; padding: 2px 8px; border-radius: 8px; font-weight: 500; white-space: nowrap;
+  &.importance-red { background: #ffebee; color: #c62828; }
+  &.importance-blue { background: #e3f2fd; color: #1565c0; }
+  &.importance-orange { background: #fff3e0; color: #e65100; }
+  &.importance-gray { background: #f5f5f5; color: #616161; }
+}
 .task-repeat-tag { font-size: 12px; color: #e65100; background: #fff3e0; padding: 2px 8px; border-radius: 8px; font-weight: 500; }
 .task-duration, .task-actual { font-size: 12px; color: #999; }
 .task-pomodoro { flex-shrink: 0; .pomodoro-icon { font-size: 24px; } }
 
 .empty { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; .empty-icon { font-size: 48px; margin-bottom: 12px; } .empty-text { font-size: 16px; color: #65746d; margin-bottom: 8px; } .empty-hint { font-size: 13px; color: #999; text-align: center; } }
 
-/* Modal */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 24px; }
 .modal-content { background: #fff; border-radius: 20px; width: 100%; max-width: 440px; max-height: 75vh; display: flex; flex-direction: column; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f0f0f0; }
@@ -842,7 +1268,6 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .type-row { display: flex; gap: 8px; }
 .type-item { flex: 1; padding: 10px; text-align: center; border-radius: 10px; font-size: 13px; color: #65746d; background: #f5f7f5; &.active { background: #2f7d4f; color: #fff; } }
 
-/* Manage Subjects Modal */
 .manage-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 250;
   display: flex; align-items: center; justify-content: center; padding: 30px;
@@ -857,7 +1282,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 .manage-dialog-title { font-size: 17px; font-weight: 700; color: #1a1a2e; }
 .manage-dialog-close {
-  width: 28px; height: 28px; border-radius: 50%; background: #f5f5f5;
+  width: 28px; height: 28px; border-radius: 50%; background: #f5f7f5;
   display: flex; align-items: center; justify-content: center;
   font-size: 14px; color: #999;
   &:active { background: #e0e0e0; }
@@ -896,9 +1321,45 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   &:active { opacity: 0.85; }
 }
 
+.ai-parse-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px;
+  padding: 10px; background: #f3f0ff; border-radius: 10px;
+  .ai-icon { font-size: 16px; }
+  .ai-text { font-size: 13px; color: #6b4ce6; font-weight: 500; }
+}
+
+.ai-dialog { max-width: 400px; }
+.ai-hint { margin-bottom: 12px; }
+.ai-hint-text { display: block; font-size: 13px; color: #666; margin-bottom: 4px; }
+.ai-hint-example { display: block; font-size: 12px; color: #999; background: #f5f5f5; padding: 8px; border-radius: 6px; }
+.ai-textarea {
+  width: 100%; min-height: 100px; padding: 12px; border: 1px solid #e8ece9; border-radius: 10px;
+  font-size: 14px; color: #333; background: #fafafa; margin-bottom: 12px;
+}
+.ai-parse-btn-large {
+  display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px;
+  background: #6b4ce6; border-radius: 12px; margin-bottom: 16px;
+  .ai-icon { font-size: 18px; }
+  .ai-text { font-size: 15px; color: #fff; font-weight: 600; }
+}
+.ai-result { padding-top: 16px; border-top: 1px solid #f0f0f0; }
+.ai-result-title { display: block; font-size: 14px; font-weight: 600; color: #333; margin-bottom: 10px; }
+.ai-task-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: #f5f7f5; border-radius: 10px; margin-bottom: 8px; }
+.ai-task-checkbox {
+  width: 20px; height: 20px; border: 2px solid #d0d5d2; border-radius: 50%; flex-shrink: 0; margin-top: 2px;
+  &.checked { background: #2f7d4f; border-color: #2f7d4f; }
+}
+.ai-task-info { flex: 1; min-width: 0; }
+.ai-task-content { display: block; font-size: 14px; color: #333; margin-bottom: 4px; }
+.ai-task-meta { font-size: 12px; color: #999; }
+.ai-add-all-btn {
+  margin-top: 12px; padding: 12px; text-align: center;
+  background: #2f7d4f; color: #fff; border-radius: 12px;
+  font-size: 15px; font-weight: 600;
+}
+
 .bottom-space { height: 100px; }
 
-/* 番茄钟专注记录 */
 .focus-records-section {
   margin: 16px 0;
   background: #fff;

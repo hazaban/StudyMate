@@ -174,7 +174,11 @@
           <text class="btn-icon">📋</text>
           <text class="btn-text">今日任务</text>
         </view>
-        <view class="action-btn secondary" @click="deletePlan">
+        <view class="action-btn secondary" @click="openGanttChart">
+          <text class="btn-icon">📊</text>
+          <text class="btn-text">甘特图</text>
+        </view>
+        <view class="action-btn danger" @click="deletePlan">
           <text class="btn-icon">🗑</text>
           <text class="btn-text">删除计划</text>
         </view>
@@ -187,6 +191,75 @@
       <text class="empty-hint">点击下方按钮创建新计划</text>
       <view class="empty-btn" @click="createPlan">
         <text class="empty-btn-text">创建计划</text>
+      </view>
+    </view>
+
+    <view class="modal-overlay" v-if="showGanttChart" @click="showGanttChart = false">
+      <view class="modal-content gantt-modal" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">计划甘特图</text>
+          <view class="modal-close" @click="showGanttChart = false">✕</view>
+        </view>
+        <scroll-view scroll-y class="modal-body gantt-body">
+          <view class="gantt-container">
+            <view class="gantt-header">
+              <view class="gantt-label-col">科目/任务</view>
+              <scroll-view scroll-x class="gantt-dates-scroll">
+                <view class="gantt-dates">
+                  <view class="gantt-date" v-for="d in ganttDates" :key="d.date">
+                    <text class="date-day">{{ d.day }}</text>
+                    <text class="date-week">{{ d.week }}</text>
+                  </view>
+                </view>
+              </scroll-view>
+            </view>
+            <view class="gantt-body-scroll">
+              <view class="gantt-row" v-for="(subject, sIdx) in ganttData" :key="sIdx">
+                <view class="gantt-label-col">
+                  <text class="gantt-subject-name">{{ subject.name }}</text>
+                </view>
+                <scroll-view scroll-x class="gantt-bars-scroll">
+                  <view class="gantt-bars-container">
+                    <view class="gantt-bar-wrapper" v-for="d in ganttDates" :key="d.date">
+                      <view class="gantt-bar-cell" :class="{ today: d.isToday }">
+                        <view class="gantt-bar" v-if="hasTaskOnDate(subject, d.date)" :class="getTaskStatusClass(subject, d.date)">
+                        </view>
+                      </view>
+                    </view>
+                  </view>
+                </scroll-view>
+              </view>
+              <view class="gantt-summary-row">
+                <view class="gantt-label-col">
+                  <text class="gantt-summary-label">完成率</text>
+                </view>
+                <scroll-view scroll-x class="gantt-bars-scroll">
+                  <view class="gantt-bars-container">
+                    <view class="gantt-bar-wrapper" v-for="d in ganttDates" :key="d.date">
+                      <view class="gantt-bar-cell" :class="{ today: d.isToday }">
+                        <text class="gantt-date-progress">{{ getDailyProgress(d.date) }}%</text>
+                      </view>
+                    </view>
+                  </view>
+                </scroll-view>
+              </view>
+            </view>
+          </view>
+          <view class="gantt-legend">
+            <view class="legend-item">
+              <view class="legend-dot completed"></view>
+              <text class="legend-text">已完成</text>
+            </view>
+            <view class="legend-item">
+              <view class="legend-dot pending"></view>
+              <text class="legend-text">待完成</text>
+            </view>
+            <view class="legend-item">
+              <view class="legend-dot today"></view>
+              <text class="legend-text">今天</text>
+            </view>
+          </view>
+        </scroll-view>
       </view>
     </view>
 
@@ -207,9 +280,11 @@ const userStore = useUserStore()
 const showSubjectModal = ref(false)
 const showAddSubject = ref(false)
 const showPlanSwitcher = ref(false)
+const showGanttChart = ref(false)
 const editingSubjectIndex = ref(-1)
 const editingChapters = ref([])
 const newSubject = ref({ name: '', target_score: '' })
+const ganttTasks = ref([])
 
 const editingSubject = computed(() => {
   if (editingSubjectIndex.value >= 0) {
@@ -226,6 +301,59 @@ const daysRemaining = computed(() => {
   if (!planStore.currentPlan) return 0
   return dateUtil.getDaysBetween(dateUtil.today(), planStore.currentPlan.exam_date)
 })
+
+const ganttDates = computed(() => {
+  const dates = []
+  const today = new Date()
+  const dayNames = ['日', '一', '二', '三', '四', '五', '六']
+  
+  for (let i = -6; i <= 14; i++) {
+    const d = new Date(today)
+    d.setDate(d.getDate() + i)
+    dates.push({
+      date: d.toISOString().split('T')[0],
+      day: d.getDate(),
+      week: dayNames[d.getDay()],
+      isToday: i === 0
+    })
+  }
+  return dates
+})
+
+const ganttData = computed(() => {
+  const subjectNames = new Set()
+  ganttTasks.value.forEach(t => subjectNames.add(t.subject))
+  return [...subjectNames].map(name => ({
+    name,
+    tasks: ganttTasks.value.filter(t => t.subject === name)
+  }))
+})
+
+function hasTaskOnDate(subject, dateStr) {
+  return subject.tasks.some(t => t.date === dateStr)
+}
+
+function getTaskStatusClass(subject, dateStr) {
+  const task = subject.tasks.find(t => t.date === dateStr)
+  return task?.status === 'completed' ? 'completed' : 'pending'
+}
+
+function getDailyProgress(dateStr) {
+  const dayTasks = ganttTasks.value.filter(t => t.date === dateStr)
+  if (dayTasks.length === 0) return 0
+  const completed = dayTasks.filter(t => t.status === 'completed').length
+  return Math.round((completed / dayTasks.length) * 100)
+}
+
+async function loadGanttData() {
+  if (!planStore.currentPlan) return
+  try {
+    const tasks = await api.getTasks(planStore.currentPlan.id)
+    ganttTasks.value = tasks || []
+  } catch (e) {
+    ganttTasks.value = []
+  }
+}
 
 function switchToPlan(plan) {
   planStore.switchPlan(plan.id)
@@ -332,6 +460,11 @@ async function deletePlan() {
       }
     }
   })
+}
+
+async function openGanttChart() {
+  await loadGanttData()
+  showGanttChart.value = true
 }
 
 onMounted(async () => {
@@ -544,7 +677,8 @@ onMounted(async () => {
 .action-btn {
   flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; border-radius: 12px;
   &.primary { background: $accent; .btn-icon, .btn-text { color: #fff; } }
-  &.secondary { background: #ffebee; .btn-icon, .btn-text { color: #c62828; } }
+  &.secondary { background: #e3f2fd; .btn-icon, .btn-text { color: #1565c0; } }
+  &.danger { background: #ffebee; .btn-icon, .btn-text { color: #c62828; } }
   .btn-icon { font-size: 16px; }
   .btn-text { font-size: 15px; font-weight: 500; }
 }
@@ -581,4 +715,50 @@ onMounted(async () => {
 .add-chapter-btn { padding: 10px; text-align: center; border: 1.5px dashed #d0d5d2; border-radius: 10px; font-size: 14px; color: $accent; }
 
 .bottom-space { height: 60px; }
+
+.gantt-modal { max-height: 80vh; }
+.gantt-body { padding: 0; }
+.gantt-container { display: flex; flex-direction: column; }
+.gantt-header { display: flex; border-bottom: 1px solid #f0f0f0; background: #fafafa; }
+.gantt-label-col {
+  width: 80px; flex-shrink: 0; padding: 10px; font-size: 12px; color: #999;
+  border-right: 1px solid #f0f0f0; display: flex; align-items: center;
+}
+.gantt-dates-scroll { flex: 1; white-space: nowrap; }
+.gantt-dates { display: inline-flex; }
+.gantt-date {
+  width: 40px; flex-shrink: 0; padding: 8px 4px; text-align: center;
+  .date-day { display: block; font-size: 14px; font-weight: 600; color: #333; }
+  .date-week { display: block; font-size: 10px; color: #999; }
+}
+.gantt-body-scroll { flex: 1; }
+.gantt-row { display: flex; border-bottom: 1px solid #f8f8f8; }
+.gantt-subject-name { font-size: 13px; color: #333; font-weight: 500; }
+.gantt-bars-scroll { flex: 1; white-space: nowrap; }
+.gantt-bars-container { display: inline-flex; }
+.gantt-bar-wrapper { width: 40px; flex-shrink: 0; }
+.gantt-bar-cell {
+  height: 40px; padding: 4px; border-right: 1px solid #f8f8f8;
+  &.today { background: rgba(47,125,79,0.05); }
+}
+.gantt-bar {
+  height: 100%; border-radius: 4px;
+  &.completed { background: #2f7d4f; }
+  &.pending { background: #ffebee; border: 1px solid #ef5350; }
+}
+.gantt-summary-row { display: flex; background: #fafafa; }
+.gantt-summary-label { font-size: 12px; color: #999; }
+.gantt-date-progress { font-size: 11px; color: #2f7d4f; font-weight: 600; }
+.gantt-legend {
+  display: flex; justify-content: center; gap: 20px; padding: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot {
+  width: 12px; height: 12px; border-radius: 4px;
+  &.completed { background: #2f7d4f; }
+  &.pending { background: #ffebee; border: 1px solid #ef5350; }
+  &.today { background: rgba(47,125,79,0.15); border: 1px solid #2f7d4f; }
+}
+.legend-text { font-size: 12px; color: #666; }
 </style>

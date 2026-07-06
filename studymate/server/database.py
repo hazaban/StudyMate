@@ -105,6 +105,7 @@ class DailyTask(Base):
     chapter = Column(String(100), default="")
     repeat_type = Column(String(20), default="none")     # none / daily / weekday / holiday
     completed_dates = Column(JSON, default=list)          # 循环任务的完成日期列表
+    importance = Column(String(30), default="")           # important_urgent / important_not_urgent / urgent_not_important / not_important_not_urgent
     created_at = Column(DateTime(timezone=True), default=utcnow)
 
     plan = relationship("StudyPlan", back_populates="tasks")
