@@ -238,240 +238,15 @@
       </view>
     </view>
 
-    <view class="modal-overlay" v-if="showAddForm || editingTask" @click="closeForm">
-      <view class="modal-content" @click.stop>
-        <view class="modal-header">
-          <text class="modal-title">{{ editingTask ? '编辑任务' : '添加任务' }}</text>
-          <view class="modal-header-actions">
-            <text class="modal-ai-btn" v-if="!editingTask && addMode === 'manual'" @click="addMode = 'ai'">🤖 AI添加</text>
-            <text class="modal-ai-btn" v-if="!editingTask && addMode === 'ai'" @click="addMode = 'manual'">✏️ 手动输入</text>
-            <view class="modal-close" @click="closeForm">✕</view>
-          </view>
-        </view>
-        <scroll-view scroll-y class="modal-body">
-
-          <view v-if="addMode === 'ai' && !editingTask" class="ai-section">
-            <view class="ai-hint-box">
-              <text class="ai-hint-title">🤖 描述你的学习计划，AI自动解析为任务</text>
-              <view class="ai-fields-guide">
-                <text class="ai-field">📚 科目</text>
-                <text class="ai-field">📖 章节</text>
-                <text class="ai-field">⏱ 时长</text>
-                <text class="ai-field">🕘 时间</text>
-                <text class="ai-field">📅 日期</text>
-              </view>
-              <text class="ai-hint-example">💡 试试：明天上午9点复习数据结构二叉树章节，45分钟；下午2点做英语阅读理解30分钟</text>
-            </view>
-            <textarea class="ai-textarea-large" v-model="aiParseInput" placeholder="请描述你的学习安排，包含科目、内容、时间等信息..." />
-            <view class="ai-parse-btn-primary" @click="parseWithAI">
-              <text class="btn-icon">🔍</text>
-              <text class="btn-text">开始解析</text>
-            </view>
-            <view class="ai-result-list" v-if="aiParseResult.length > 0">
-              <view class="ai-result-header">
-                <text class="result-title">解析结果（{{ aiParseResult.filter(t=>t.selected).length }}/{{ aiParseResult.length }}）</text>
-                <text class="select-all-btn" @click="toggleSelectAll">{{ allSelected ? '取消全选' : '全选' }}</text>
-              </view>
-              <view class="ai-task-card" v-for="(task, idx) in aiParseResult" :key="idx" @click="task.selected = !task.selected">
-                <view class="task-checkbox" :class="{ checked: task.selected }"></view>
-                <view class="task-card-body">
-                  <text class="task-card-content">{{ task.content }}</text>
-                  <view class="task-card-meta">
-                    <text class="meta-tag">{{ task.subject }}</text>
-                    <text class="meta-text">{{ task.date }}</text>
-                    <text class="meta-text">{{ task.duration }}分钟</text>
-                  </view>
-                </view>
-              </view>
-              <view class="ai-add-all-btn" @click="addParsedTasks">
-                <text>添加选中的任务</text>
-              </view>
-            </view>
-          </view>
-
-          <view v-if="addMode === 'manual' || editingTask">
-            <view class="form-group">
-              <view class="form-label-row">
-                <text class="form-label">科目</text>
-                <text class="form-manage-link" @click="showManageSubjects = true">管理科目</text>
-              </view>
-              <view class="subject-grid">
-                <view
-                  class="subject-item"
-                  v-for="s in subjectOptions"
-                  :key="s"
-                  :class="{ active: form.subject === s }"
-                  @click="form.subject = s"
-                >{{ s }}</view>
-                <view class="subject-item subject-add" @click="showSubjectInput = !showSubjectInput">
-                  <text v-if="!showSubjectInput">+ 自定义</text>
-                  <text v-else>收起</text>
-                </view>
-              </view>
-              <view class="subject-empty-hint" v-if="subjectOptions.length === 0 && !showSubjectInput">
-                <text class="subject-empty-text">还没有科目，点击「+ 自定义」或「管理科目」添加你的科目</text>
-              </view>
-              <view class="input-wrapper" v-if="showSubjectInput" style="margin-top: 10px;">
-                <input class="input-field" v-model="customSubject" placeholder="输入自定义科目..." @confirm="addCustomSubject" />
-              </view>
-            </view>
-
-            <view class="form-group">
-              <text class="form-label">章节</text>
-              <picker v-if="availableChapters.length > 0" mode="selector" :range="availableChapters" @change="onChapterChange">
-                <view class="input-wrapper picker-wrapper">
-                  <text class="picker-value" :class="{ placeholder: !form.chapter }">{{ form.chapter || '选择章节（可选）' }}</text>
-                  <text class="picker-arrow">▾</text>
-                </view>
-              </picker>
-              <view class="input-wrapper" v-else>
-                <input class="input-field" v-model="form.chapter" placeholder="如：第3章 二叉树（无预设章节时可手动输入）" />
-              </view>
-            </view>
-
-            <view class="form-group">
-              <text class="form-label">任务内容</text>
-              <view class="input-wrapper">
-                <textarea class="textarea-field" v-model="form.content" placeholder="请输入任务内容..." maxlength="500" />
-              </view>
-            </view>
-
-            <view class="form-row">
-              <view class="form-group half">
-                <text class="form-label">预计时间（分钟）</text>
-                <view class="input-wrapper">
-                  <input class="input-field" v-model="form.duration" type="number" placeholder="25" />
-                </view>
-              </view>
-              <view class="form-group half">
-                <text class="form-label">开始时间</text>
-                <view class="input-wrapper">
-                  <picker mode="selector" :range="hourOptions" @change="onStartHourChange">
-                    <view class="picker-value">{{ form.start_hour }}:00</view>
-                  </picker>
-                </view>
-              </view>
-            </view>
-
-            <view class="form-group">
-              <text class="form-label">任务类型</text>
-              <view class="type-row">
-                <view class="type-item" :class="{ active: form.type === 'new_study' }" @click="form.type = 'new_study'">新学</view>
-                <view class="type-item" :class="{ active: form.type === 'review' }" @click="form.type = 'review'">复习</view>
-                <view class="type-item" :class="{ active: form.type === 'mistake' }" @click="form.type = 'mistake'">错题</view>
-              </view>
-            </view>
-
-            <view class="form-group" v-if="enableQuadrant">
-              <text class="form-label">四象限分类</text>
-              <view class="type-row">
-                <view class="type-item importance-item" :class="{ active: form.importance === 'important_urgent' }" @click="form.importance = 'important_urgent'">
-                  <view class="imp-dot imp-red"></view>
-                  <text>重要紧急</text>
-                </view>
-                <view class="type-item importance-item" :class="{ active: form.importance === 'important_not_urgent' }" @click="form.importance = 'important_not_urgent'">
-                  <view class="imp-dot imp-blue"></view>
-                  <text>重要不紧急</text>
-                </view>
-                <view class="type-item importance-item" :class="{ active: form.importance === 'urgent_not_important' }" @click="form.importance = 'urgent_not_important'">
-                  <view class="imp-dot imp-orange"></view>
-                  <text>紧急不重要</text>
-                </view>
-                <view class="type-item importance-item" :class="{ active: form.importance === 'not_important_not_urgent' }" @click="form.importance = 'not_important_not_urgent'">
-                  <view class="imp-dot imp-gray"></view>
-                  <text>不紧急不重要</text>
-                </view>
-              </view>
-            </view>
-
-            <view class="form-group">
-              <text class="form-label">循环方式</text>
-              <view class="type-row repeat-row">
-                <view class="type-item" :class="{ active: form.repeat_type === 'none' }" @click="form.repeat_type = 'none'">不循环</view>
-                <view class="type-item" :class="{ active: form.repeat_type === 'daily' }" @click="form.repeat_type = 'daily'">每天</view>
-                <view class="type-item" :class="{ active: form.repeat_type === 'weekday' }" @click="form.repeat_type = 'weekday'">工作日</view>
-                <view class="type-item" :class="{ active: form.repeat_type === 'holiday' }" @click="form.repeat_type = 'holiday'">节假日</view>
-              </view>
-            </view>
-
-            <view class="form-group" v-if="editingTask">
-              <text class="form-label">实际用时（系统根据番茄钟自动记录）</text>
-              <view class="input-wrapper">
-                <input class="input-field" v-model="form.actual_duration" type="number" placeholder="0" />
-              </view>
-            </view>
-          </view>
-        </scroll-view>
-        <view class="modal-footer">
-          <view class="delete-btn" v-if="editingTask" @click="confirmDeleteTask(editingTask)">删除</view>
-          <view class="cancel-btn" @click="closeForm">取消</view>
-          <view class="submit-btn" @click="submitForm">{{ editingTask ? '保存' : '添加' }}</view>
-        </view>
-      </view>
-    </view>
-
-    <view class="manage-overlay" v-if="showManageSubjects" @click="showManageSubjects = false">
-      <view class="manage-dialog" @click.stop>
-        <view class="manage-dialog-top">
-          <text class="manage-dialog-title">管理科目</text>
-          <view class="manage-dialog-close" @click="showManageSubjects = false">✕</view>
-        </view>
-        <view class="manage-dialog-body">
-          <view class="manage-empty" v-if="subjectOptions.length === 0">
-            <text class="manage-empty-text">还没有科目，在下方添加你的第一个科目吧</text>
-          </view>
-          <view class="manage-item" v-for="s in subjectOptions" :key="s">
-            <view class="manage-item-left">
-              <text class="manage-item-name">{{ s }}</text>
-            </view>
-            <view
-              class="manage-item-del"
-              @click="removeSubjectFromManager(s)"
-            >删除</view>
-          </view>
-          <view class="manage-add-row">
-            <input
-              class="manage-add-input"
-              v-model="manageNewSubject"
-              placeholder="输入新科目名称"
-              @confirm="addManageSubject"
-            />
-            <view class="manage-add-btn" @click="addManageSubject">添加</view>
-          </view>
-        </view>
-      </view>
-    </view>
-
-    <view class="manage-overlay" v-if="showAIParseModal" @click="showAIParseModal = false">
-      <view class="manage-dialog ai-dialog" @click.stop>
-        <view class="manage-dialog-top">
-          <text class="manage-dialog-title">🤖 AI解析文字计划</text>
-          <view class="manage-dialog-close" @click="showAIParseModal = false">✕</view>
-        </view>
-        <view class="manage-dialog-body">
-          <view class="ai-hint">
-            <text class="ai-hint-text">粘贴您的文字计划，AI会自动解析并生成任务列表</text>
-            <text class="ai-hint-example">例如："明天上午9点复习数学第三章，下午2点做英语阅读"</text>
-          </view>
-          <textarea class="ai-textarea" v-model="aiParseInput" placeholder="请粘贴您的文字计划..." />
-          <view class="ai-parse-btn-large" @click="parseWithAI">
-            <text class="ai-icon">🔍</text>
-            <text class="ai-text">开始解析</text>
-          </view>
-          <view class="ai-result" v-if="aiParseResult.length > 0">
-            <text class="ai-result-title">解析结果</text>
-            <view class="ai-task-item" v-for="(task, idx) in aiParseResult" :key="idx">
-              <view class="ai-task-checkbox" :class="{ checked: task.selected }" @click="task.selected = !task.selected"></view>
-              <view class="ai-task-info">
-                <text class="ai-task-content">{{ task.content }}</text>
-                <text class="ai-task-meta">{{ task.subject }} · {{ task.date }} · {{ task.duration }}分钟</text>
-              </view>
-            </view>
-            <view class="ai-add-all-btn" @click="addParsedTasks">添加选中任务</view>
-          </view>
-        </view>
-      </view>
-    </view>
+    <TaskFormModal
+      v-model:visible="showAddForm"
+      :task="editingTask"
+      :date="selectedDate"
+      :enable-quadrant="enableQuadrant"
+      :show-a-i-mode="true"
+      @saved="onTaskSaved"
+      @deleted="onTaskDeleted"
+    />
 
     <view class="bottom-space"></view>
   </view>
@@ -484,20 +259,20 @@ import { useTaskStore } from '@/stores/task'
 import { usePlanStore } from '@/stores/plan'
 import { useUserStore } from '@/stores/user'
 import { useFarmStore } from '@/stores/farm'
-import * as api from '@/api/client'
+import { useSubjectsStore } from '@/stores/subjects'
 import TaskFormModal from '@/components/TaskFormModal.vue'
+import * as api from '@/api/client'
 
 const taskStore = useTaskStore()
 const planStore = usePlanStore()
 const userStore = useUserStore()
 const farmStore = useFarmStore()
+const subjectsStore = useSubjectsStore()
 
 const activeTab = ref('all')
 const activeFilter = ref('all')
 const showAddForm = ref(false)
 const editingTask = ref(null)
-const showSubjectInput = ref(false)
-const customSubject = ref('')
 
 const QUADRANT_KEY = 'studymate_quadrant_enabled'
 const enableQuadrant = ref(uni.getStorageSync(QUADRANT_KEY) === 'true')
@@ -548,72 +323,34 @@ const weekCellHour = ref(9)
 let weekCellTouchTimer = null
 
 const subjectOptions = computed(() => subjectsStore.subjects)
-const showManageSubjects = ref(false)
-const manageNewSubject = ref('')
-const showAIParseModal = ref(false)
-const aiParseInput = ref('')
-const aiParseResult = ref([])
-const addMode = ref('manual')
-const hourOptions = Array.from({ length: 18 }, (_, i) => String(i + 6))
 
 async function loadTaskSubjects() {
   await subjectsStore.load()
 }
-function addCustomSubject() {
-  const name = customSubject.value.trim()
-  if (!name) return
-  subjectsStore.add(name)
-  form.value.subject = name; customSubject.value = ''; showSubjectInput.value = false
-}
-function addManageSubject() {
-  const name = manageNewSubject.value.trim()
-  if (!name) return
-  subjectsStore.add(name)
-  manageNewSubject.value = ''
-}
-function removeSubjectFromManager(name) {
-  uni.showModal({ title: '删除科目', content: `确定要删除「${name}」吗？`, success: (res) => {
-    if (res.confirm) {
-      subjectsStore.remove(name)
-      if (form.value.subject === name) form.value.subject = subjectOptions.value[0] || ''
-    }
-  }})
-}
 
-const defaultForm = {
-  subject: '',
-  chapter: '',
-  content: '',
-  duration: 25,
-  actual_duration: 0,
-  type: 'new_study',
-  repeat_type: 'none',
-  importance: '',
-  start_hour: 9
-}
-
-const form = ref({ ...defaultForm })
-
-const availableChapters = computed(() => {
-  const planSubjects = planStore.currentPlan?.subjects || []
-  const currentSubj = planSubjects.find(s => s.name === form.value.subject)
-  if (!currentSubj?.chapters?.length) return []
-  return currentSubj.chapters.map(c => c.name || '').filter(Boolean)
-})
-
-function onChapterChange(e) {
-  const idx = e.detail.value
-  if (availableChapters.value[idx]) {
-    form.value.chapter = availableChapters.value[idx]
-    const planSubjects = planStore.currentPlan?.subjects || []
-    const currentSubj = planSubjects.find(s => s.name === form.value.subject)
-    if (currentSubj?.chapters?.[idx]?.duration) {
-      form.value.duration = currentSubj.chapters[idx].duration
+// Saved/deleted callbacks from the shared TaskFormModal
+async function onTaskSaved() {
+  if (planStore.currentPlan) {
+    await taskStore.getAllTasks(planStore.currentPlan.id)
+    if (viewMode.value === 'today') {
+      await taskStore.getTasksByDate(planStore.currentPlan.id, selectedDate.value)
     }
   }
+  taskDates.value.add(selectedDate.value)
+  saveTaskDatesToStorage()
+  generateCalendar()
+  editingTask.value = null
 }
 
-watch(() => form.value.subject, () => { form.value.chapter = '' })
+async function onTaskDeleted() {
+  if (planStore.currentPlan) {
+    await taskStore.getAllTasks(planStore.currentPlan.id)
+    if (viewMode.value === 'today') {
+      await taskStore.getTasksByDate(planStore.currentPlan.id, selectedDate.value)
+    }
+  }
+  editingTask.value = null
+}
 
 function formatDate(d) {
   const y = d.getFullYear()
@@ -785,103 +522,16 @@ function startPomodoro(task) {
 
 function editTask(task) {
   editingTask.value = task
-  form.value = {
-    subject: task.subject,
-    chapter: task.chapter || '',
-    content: task.content,
-    duration: task.duration,
-    actual_duration: task.actual_duration || 0,
-    type: task.type,
-    repeat_type: task.repeat_type || 'none',
-    importance: task.importance || ''
-  }
-  showAddForm.value = false
+  showAddForm.value = true
 }
 
 function openManualAdd() {
-  addMode.value = 'manual'
-  form.value = { ...defaultForm, subject: subjectOptions.value[0] || '' }
-  showAddForm.value = true
-}
-
-function openAIAdd() {
-  addMode.value = 'ai'
-  showAddForm.value = true
-}
-
-function closeForm() {
-  showAddForm.value = false
   editingTask.value = null
-  form.value = { ...defaultForm }
-  addMode.value = 'manual'
-  aiParseInput.value = ''
-  aiParseResult.value = []
-}
-
-function onStartHourChange(e) {
-  form.value.start_hour = parseInt(hourOptions[e.detail.value])
-}
-
-const allSelected = computed(() => {
-  if (aiParseResult.value.length === 0) return false
-  return aiParseResult.value.every(t => t.selected)
-})
-
-function toggleSelectAll() {
-  const target = !allSelected.value
-  aiParseResult.value.forEach(t => {
-    t.selected = target
-  })
+  showAddForm.value = true
 }
 
 function goToQuadrant() {
   uni.navigateTo({ url: '/pages/daily/quadrant' })
-}
-
-async function submitForm() {
-  if (!form.value.subject || !form.value.content) {
-    uni.showToast({ title: '请填写科目和内容', icon: 'none' })
-    return
-  }
-
-  uni.showLoading({ title: '保存中...' })
-  try {
-    if (editingTask.value) {
-      await taskStore.updateTask(editingTask.value.id, { ...form.value, duration: parseInt(form.value.duration) || 25 })
-    } else {
-      if (!planStore.currentPlan) {
-        uni.showToast({ title: '请先创建学习计划', icon: 'none' })
-        return
-      }
-      await taskStore.createTask({
-        plan_id: planStore.currentPlan.id,
-        date: selectedDate.value,
-        type: form.value.type,
-        subject: form.value.subject,
-        chapter: form.value.chapter,
-        content: form.value.content,
-        duration: parseInt(form.value.duration) || 25,
-        repeat_type: form.value.repeat_type,
-        importance: form.value.importance,
-        start_hour: form.value.start_hour || 9
-      })
-      taskDates.value.add(selectedDate.value)
-      saveTaskDatesToStorage()
-      generateCalendar()
-    }
-    if (planStore.currentPlan) {
-      await taskStore.getAllTasks(planStore.currentPlan.id)
-      if (viewMode.value === 'today') {
-        await taskStore.getTasksByDate(planStore.currentPlan.id, selectedDate.value)
-      }
-    }
-    closeForm()
-    uni.showToast({ title: editingTask.value ? '已更新' : '已添加', icon: 'success' })
-  } catch (e) {
-    uni.showToast({ title: '保存失败', icon: 'none' })
-  } finally {
-    uni.hideLoading()
-  }
 }
 
 function generateCalendar() {
@@ -990,10 +640,8 @@ function onCalMouseUp() {
 function addTaskFromCal() {
   showCalMenu.value = false
   selectedDate.value = calSelectedDate.value
-  form.value = { ...defaultForm, subject: subjectOptions.value[0] || '' }
+  editingTask.value = null
   showAddForm.value = true
-  form.value.date = calSelectedDate.value
-  addMode.value = 'manual'
 }
 
 function selectCalDate() {
@@ -1064,12 +712,8 @@ function handleWeekCellRightClick(dateStr, hour, event) {
 function addTaskFromWeekCell(dateStr, hour) {
   showWeekMenu.value = false
   selectedDate.value = dateStr
-  form.value = { ...defaultForm, subject: subjectOptions.value[0] || '' }
+  editingTask.value = null
   showAddForm.value = true
-  form.value.date = dateStr
-  form.value.start_hour = hour
-  form.value.duration = 60
-  addMode.value = 'manual'
 }
 
 // === 单元格交互：点击展开任务详情，长按编辑/添加 ===
@@ -1194,118 +838,18 @@ function confirmDeleteTask(task) {
   uni.showModal({
     title: '删除任务',
     content: `确定要删除「${task.content}」吗？`,
-    success: (res) => {
+    success: async (res) => {
       if (res.confirm) {
-        taskStore.deleteTask(task.id)
-        uni.showToast({ title: '已删除', icon: 'success' })
-        loadTasks()
+        try {
+          await taskStore.deleteTask(task.id)
+          uni.showToast({ title: '已删除', icon: 'success' })
+          await loadTasks()
+        } catch (e) {
+          uni.showToast({ title: '删除失败', icon: 'none' })
+        }
       }
     }
   })
-}
-
-async function parseWithAI() {
-  if (!aiParseInput.value.trim()) {
-    uni.showToast({ title: '请输入文字计划', icon: 'none' })
-    return
-  }
-
-  uni.showLoading({ title: 'AI解析中...' })
-  try {
-    const result = await api.aiParsePlan({
-      text: aiParseInput.value.trim(),
-      plan_id: planStore.currentPlan?.id
-    })
-    aiParseResult.value = (result.tasks || []).map(t => ({
-      ...t,
-      selected: true
-    }))
-  } catch (e) {
-    uni.hideLoading()
-    uni.showToast({ title: 'AI 服务连接失败，请稍后重试', icon: 'none' })
-    throw e
-  } finally {
-    uni.hideLoading()
-  }
-}
-
-function mockParsePlan(text) {
-  const subjects = subjectOptions.value.length ? [...subjectOptions.value] : []
-  const chKeys = ['二叉树', '链表', '栈', '队列', '图', '排序', '查找', '哈希', '树', '进程', '内存', '文件系统', '设备', '网络层', '传输层', '应用层', '物理层', '数据链路', 'TCP', 'IP', 'HTTP', 'DNS', 'Cache', '流水线', '死锁', 'PV操作', '阅读', '写作', '词汇', '完形', '翻译', '马原', '毛中特', '史纲', '思修', '时政']
-  const today = new Date()
-  const formatDate = (d) => d.toISOString().split('T')[0]
-
-  const lines = text.split(/[,，。；;、\n]/).filter(l => l.trim())
-  return lines.slice(0, 10).map(line => {
-    const t = line.trim()
-    let subject = subjects[0] || ''
-    for (const s of subjects) { if (t.includes(s)) { subject = s; break } }
-
-    let taskDate = formatDate(today)
-    if (t.includes('明天') || t.includes('明日')) { const d = new Date(today); d.setDate(d.getDate() + 1); taskDate = formatDate(d) }
-    else if (t.includes('后天')) { const d = new Date(today); d.setDate(d.getDate() + 2); taskDate = formatDate(d) }
-
-    let chapter = ''
-    for (const k of chKeys) { if (t.includes(k)) { chapter = k; break } }
-
-    const durMatch = t.match(/(\d+)\s*(分钟|小时|min)/)
-    let duration = 30
-    if (durMatch) { duration = t.includes('小时') ? parseInt(durMatch[1]) * 60 : parseInt(durMatch[1]) }
-
-    let start_hour = 9
-    const tm = t.match(/(\d+)点|(\d+):00|上午(\d+)|下午(\d+)/)
-    if (tm) { let h = parseInt(tm[1] || tm[2] || tm[3] || tm[4] || 9); if (t.includes('下午') && h < 12) h += 12; start_hour = Math.min(23, Math.max(6, h)) }
-
-    let type = 'new_study'
-    if (t.includes('复习')) type = 'review'
-    else if (t.includes('错题') || t.includes('重做')) type = 'mistake'
-
-    // 生成简洁摘要
-    let content = t.length > 25 ? t.substring(0, 22) + '...' : t
-
-    return { content, subject, chapter, duration, type, date: taskDate, start_hour, importance: '', repeat_type: 'none', selected: true }
-  })
-}
-
-async function addParsedTasks() {
-  if (!planStore.currentPlan) {
-    uni.showToast({ title: '请先创建学习计划', icon: 'none' })
-    return
-  }
-
-  const selected = aiParseResult.value.filter(t => t.selected)
-  if (selected.length === 0) {
-    uni.showToast({ title: '请选择要添加的任务', icon: 'none' })
-    return
-  }
-
-  uni.showLoading({ title: '添加中...' })
-  let added = 0
-  for (const task of selected) {
-    try {
-      await taskStore.createTask({
-        plan_id: planStore.currentPlan.id,
-        date: task.date || formatDate(new Date()),
-        type: task.type || 'new_study',
-        subject: task.subject || '数据结构',
-        content: task.content,
-        chapter: task.chapter || '',
-        duration: task.duration || 30,
-        repeat_type: task.repeat_type || 'none',
-        start_hour: task.start_hour || 9,
-        importance: task.importance || ''
-      })
-      taskDates.value.add(task.date)
-      added++
-    } catch (e) { /* skip */ }
-  }
-  uni.hideLoading()
-  saveTaskDatesToStorage()
-  generateCalendar()
-  showAIParseModal.value = false
-  aiParseInput.value = ''
-  aiParseResult.value = []
-  uni.showToast({ title: `已添加 ${added} 个任务`, icon: 'success' })
 }
 
 async function switchView(mode) {
