@@ -118,7 +118,9 @@
           </view>
           <view class="form-group">
             <text class="form-label">章节</text>
-            <input class="modal-input" v-model="editingForm.chapter" placeholder="如：第3章 二叉树" />
+            <view class="input-wrap">
+              <input class="input-inner" v-model="editingForm.chapter" placeholder="如：第3章 二叉树" />
+            </view>
           </view>
           <view class="form-group">
             <text class="form-label">任务内容</text>
@@ -134,7 +136,9 @@
           </view>
           <view class="form-group">
             <text class="form-label">预计时间（分钟）</text>
-            <input class="modal-input" type="number" v-model="editingForm.duration" />
+            <view class="input-wrap">
+              <input class="input-inner" type="number" v-model="editingForm.duration" />
+            </view>
           </view>
           <view class="form-group">
             <text class="form-label">循环</text>
@@ -147,10 +151,13 @@
           </view>
           <view class="form-group" v-if="editingForm.actual_duration !== undefined">
             <text class="form-label">实际用时（分钟，系统自动记录）</text>
-            <input class="modal-input" type="number" v-model="editingForm.actual_duration" disabled />
+            <view class="input-wrap">
+              <input class="input-inner" type="number" v-model="editingForm.actual_duration" disabled />
+            </view>
           </view>
         </scroll-view>
         <view class="modal-footer">
+          <view class="delete-btn" @click="deleteTask">删除</view>
           <view class="cancel-btn" @click="showTaskForm = false">取消</view>
           <view class="submit-btn" @click="saveTask">保存</view>
         </view>
@@ -272,6 +279,28 @@ async function saveTask() {
   } catch (e) {
     uni.showToast({ title: '保存失败', icon: 'none' })
   }
+}
+
+async function deleteTask() {
+  uni.showModal({
+    title: '删除任务',
+    content: '确定删除这个任务吗？',
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        await api.deleteTask(editingForm.value.id)
+        showTaskForm.value = false
+        uni.showToast({ title: '删除成功', icon: 'success' })
+        const today = dateUtil.today()
+        if (planStore.currentPlan) {
+          await taskStore.getTasksByDate(planStore.currentPlan.id, today)
+        }
+        await computeStreak()
+      } catch (e) {
+        uni.showToast({ title: '删除失败', icon: 'none' })
+      }
+    }
+  })
 }
 
 async function toggleTaskComplete(task) {
@@ -719,9 +748,11 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .modal-body { padding: 20px; max-height: 60vh; }
 .form-group { margin-bottom: 16px; }
 .form-label { display: block; font-size: 14px; font-weight: 600; color: #1a1a2e; margin-bottom: 8px; }
-.modal-input {
-  width: 100%; padding: 10px 14px; border: 1px solid #e8ece9; border-radius: 10px;
-  font-size: 14px; color: #1a1a2e; background: #fafafa;
+.input-wrap {
+  width: 100%; padding: 10px 14px; border: 1px solid #e8ece9; border-radius: 10px; background: #fafafa;
+}
+.input-inner {
+  width: 100%; font-size: 14px; color: #1a1a2e; border: none; outline: none; background: transparent;
 }
 .modal-textarea {
   width: 100%; min-height: 80px; padding: 10px 14px; border: 1px solid #e8ece9;
@@ -733,5 +764,6 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .type-tag { flex: 1; text-align: center; padding: 10px; border-radius: 10px; font-size: 14px; color: #65746d; background: #f5f7f5; &.active { background: #2f7d4f; color: #fff; } }
 .modal-footer { display: flex; gap: 12px; padding: 20px; border-top: 1px solid #f0f0f0; }
 .cancel-btn { flex: 1; text-align: center; padding: 14px; border-radius: 12px; background: #f5f7f5; font-size: 16px; color: #65746d; }
+.delete-btn { flex: 1; text-align: center; padding: 14px; border-radius: 12px; background: #ffebee; font-size: 16px; color: #c62828; }
 .submit-btn { flex: 1; text-align: center; padding: 14px; border-radius: 12px; background: #2f7d4f; font-size: 16px; color: #fff; font-weight: 500; }
 </style>

@@ -206,6 +206,9 @@
         <view class="task-pomodoro" @click="startPomodoro(task)">
           <text class="pomodoro-icon">🍅</text>
         </view>
+        <view class="task-delete" @click.stop="confirmDeleteTask(task)">
+          <text class="delete-icon">🗑</text>
+        </view>
       </view>
     </view>
 
@@ -1730,6 +1733,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .task-repeat-tag { font-size: 12px; color: #e65100; background: #fff3e0; padding: 2px 8px; border-radius: 8px; font-weight: 500; }
 .task-duration, .task-actual { font-size: 12px; color: #999; }
 .task-pomodoro { flex-shrink: 0; .pomodoro-icon { font-size: 24px; } }
+.task-delete { flex-shrink: 0; padding: 4px 8px; .delete-icon { font-size: 18px; color: #c62828; } }
 
 .empty { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; .empty-icon { font-size: 48px; margin-bottom: 12px; } .empty-text { font-size: 16px; color: #65746d; margin-bottom: 8px; } .empty-hint { font-size: 13px; color: #999; text-align: center; } }
 
@@ -1743,6 +1747,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .modal-body { padding: 20px 24px; flex: 1; overflow-y: auto; }
 .modal-footer { display: flex; gap: 12px; padding: 16px 24px; border-top: 1px solid #f0f0f0; }
 .cancel-btn { flex: 1; padding: 14px; text-align: center; border-radius: 14px; font-size: 16px; color: #65746d; background: #f5f7f5; font-weight: 500; }
+.delete-btn { flex: 1; padding: 14px; text-align: center; border-radius: 14px; font-size: 16px; color: #c62828; background: #ffebee; font-weight: 500; }
 .submit-btn { flex: 2; padding: 14px; text-align: center; border-radius: 14px; font-size: 16px; color: #fff; background: #2f7d4f; font-weight: 600; }
 .form-group { margin-bottom: 16px; &.half { flex: 1; } }
 .form-row { display: flex; gap: 12px; }

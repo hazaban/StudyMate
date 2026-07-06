@@ -118,6 +118,27 @@
             </view>
           </view>
           <view class="form-group">
+            <text class="form-label">重要 / 紧急</text>
+            <view class="importance-grid">
+              <view class="importance-item" :class="{ active: form.importance === 'important-urgent' }" @click="form.importance = 'important-urgent'">
+                <view class="imp-dot imp-red"></view>
+                <text>重要且紧急</text>
+              </view>
+              <view class="importance-item" :class="{ active: form.importance === 'important-not-urgent' }" @click="form.importance = 'important-not-urgent'">
+                <view class="imp-dot imp-blue"></view>
+                <text>重要不紧急</text>
+              </view>
+              <view class="importance-item" :class="{ active: form.importance === 'not-important-urgent' }" @click="form.importance = 'not-important-urgent'">
+                <view class="imp-dot imp-orange"></view>
+                <text>紧急不重要</text>
+              </view>
+              <view class="importance-item" :class="{ active: form.importance === 'not-important-not-urgent' }" @click="form.importance = 'not-important-not-urgent'">
+                <view class="imp-dot imp-gray"></view>
+                <text>不重要不紧急</text>
+              </view>
+            </view>
+          </view>
+          <view class="form-group">
             <text class="form-label">日期</text>
             <picker mode="date" :value="form.date" @change="onDateChange">
               <view class="picker-value">{{ form.date }}</view>
@@ -431,6 +452,20 @@ onMounted(async () => {
   padding: 12px; border: 1px solid #e8ece9; border-radius: 12px;
   font-size: 14px; color: #1a1a2e; background: #fafafa;
 }
+.importance-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+.importance-item {
+  display: flex; align-items: center; gap: 6px; padding: 10px 12px;
+  border: 1px solid #e8ece9; border-radius: 10px; font-size: 13px;
+  color: #1a1a2e; background: #fafafa;
+  &.active { border-color: #2f7d4f; background: #e8f5e9; color: #2f7d4f; font-weight: 600; }
+}
+.imp-dot { width: 8px; height: 8px; border-radius: 50%; }
+.imp-red { background: #ff4d4f; }
+.imp-blue { background: #1890ff; }
+.imp-orange { background: #fa8c16; }
+.imp-gray { background: #bfbfbf; }
 
 .btn-cancel {
   flex: 1; padding: 13px; text-align: center; border-radius: 12px;
