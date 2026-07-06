@@ -1574,17 +1574,16 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 
 /* 周视图主体容器 */
 .week-container {
-  display: flex; flex-direction: row; height: 524px;
+  display: flex; flex-direction: row;
 }
 
 /* 左侧固定时间轴容器 */
 .week-timeline-container {
   width: 50px; flex-shrink: 0; background: #fafafa;
   border-right: 1px solid #f0f0f0; display: flex; flex-direction: column;
-  height: 100%;
 }
 .week-timeline-header {
-  height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  height: 60px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
   border-bottom: 2px solid #f0f0f0; font-size: 11px; color: #999; font-weight: 500;
 }
 .week-timeline-scroll {
@@ -1596,20 +1595,22 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 
 /* 右侧日期区域 */
 .week-dates-container {
-  flex: 1; overflow: hidden; height: 100%;
+  flex: 1; overflow: hidden;
 }
 .week-dates-hscroll {
-  overflow-x: auto; overflow-y: hidden; height: 100%;
+  overflow-x: auto; overflow-y: hidden;
 }
-.week-dates-table { height: 100%; display: flex; flex-direction: column; }
+.week-dates-table { display: flex; flex-direction: column; }
 
 /* 日期头行 */
 .week-days-header {
   display: flex; background: #fff; border-bottom: 2px solid #f0f0f0;
+  height: 60px;
 }
 .week-day-header {
-  flex-shrink: 0; text-align: center; padding: 10px 2px;
+  flex-shrink: 0; text-align: center;
   border-right: 1px solid #f0f0f0;
+  height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center;
   &:last-child { border-right: none; }
   &.today {
     .week-day-num { color: #2f7d4f; font-weight: 700; }
@@ -1619,9 +1620,9 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   }
   &.weekend { background: rgba(255,248,220,0.3); .week-day-name, .week-day-num { color: #8b7355; } }
 }
-.week-day-name { display: block; font-size: 11px; color: #999; margin-bottom: 3px; }
-.week-day-num { font-size: 18px; color: #1a1a2e; font-weight: 600; }
-.week-day-dot { width: 8px; height: 8px; border-radius: 50%; background: #2f7d4f; margin: 4px auto 0; }
+.week-day-name { display: block; font-size: 11px; color: #999; margin-bottom: 2px; }
+.week-day-num { font-size: 18px; color: #1a1a2e; font-weight: 600; line-height: 1; }
+.week-day-dot { width: 8px; height: 8px; border-radius: 50%; background: #2f7d4f; margin-top: 3px; }
 
 /* 格子体纵向滚动 */
 .week-dates-scroll {
@@ -1630,8 +1631,9 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 
 /* 时间标签 */
 .time-label {
-  height: 72px; display: flex; align-items: flex-start; justify-content: center;
-  padding-top: 4px; font-size: 10px; color: #999; font-weight: 500;
+  height: 72px; display: flex; align-items: flex-start; justify-content: flex-end;
+  padding-right: 6px; padding-top: 2px; font-size: 10px; color: #999; font-weight: 500;
+  box-sizing: border-box; border-bottom: 1px solid #f5f5f5;
 }
 .week-grid { display: flex; }
 .week-column { flex-shrink: 0; border-right: 1px solid #f0f0f0;
@@ -1640,7 +1642,9 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 .week-cell {
   height: 72px; border-bottom: 1px solid #f5f5f5;
-  position: relative; padding: 3px; overflow-y: auto;
+  position: relative; padding: 2px 3px; overflow-y: auto;
+  box-sizing: border-box;
+  &:last-child { border-bottom: none; }
   &:nth-child(odd) { background: rgba(248,250,248,0.5); }
   &.expanded {
     height: auto; overflow: visible; background: rgba(47,125,79,0.06);
