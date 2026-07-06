@@ -40,8 +40,12 @@
         <view class="subject-list">
           <view class="subject-item" v-for="(subj, idx) in form.subjects" :key="idx">
             <view class="subject-row">
-              <input class="subject-input name" v-model="subj.name" placeholder="科目名称" />
-              <input class="subject-input score" v-model="subj.target_score" placeholder="目标分(选填)" />
+              <view class="subject-input-wrapper name">
+                <input class="subject-input" v-model="subj.name" placeholder="科目名称" />
+              </view>
+              <view class="subject-input-wrapper score">
+                <input class="subject-input" v-model="subj.target_score" placeholder="目标分(选填)" />
+              </view>
               <view class="subject-remove" @click="form.subjects.splice(idx, 1)">✕</view>
             </view>
           </view>
@@ -174,14 +178,13 @@ onMounted(async () => {
 .subject-list { display: flex; flex-direction: column; gap: 10px; }
 .subject-item { background: #f5f7f5; border-radius: 12px; padding: 12px; position: relative; z-index: 1; }
 .subject-row { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
-.subject-input {
-  flex: 1; border: 1.5px solid #e8ece9; border-radius: 12px; background: #fff !important; min-width: 0;
-  pointer-events: auto; cursor: text; z-index: 10;
+.subject-input-wrapper {
+  flex: 1; border: 1.5px solid #e8ece9; border-radius: 12px; background: #fff; padding: 12px 14px;
   &.score { flex: 0 0 120px; }
 }
-.subject-input :deep(.uni-input-wrapper) { background: transparent !important; width: 100%; padding: 12px 14px; }
-.subject-input :deep(.uni-input-input) { color: #1a1a2e !important; font-size: 16px; background: transparent !important; }
-.subject-input :deep(.uni-input-placeholder) { color: #999; font-size: 14px; }
+.subject-input {
+  width: 100%; font-size: 16px; color: #1a1a2e; border: none; outline: none; background: transparent;
+}
 .subject-remove { font-size: 18px; color: #ef5350; padding: 6px; flex-shrink: 0; }
 .add-subject-btn { padding: 12px; text-align: center; border: 2px dashed #d0d5d2; border-radius: 12px; font-size: 15px; color: $accent; }
 
