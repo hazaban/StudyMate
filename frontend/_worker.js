@@ -100,15 +100,20 @@ export default {
           });
         }
 
-        const result = await callGLM(messages, model, body.temperature);
+        const rawResult = await callGLM(messages, model, body.temperature);
         let data;
+        // 尝试多种方式提取 JSON
+        let cleaned = (rawResult || '').trim()
+          .replace(/```json\s*/gi, '')
+          .replace(/```\s*/gi, '')
+          .trim();
+        // 找第一个 { 到最后一个 }
+        const m = cleaned.match(/\{[\s\S]*\}/);
+        if (m) cleaned = m[0];
         try {
-          // Try to parse as JSON
-          const cleaned = result.replace(/```(?:json)?\s*\n?/g, '').trim();
           data = JSON.parse(cleaned);
         } catch (e) {
-          // Return raw text if not valid JSON
-          data = { text: result };
+          data = { text: rawResult, raw: true };
         }
 
         return new Response(JSON.stringify(data), {
