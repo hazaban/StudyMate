@@ -112,10 +112,13 @@
               :key="hourIdx"
               :data-hour="hour"
               :data-date="day.dateStr"
+              @click.stop="onWeekCellClick(day.dateStr, hour)"
               @contextmenu.prevent="handleWeekCellRightClick(day.dateStr, hour, $event)"
               @touchstart="onWeekCellTouchStart(day.dateStr, hour)"
-              @touchend="onWeekCellTouchEnd">
-              <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed', [getSubjectClass(task.subject)]: true }" @click.stop="editTask(task)">
+              @touchend.prevent="onWeekCellTouchEnd"
+              @mousedown="onWeekCellMouseDown(day.dateStr, hour)"
+              @mouseup="onWeekCellMouseUp">
+              <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed', [getSubjectClass(task.subject)]: true }" @click.stop="showTaskDetail(task, day.dateStr, hour)">
                 <view class="task-importance-dot" :class="getImportanceClass(task.importance)" v-if="task.importance && enableQuadrant"></view>
                 <text class="week-task-content">{{ task.content }}</text>
                 <text class="week-task-duration">{{ task.duration }}min</text>
@@ -125,7 +128,27 @@
         </view>
         <view class="current-time-line" v-if="viewMode === 'week'" :style="currentTimeLineStyle"></view>
         <view class="week-hint">
-          <text class="week-hint-text">长按或右键时间格添加任务</text>
+          <text class="week-hint-text">点击任务查看详情，长按格子编辑/添加任务</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 周视图任务详情弹出层 -->
+    <view class="week-detail-overlay" v-if="showWeekDetail" @click="showWeekDetail = false">
+      <view class="week-detail-card" @click.stop>
+        <view class="week-detail-header">
+          <text class="week-detail-subject">{{ weekDetailTask?.subject }}</text>
+          <view class="week-detail-close" @click="showWeekDetail = false">✕</view>
+        </view>
+        <text class="week-detail-content">{{ weekDetailTask?.content }}</text>
+        <view class="week-detail-meta">
+          <text class="week-detail-tag">{{ getTypeLabel(weekDetailTask?.type) }}</text>
+          <text class="week-detail-tag">{{ weekDetailTask?.duration }}分钟</text>
+          <text class="week-detail-tag" v-if="weekDetailTask?.status === 'completed'">已完成</text>
+        </view>
+        <view class="week-detail-actions">
+          <view class="week-detail-btn" @click="editTask(weekDetailTask); showWeekDetail = false">✏️ 编辑</view>
+          <view class="week-detail-btn danger" v-if="weekDetailTask" @click="confirmDeleteTask(weekDetailTask); showWeekDetail = false">🗑 删除</view>
         </view>
       </view>
     </view>
@@ -965,6 +988,16 @@ function loadTaskDates() {
 
 // ==================== 周视图时间格交互 ====================
 
+// 任务详情弹出层
+const showWeekDetail = ref(false)
+const weekDetailTask = ref(null)
+
+function showTaskDetail(task, dateStr, hour) {
+  weekDetailTask.value = task
+  showWeekDetail.value = true
+}
+
+// 右键菜单
 function handleWeekCellRightClick(dateStr, hour, event) {
   showWeekMenu.value = false
   weekCellDate.value = dateStr
@@ -975,19 +1008,7 @@ function handleWeekCellRightClick(dateStr, hour, event) {
   showWeekMenu.value = true
 }
 
-function onWeekCellTouchStart(dateStr, hour) {
-  weekCellDate.value = dateStr
-  weekCellHour.value = hour
-  clearTimeout(weekCellTouchTimer)
-  weekCellTouchTimer = setTimeout(() => {
-    addTaskFromWeekCell(dateStr, hour)
-  }, 500)
-}
-
-function onWeekCellTouchEnd() {
-  clearTimeout(weekCellTouchTimer)
-}
-
+// 右键菜单选择添加
 function addTaskFromWeekCell(dateStr, hour) {
   showWeekMenu.value = false
   selectedDate.value = dateStr
@@ -997,8 +1018,93 @@ function addTaskFromWeekCell(dateStr, hour) {
   form.value.duration = 60
 }
 
+// === 单元格交互：点击展开任务详情，长按编辑/添加 ===
+let weekCellDownTime = 0
+let weekCellDidLong = false
+let weekCellDownDate = ''
+let weekCellDownHour = 0
+let weekCellMouseTimer = null
+
+function onWeekCellClick(dateStr, hour) {
+  // 刚做完长按或右键后忽略点击
+  if (weekCellDidLong) return
+  const tasks = getTasksAt(dateStr, hour)
+  if (tasks.length === 1) {
+    showTaskDetail(tasks[0], dateStr, hour)
+  } else if (tasks.length > 1) {
+    // 多个任务时展示列表
+    weekDetailTask.value = tasks[0]
+    showWeekDetail.value = true
+  }
+  // 无任务：点击无操作（长按才添加）
+}
+
+function onWeekCellTouchStart(dateStr, hour) {
+  weekCellDidLong = false
+  weekCellDownDate = dateStr
+  weekCellDownHour = hour
+  weekCellDownTime = Date.now()
+  clearTimeout(weekCellTouchTimer)
+  weekCellTouchTimer = setTimeout(() => {
+    weekCellDidLong = true
+    const tasksAtCell = getTasksAt(dateStr, hour)
+    if (tasksAtCell.length > 0) {
+      // 有任务：直接编辑第一个
+      editTask(tasksAtCell[0])
+    } else {
+      // 无任务：弹右键菜单
+      weekCellDate.value = dateStr
+      weekCellHour.value = hour
+      showWeekMenu.value = true
+      weekMenuX.value = 100
+      weekMenuY.value = 200
+    }
+  }, 300)
+}
+
+function onWeekCellTouchEnd() {
+  clearTimeout(weekCellTouchTimer)
+}
+
+function onWeekCellMouseDown(dateStr, hour) {
+  weekCellDidLong = false
+  weekCellDownDate = dateStr
+  weekCellDownHour = hour
+  weekCellDownTime = Date.now()
+  clearTimeout(weekCellMouseTimer)
+  weekCellMouseTimer = setTimeout(() => {
+    weekCellDidLong = true
+    const tasksAtCell = getTasksAt(dateStr, hour)
+    if (tasksAtCell.length > 0) {
+      editTask(tasksAtCell[0])
+    } else {
+      weekCellDate.value = dateStr
+      weekCellHour.value = hour
+      handleWeekCellRightClick(dateStr, hour, { clientX: 200, clientY: 300 })
+    }
+  }, 300)
+}
+
+function onWeekCellMouseUp() {
+  clearTimeout(weekCellMouseTimer)
+}
+
 function closeWeekMenu() {
   showWeekMenu.value = false
+}
+
+function confirmDeleteTask(task) {
+  uni.showModal({
+    title: '删除任务',
+    content: `确定要删除「${task.content}」吗？`,
+    success: (res) => {
+      if (res.confirm) {
+        taskStore.deleteTask(task.id)
+        uni.showToast({ title: '已删除', icon: 'success' })
+        loadTasks()
+      }
+    }
+  })
 }
 
 async function parseWithAI() {
@@ -1478,6 +1584,25 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   font-weight: 500; line-height: 1.3;
 }
 .week-task-duration { font-size: 9px; color: #999; }
+
+/* 任务详情弹出层 */
+.week-detail-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 300;
+  display: flex; align-items: center; justify-content: center; padding: 30px;
+}
+.week-detail-card {
+  background: #fff; border-radius: 20px; padding: 24px; width: 100%; max-width: 360px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+}
+.week-detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.week-detail-subject { font-size: 13px; padding: 4px 10px; background: #e8f5e9; color: #2f7d4f; border-radius: 8px; font-weight: 500; }
+.week-detail-close { font-size: 18px; color: #999; padding: 4px; }
+.week-detail-content { display: block; font-size: 17px; color: #1a1a2e; font-weight: 600; line-height: 1.5; margin-bottom: 16px; }
+.week-detail-meta { display: flex; gap: 8px; margin-bottom: 20px; }
+.week-detail-tag { font-size: 12px; padding: 4px 10px; background: #f5f7f5; border-radius: 8px; color: #65746d; }
+.week-detail-actions { display: flex; gap: 10px; }
+.week-detail-btn { flex: 1; padding: 12px; text-align: center; border-radius: 12px; font-size: 14px; background: #f5f7f5; color: #333; font-weight: 500;
+  &.danger { background: #ffebee; color: #c62828; } }
 
 .week-hint {
   position: absolute;
