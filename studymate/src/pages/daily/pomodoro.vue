@@ -34,8 +34,30 @@
         <view class="ctrl-btn reset" @click="resetTimer" v-if="isRunning || isPaused || hasProgress">
           <text>重置</text>
         </view>
+        <view class="ctrl-btn complete" @click="completeSession" v-if="timerMode === 'countup' && (isRunning || isPaused || hasProgress)">
+          <text>✓ 完成</text>
+        </view>
         <view class="ctrl-btn start" @click="toggleTimer" :class="{ pause: isRunning }">
           <text>{{ isRunning ? '⏸ 暂停' : '▶ 开始专注' }}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- Timer Mode -->
+    <view class="section-card">
+      <view class="section-header">
+        <text class="section-title">⏰ 计时模式</text>
+      </view>
+      <view class="mode-toggle">
+        <view class="mode-btn" :class="{ active: timerMode === 'countdown' }" @click="switchMode('countdown')">
+          <text class="mode-icon">⏳</text>
+          <text class="mode-label">倒计时</text>
+          <text class="mode-desc">设定时长，倒数完成</text>
+        </view>
+        <view class="mode-btn" :class="{ active: timerMode === 'countup' }" @click="switchMode('countup')">
+          <text class="mode-icon">⏱</text>
+          <text class="mode-label">正计时</text>
+          <text class="mode-desc">自由计时，随时停止</text>
         </view>
       </view>
     </view>
@@ -91,7 +113,7 @@
       <view class="record-list" v-if="todayRecords.length > 0">
         <view class="record-item" v-for="(record, idx) in todayRecords" :key="idx">
           <view class="record-left">
-            <text class="record-icon">{{ record.type === 'focus' ? '🍅' : '✏️' }}</text>
+            <text class="record-icon">{{ record.type === 'countup' ? '⏱' : (record.type === 'focus' ? '🍅' : '✏️') }}</text>
             <view class="record-info">
               <text class="record-name">{{ record.taskName }}</text>
               <text class="record-time">{{ record.time }}</text>
@@ -180,6 +202,7 @@ const farmStore = useFarmStore()
 const planStore = usePlanStore()
 
 // --- Time settings ---
+const timerMode = ref('countdown') // 'countdown' | 'countup'
 const focusTime = ref(25)
 const breakTime = ref(5)
 const focusTimeInput = ref('25')
@@ -190,6 +213,7 @@ const isRunning = ref(false)
 const isPaused = ref(false)
 const isBreak = ref(false)
 const timeRemaining = ref(25 * 60)
+const elapsedSeconds = ref(0) // 正计时模式下的已计时秒数
 const completedPomodoros = ref(0)
 const totalMinutes = ref(0)
 const todayRecords = ref([])
@@ -216,37 +240,73 @@ const todayTasks = computed(() => taskStore.todayTasks || [])
 const currentFocusSeconds = computed(() => focusTime.value * 60)
 const currentBreakSeconds = computed(() => breakTime.value * 60)
 const currentTotalSeconds = computed(() => isBreak.value ? currentBreakSeconds.value : currentFocusSeconds.value)
-const hasProgress = computed(() => timeRemaining.value < currentTotalSeconds.value)
+const hasProgress = computed(() => {
+  if (timerMode.value === 'countup') return elapsedSeconds.value > 0
+  return timeRemaining.value < currentTotalSeconds.value
+})
 
 const formattedTime = computed(() => {
-  const t = Math.max(0, timeRemaining.value)
-  const m = Math.floor(t / 60)
-  const s = t % 60
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  if (timerMode.value === 'countup') {
+    // 正计时：显示已计时时间
+    const t = elapsedSeconds.value
+    const m = Math.floor(t / 60)
+    const s = t % 60
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  } else {
+    // 倒计时：显示剩余时间
+    const t = Math.max(0, timeRemaining.value)
+    const m = Math.floor(t / 60)
+    const s = t % 60
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  }
 })
 
 const statusLabel = computed(() => {
   if (isBreak.value) return '休息中 ☕'
-  if (isRunning.value) return '专注中 🔥'
+  if (isRunning.value) return timerMode.value === 'countup' ? '计时中 🔥' : '专注中 🔥'
   if (isPaused.value) return '已暂停'
-  return '准备专注'
+  return timerMode.value === 'countup' ? '准备计时' : '准备专注'
 })
 
 const circleStyle = computed(() => {
-  const total = currentTotalSeconds.value
-  const elapsed = Math.max(0, total - timeRemaining.value)
-  const pct = total > 0 ? Math.min(100, (elapsed / total) * 100) : 0
-  const deg = pct * 3.6
-  return { background: `conic-gradient(${isBreak.value ? '#66bb6a' : '#ef5350'} ${deg}deg, #e8ece9 ${deg}deg)` }
+  if (timerMode.value === 'countup') {
+    // 正计时：显示已计时的进度（以60分钟为最大值）
+    const maxMinutes = 60
+    const elapsedMinutes = elapsedSeconds.value / 60
+    const pct = Math.min(100, (elapsedMinutes / maxMinutes) * 100)
+    const deg = pct * 3.6
+    return { background: `conic-gradient(#2f7d4f ${deg}deg, #e8ece9 ${deg}deg)` }
+  } else {
+    // 倒计时：显示剩余时间的进度
+    const total = currentTotalSeconds.value
+    const elapsed = Math.max(0, total - timeRemaining.value)
+    const pct = total > 0 ? Math.min(100, (elapsed / total) * 100) : 0
+    const deg = pct * 3.6
+    return { background: `conic-gradient(${isBreak.value ? '#66bb6a' : '#ef5350'} ${deg}deg, #e8ece9 ${deg}deg)` }
+  }
 })
 
 watch(focusTime, v => { focusTimeInput.value = String(v) })
 watch(breakTime, v => { breakTimeInput.value = String(v) })
-watch([focusTime, breakTime], () => {
+watch([focusTime, breakTime, timerMode], () => {
   uni.setStorageSync('studymate_pomodoro_settings', JSON.stringify({
-    focusTime: focusTime.value, breakTime: breakTime.value
+    focusTime: focusTime.value, breakTime: breakTime.value, timerMode: timerMode.value
   }))
 })
+
+// --- Mode Switch ---
+function switchMode(mode) {
+  if (isRunning.value) {
+    uni.showToast({ title: '请先停止计时', icon: 'none' })
+    return
+  }
+  timerMode.value = mode
+  if (mode === 'countup') {
+    elapsedSeconds.value = 0
+  } else {
+    timeRemaining.value = currentFocusSeconds.value
+  }
+}
 
 // --- Time adjust ---
 function adjustFocusTime(d) {
@@ -282,18 +342,31 @@ function onBreakTimeBlur() {
 function resetTimer() {
   isRunning.value = false; isPaused.value = false; isBreak.value = false
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null }
-  timeRemaining.value = currentFocusSeconds.value
+  if (timerMode.value === 'countup') {
+    elapsedSeconds.value = 0
+  } else {
+    timeRemaining.value = currentFocusSeconds.value
+  }
 }
+
 function toggleTimer() {
   if (isRunning.value) {
     isRunning.value = false; isPaused.value = true
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null }
   } else {
     isRunning.value = true; isPaused.value = false
-    timerInterval = setInterval(() => {
-      timeRemaining.value--
-      if (timeRemaining.value <= 0) completeSession()
-    }, 1000)
+    if (timerMode.value === 'countup') {
+      // 正计时模式：累加时间
+      timerInterval = setInterval(() => {
+        elapsedSeconds.value++
+      }, 1000)
+    } else {
+      // 倒计时模式：递减时间
+      timerInterval = setInterval(() => {
+        timeRemaining.value--
+        if (timeRemaining.value <= 0) completeSession()
+      }, 1000)
+    }
   }
 }
 
@@ -301,16 +374,24 @@ async function completeSession() {
   isRunning.value = false; isPaused.value = false
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null }
 
-  if (!isBreak.value) {
-    const dur = Math.round(currentFocusSeconds.value / 60)
+  // 计算本次时长
+  let dur = 0
+  if (timerMode.value === 'countup') {
+    dur = Math.round(elapsedSeconds.value / 60)
+    elapsedSeconds.value = 0
+  } else {
+    dur = Math.round(currentFocusSeconds.value / 60)
+  }
+
+  if (!isBreak.value && dur > 0) {
     completedPomodoros.value++
     totalMinutes.value += dur
 
-    const name = currentTaskName.value || '番茄钟专注'
+    const name = currentTaskName.value || (timerMode.value === 'countup' ? '正计时专注' : '番茄钟专注')
     const now = new Date()
     const ts = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`
 
-    todayRecords.value.unshift({ type: 'focus', taskName: name, time: ts, duration: dur, date: today.value })
+    todayRecords.value.unshift({ type: timerMode.value === 'countup' ? 'countup' : 'focus', taskName: name, time: ts, duration: dur, date: today.value })
     saveRecords()
 
     if (planStore.currentPlan) {
@@ -325,7 +406,7 @@ async function completeSession() {
         await createFocusRecord({
           plan_id: planStore.currentPlan.id,
           date: today.value,
-          type: 'focus',
+          type: timerMode.value === 'countup' ? 'countup' : 'focus',
           subject: subj,
           task_id: currentTaskId.value || null,
           task_name: name,
@@ -359,19 +440,22 @@ async function completeSession() {
     uni.showToast({ title: `完成 ${dur} 分钟专注!`, icon: 'success' })
 
     notifyCompletion(
-      '🎉 番茄钟完成',
-      `已完成 ${dur} 分钟专注学习${currentTaskName.value ? '：' + currentTaskName.value : ''}，休息一下吧！`,
+      '🎉 专注完成',
+      `已完成 ${dur} 分钟专注学习${currentTaskName.value ? '：' + currentTaskName.value : ''}`,
       true
     )
 
-    const bs = currentBreakSeconds.value
-    if (bs > 0) {
-      isBreak.value = true; timeRemaining.value = bs; isRunning.value = true
-      timerInterval = setInterval(() => { timeRemaining.value--; if (timeRemaining.value <= 0) completeSession() }, 1000)
-    } else {
-      timeRemaining.value = currentFocusSeconds.value
+    // 倒计时模式下，开始休息
+    if (timerMode.value === 'countdown') {
+      const bs = currentBreakSeconds.value
+      if (bs > 0) {
+        isBreak.value = true; timeRemaining.value = bs; isRunning.value = true
+        timerInterval = setInterval(() => { timeRemaining.value--; if (timeRemaining.value <= 0) completeSession() }, 1000)
+      } else {
+        timeRemaining.value = currentFocusSeconds.value
+      }
     }
-  } else {
+  } else if (isBreak.value) {
     isBreak.value = false
     timeRemaining.value = currentFocusSeconds.value
     notifyCompletion(
@@ -571,6 +655,7 @@ onMounted(async () => {
       const p = JSON.parse(s)
       if (p.focusTime) focusTime.value = p.focusTime
       if (p.breakTime) breakTime.value = p.breakTime
+      if (p.timerMode) timerMode.value = p.timerMode
     } catch (e) { /* */ }
   }
   focusTimeInput.value = String(focusTime.value)
@@ -615,7 +700,12 @@ onMounted(async () => {
   // Save merged records back to localStorage
   uni.setStorageSync('studymate_pomodoro_records', JSON.stringify(allRecords))
 
-  timeRemaining.value = currentFocusSeconds.value
+  // Initialize timer based on mode
+  if (timerMode.value === 'countup') {
+    elapsedSeconds.value = 0
+  } else {
+    timeRemaining.value = currentFocusSeconds.value
+  }
 
   // #ifdef H5
   if ('Notification' in window && Notification.permission === 'default') {
@@ -626,7 +716,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   uni.setStorageSync('studymate_pomodoro_settings', JSON.stringify({
-    focusTime: focusTime.value, breakTime: breakTime.value
+    focusTime: focusTime.value, breakTime: breakTime.value, timerMode: timerMode.value
   }))
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null }
 })
@@ -696,11 +786,33 @@ onUnmounted(() => {
   transition: all 0.15s;
   &:active { transform: scale(0.95); }
   &.reset { background: $bg; color: $muted; border: 1px solid $rule; }
+  &.complete {
+    background: $accent; color: #fff; box-shadow: 0 4px 16px rgba(47,125,79,0.3);
+  }
   &.start {
     background: $accent; color: #fff; box-shadow: 0 4px 16px rgba(47,125,79,0.3);
     &.pause { background: #ef5350; box-shadow: 0 4px 16px rgba(#ef5350,.3); }
   }
 }
+
+/* ===== Timer Mode ===== */
+.mode-toggle {
+  display: flex; gap: 12px;
+}
+.mode-btn {
+  flex: 1; padding: 14px; border-radius: 14px; background: $bg; border: 2px solid $rule;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  transition: all 0.2s;
+  &:active { transform: scale(0.97); }
+  &.active {
+    background: linear-gradient(135deg, rgba(47,125,79,0.08), rgba(47,125,79,0.15));
+    border-color: $accent;
+  }
+}
+.mode-icon { font-size: 24px; }
+.mode-label { font-size: 14px; font-weight: 600; color: $ink; }
+.mode-desc { font-size: 11px; color: $muted; }
+.mode-btn.active .mode-label { color: $accent; }
 
 /* ===== Time Settings ===== */
 .time-row {
