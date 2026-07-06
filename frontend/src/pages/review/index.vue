@@ -635,18 +635,11 @@ const activeSubject = ref('')
 const activeTags = ref([])
 const tagLogic = ref('or') // 'or' = any tag match, 'and' = all tags must match
 
-const defaultSubjects = [] // No preset subjects - each user defines their own
 const allSubjects = computed(() => subjectsStore.subjects)
 
 async function loadSubjects() {
   if (!userStore.isLoggedIn) return
   await subjectsStore.load()
-}
-async function saveSubjectToBackend(name) {
-  await subjectsStore.add(name)
-}
-async function deleteSubjectFromBackend(name) {
-  await subjectsStore.remove(name)
 }
 
 // ── Cards state ──
@@ -727,13 +720,13 @@ function toggleEditMistakeTag(tag) {
 function addMistakeCustomSubject() {
   const n = customMistakeSubject.value.trim()
   if (!n) return
-  if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n); saveSubjectToBackend(n) }
+  subjectsStore.add(n)
   mistakeForm.value.subject = n; customMistakeSubject.value = ''; showMistakeSubjectInput.value = false
 }
 function addEditMistakeCustomSubject() {
   const n = customEditMistakeSubject.value.trim()
   if (!n) return
-  if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n); saveSubjectToBackend(n) }
+  subjectsStore.add(n)
   editMistakeForm.value.subject = n; customEditMistakeSubject.value = ''; showEditMistakeSubjectInput.value = false
 }
 
@@ -773,7 +766,7 @@ const showEditMistake = ref(false)
 const editingMistakeId = ref(null)
 const editMistakeTagInput = ref('')
 const editMistakeForm = ref({ subject: '', question: '', answer: '', analysis: '', difficulty: 'medium', tags: [], questionImages: [], answerImages: [] })
-const mistakeForm = ref({ subject: '数据结构', question: '', answer: '', analysis: '', difficulty: 'medium', tags: [], questionImages: [], answerImages: [] })
+const mistakeForm = ref({ subject: '', question: '', answer: '', analysis: '', difficulty: 'medium', tags: [], questionImages: [], answerImages: [] })
 
 const masteredMistakesCount = computed(() => mistakes.value.filter(m => m.mastered === '1').length)
 const activeMistakesCount = computed(() => mistakes.value.filter(m => m.mastered === '0').length)
@@ -847,23 +840,21 @@ function toggleTag(tag) {
 function addManageSubject() {
   const n = manageNewSubject.value.trim()
   if (!n) return
-  if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n); saveSubjectToBackend(n) }
+  subjectsStore.add(n)
   manageNewSubject.value = ''
 }
 function removeSubject(n) {
   uni.showModal({ title: '删除科目', content: `确定要删除「${n}」吗？`, success: r => {
     if (r.confirm) {
-      customSubjects.value = customSubjects.value.filter(s => s !== n)
-      allSubjects.value = allSubjects.value.filter(s => s !== n)
-      deleteSubjectFromBackend(n)
+      subjectsStore.remove(n)
       if (activeSubject.value === n) { activeSubject.value = ''; activeTags.value = [] }
     }
   }})
 }
 
 // ── Cards functions ──
-function addCardCustomSubject() { const n = customSubject.value.trim(); if (!n) return; if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n); saveSubjectToBackend(n) }; cardForm.value.subject = n; customSubject.value = ''; showCardSubjectInput.value = false }
-function addEditCardCustomSubject() { const n = customEditCardSubject.value.trim(); if (!n) return; if (!allSubjects.value.includes(n)) { allSubjects.value.push(n); customSubjects.value.push(n); saveSubjectToBackend(n) }; editForm.value.subject = n; customEditCardSubject.value = ''; showEditCardSubjectInput.value = false }
+function addCardCustomSubject() { const n = customSubject.value.trim(); if (!n) return; subjectsStore.add(n); cardForm.value.subject = n; customSubject.value = ''; showCardSubjectInput.value = false }
+function addEditCardCustomSubject() { const n = customEditCardSubject.value.trim(); if (!n) return; subjectsStore.add(n); editForm.value.subject = n; customEditCardSubject.value = ''; showEditCardSubjectInput.value = false }
 // ── Image upload: 拍照 / 相册 / Ctrl+V 粘贴 ──
 const activePasteTarget = ref('')
 function setPasteTarget(target) {
@@ -997,7 +988,7 @@ async function submitCard() {
     const answerImages = await uploadNewImages(cardForm.value.answerImages, uploadUtil.uploadCardAnswer, userId)
     uni.showLoading({ title: '保存中...', mask: true })
     await api.createCard({ plan_id: planStore.currentPlan.id, question: cardForm.value.question, answer: cardForm.value.answer, subject: cardForm.value.subject, mastery_level: 'unmastered', next_review_date: today, question_images: questionImages, answer_images: answerImages, tags: cardForm.value.tags })
-    showCardForm.value = false; cardForm.value = { subject: '数据结构', question: '', answer: '', tags: [], questionImages: [], answerImages: [] }
+    showCardForm.value = false; cardForm.value = { subject: '', question: '', answer: '', tags: [], questionImages: [], answerImages: [] }
     uni.showToast({ title: '添加成功', icon: 'success' }); await loadCards()
   } catch (e) { uni.showToast({ title: e.message || '保存失败', icon: 'none' }) } finally { uni.hideLoading() }
 }
@@ -1056,7 +1047,7 @@ async function submitMistake() {
     const answerImages = await uploadNewImages(mistakeForm.value.answerImages, uploadUtil.uploadMistakeAnswer, userId)
     uni.showLoading({ title: '保存中...', mask: true })
     await api.createMistake({ plan_id: planStore.currentPlan.id, question: mistakeForm.value.question, answer: mistakeForm.value.answer, analysis: mistakeForm.value.analysis, subject: mistakeForm.value.subject, difficulty: mistakeForm.value.difficulty, question_images: questionImages, answer_images: answerImages, tags: mistakeForm.value.tags })
-    showMistakeForm.value = false; mistakeForm.value = { subject: '数据结构', question: '', answer: '', analysis: '', difficulty: 'medium', tags: [], questionImages: [], answerImages: [] }
+    showMistakeForm.value = false; mistakeForm.value = { subject: '', question: '', answer: '', analysis: '', difficulty: 'medium', tags: [], questionImages: [], answerImages: [] }
     uni.showToast({ title: '添加成功', icon: 'success' }); await loadMistakes()
   } catch (e) { uni.showToast({ title: e.message || '保存失败', icon: 'none' }) } finally { uni.hideLoading() }
 }
