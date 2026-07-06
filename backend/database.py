@@ -75,9 +75,9 @@ class StudyPlan(Base):
     target_scores = Column(JSON, default=dict)
     daily_study_time = Column(Integer, default=480)
     weak_points = Column(ARRAY(String), default=list)
-    study_phase = Column(String(50), default="基础阶段")
     notes = Column(Text, default="")
     ai_plan = Column(JSON, default=None)
+    subjects = Column(JSON, default=list)       # 科目章节列表，含chapters/actualWeeks/phases
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

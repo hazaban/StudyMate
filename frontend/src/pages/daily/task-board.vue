@@ -295,8 +295,14 @@
 
             <view class="form-group">
               <text class="form-label">章节</text>
-              <view class="input-wrapper">
-                <input class="input-field" v-model="form.chapter" placeholder="如：第3章 二叉树" />
+              <picker v-if="availableChapters.length > 0" mode="selector" :range="availableChapters" @change="onChapterChange">
+                <view class="input-wrapper picker-wrapper">
+                  <text class="picker-value" :class="{ placeholder: !form.chapter }">{{ form.chapter || '选择章节（可选）' }}</text>
+                  <text class="picker-arrow">▾</text>
+                </view>
+              </picker>
+              <view class="input-wrapper" v-else>
+                <input class="input-field" v-model="form.chapter" placeholder="如：第3章 二叉树（无预设章节时可手动输入）" />
               </view>
             </view>
 
@@ -512,6 +518,33 @@ const aiParseInput = ref('')
 const aiParseResult = ref([])
 const addMode = ref('manual')
 const hourOptions = Array.from({ length: 18 }, (_, i) => String(i + 6))
+
+// 章节下拉选项：从当前计划科目中提取
+const availableChapters = computed(() => {
+  const planSubjects = planStore.currentPlan?.subjects || []
+  // 找到当前选中科目的章节列表
+  const currentSubj = planSubjects.find(s => s.name === form.value.subject)
+  if (!currentSubj || !currentSubj.chapters || currentSubj.chapters.length === 0) return []
+  return currentSubj.chapters.map(c => c.name || '').filter(Boolean)
+})
+
+function onChapterChange(e) {
+  const idx = e.detail.value
+  if (availableChapters.value[idx]) {
+    form.value.chapter = availableChapters.value[idx]
+    // 如果有章节时长，自动填入预计时间
+    const planSubjects = planStore.currentPlan?.subjects || []
+    const currentSubj = planSubjects.find(s => s.name === form.value.subject)
+    if (currentSubj?.chapters?.[idx]?.duration) {
+      form.value.duration = currentSubj.chapters[idx].duration
+    }
+  }
+}
+
+// 科目切换时清空章节（如果不是同一科目）
+watch(() => form.value.subject, () => {
+  form.value.chapter = ''
+})
 
 async function loadTaskSubjects() {
   try { const res = await api.getUserSubjects(); const saved = res.subjects || []; customSubjectOptions.value = saved.filter(s => !allSubjects.includes(s)); subjectOptions.value = [...allSubjects]; saved.forEach(s => { if (!subjectOptions.value.includes(s)) subjectOptions.value.push(s) }) } catch (e) { /* offline */ }
@@ -1642,6 +1675,9 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .form-row { display: flex; gap: 12px; }
 .form-label { display: block; font-size: 14px; font-weight: 600; color: #1a1a2e; margin-bottom: 8px; }
 .input-wrapper { border: 1.5px solid #e8ece9; border-radius: 14px; padding: 12px 16px; background: #fafafa; &:focus-within { border-color: #2f7d4f; } }
+.picker-wrapper { display: flex; align-items: center; justify-content: space-between; }
+.picker-value { font-size: 15px; color: #1a1a2e; flex: 1; &.placeholder { color: #999; } }
+.picker-arrow { font-size: 14px; color: #999; margin-left: 8px; }
 .input-field { width: 100%; font-size: 15px; color: #1a1a2e; border: none; outline: none; background: transparent; }
 .textarea-field { width: 100%; min-height: 60px; font-size: 15px; color: #1a1a2e; line-height: 1.6; border: none; outline: none; background: transparent; resize: none; }
 .form-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }

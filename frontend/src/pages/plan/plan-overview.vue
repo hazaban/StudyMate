@@ -61,57 +61,66 @@
         </view>
       </view>
 
-      <!-- 科目阶段甘特图 -->
+      <!-- 备考进度甘特图 -->
       <view class="gantt-section" v-if="subjects.length > 0">
         <view class="section-header">
-          <text class="section-title">📐 备考进度</text>
+          <text class="section-title">📐 甘特图绘制</text>
           <view class="header-actions">
-            <text class="header-btn" @click="suggestPhasesAI" v-if="!phaseLoading">🤖 AI建议</text>
-            <text class="header-btn" v-if="phaseLoading" style="opacity:0.6">⏳ 生成中...</text>
+            <text class="header-btn" @click="showActual = !showActual">
+              {{ showActual ? '📊 实际时间' : '📋 计划时间' }}
+            </text>
           </view>
         </view>
 
-        <view class="gantt-chart">
-          <!-- 顶部周数轴 -->
-          <view class="gantt-header-row">
-            <view class="gantt-label-col"></view>
-            <view class="gantt-weeks-row">
-              <view class="gantt-week-col" v-for="w in totalWeeks" :key="w" :class="{ now: w === currentWeek }">
-                <text class="gantt-week-num">{{ w }}</text>
+        <scroll-view scroll-x class="gantt-scroll" v-if="allChapters.length > 0">
+          <view class="gantt-chart">
+            <!-- 顶部周数轴 -->
+            <view class="gantt-axis">
+              <view class="gantt-label-col gantt-label-wide">科目 / 章节</view>
+              <view class="gantt-weeks-row">
+                <view class="gantt-week-col" v-for="w in totalWeeks" :key="w" :class="{ now: w === currentWeek }">
+                  <text class="gantt-week-num">W{{ w }}</text>
+                </view>
               </view>
             </view>
-          </view>
 
-          <!-- 每个科目一行 -->
-          <view class="gantt-subject-row" v-for="(subj, si) in subjectsWithPhases" :key="si">
-            <view class="gantt-label-col">
-              <text class="gantt-subj-name">{{ subj.name }}</text>
-            </view>
-            <view class="gantt-bars-row">
-              <!-- 有阶段的科目 -->
-              <template v-if="subj.phases && subj.phases.length > 0">
-                <view class="gantt-bar" v-for="(ph, pi) in subj.phases" :key="pi"
+            <!-- 每条章节一行 -->
+            <view class="gantt-chapter-row" v-for="(ch, ci) in allChapters" :key="ci"
+              :class="{ 'subject-first': ch.isFirstInSubject, 'row-actual': showActual }">
+              <view class="gantt-label-col gantt-label-wide">
+                <text class="gantt-subj-name" v-if="ch.isFirstInSubject">{{ ch.subjectName }}</text>
+                <text class="gantt-chapter-name">{{ ch.name || '未命名' }}</text>
+              </view>
+              <view class="gantt-bars-row">
+                <!-- 计划进度（始终显示） -->
+                <view class="gantt-bar gantt-bar-planned"
                   :style="{
-                    left: ((ph.start_week - 1) / totalWeeks * 100) + '%',
-                    width: ((ph.end_week - ph.start_week + 1) / totalWeeks * 100) + '%',
-                    background: ph.color || getSubjectColor(si)
+                    left: ((ch.startWeek - 1) / totalWeeks * 100) + '%',
+                    width: (Math.max(ch.plannedWeeks, 0.5) / totalWeeks * 100) + '%',
+                    background: ch.color
                   }"
-                  @click="editPhase(subj, ph, pi, si)">
-                  <view class="gantt-bar-fill" :style="{ width: getPhaseProgress(subj.name, ph) + '%' }"></view>
-                  <view class="gantt-bar-text">
-                    <text class="gantt-bar-name">{{ ph.name }}</text>
-                    <text class="gantt-bar-weeks">W{{ ph.start_week }}-W{{ ph.end_week }}</text>
-                  </view>
+                  @click="editChapterPlan(ch, ci)">
+                  <view class="gantt-bar-inner" :style="{ width: ch.progressPercent + '%' }"></view>
+                  <text class="gantt-bar-label">{{ ch.name }}</text>
+                  <text class="gantt-bar-weeks">{{ ch.plannedWeeks }}周</text>
                 </view>
-              </template>
-              <!-- 无阶段: 占位 -->
-              <view class="gantt-bar gantt-bar-empty" v-else @click="addSubjectPhases(subj, si)">
-                <view class="gantt-bar-text">
-                  <text class="gantt-bar-name">+ 添加阶段计划</text>
+                <!-- 实际进度（开关打开时显示） -->
+                <view class="gantt-bar gantt-bar-actual" v-if="showActual && ch.actualWeeks > 0"
+                  :style="{
+                    left: ((ch.startWeek - 1) / totalWeeks * 100) + '%',
+                    width: (Math.max(ch.actualWeeks, 0.3) / totalWeeks * 100) + '%',
+                    background: '#f44336'
+                  }">
+                  <text class="gantt-bar-label">实际</text>
+                  <text class="gantt-bar-weeks">{{ ch.actualWeeks }}周</text>
                 </view>
               </view>
             </view>
           </view>
+        </scroll-view>
+
+        <view class="gantt-empty" v-else>
+          <text class="gantt-empty-text">请先在下方科目中添加章节，章节将自动绘制到此甘特图中</text>
         </view>
       </view>
 
@@ -151,41 +160,6 @@
         <view class="action-btn danger" @click="deletePlan">
           <text class="btn-icon">🗑</text>
           <text class="btn-text">删除计划</text>
-        </view>
-      </view>
-    </view>
-
-    <!-- 阶段编辑弹窗 -->
-    <view class="modal-overlay" v-if="showPhaseModal" @click="showPhaseModal = false">
-      <view class="modal-content" @click.stop>
-        <view class="modal-header">
-          <text class="modal-title">编辑「{{ editingPhaseSubject }}」阶段</text>
-          <view class="modal-close" @click="showPhaseModal = false">✕</view>
-        </view>
-        <view class="modal-body">
-          <view class="phase-edit-list">
-            <view class="phase-edit-item" v-for="(ph, pi) in editingPhases" :key="pi">
-              <view class="phase-edit-row">
-                <input class="phase-name-input" v-model="ph.name" placeholder="阶段名称" />
-                <view class="phase-week-inputs">
-                  <text class="phase-week-label">第</text>
-                  <input class="phase-week-num" v-model="ph.start_week" type="number" />
-                  <text class="phase-week-label">-</text>
-                  <input class="phase-week-num" v-model="ph.end_week" type="number" />
-                  <text class="phase-week-label">周</text>
-                </view>
-                <input class="phase-color-input" type="color" v-model="ph.color" />
-                <view class="phase-remove" @click="editingPhases.splice(pi, 1)">✕</view>
-              </view>
-            </view>
-            <view class="add-phase-btn" @click="editingPhases.push({name:'新阶段',start_week:1,end_week:totalWeeks,color:'#4caf50'})">
-              + 添加阶段
-            </view>
-          </view>
-        </view>
-        <view class="modal-footer">
-          <view class="cancel-btn" @click="showPhaseModal = false">取消</view>
-          <view class="submit-btn" @click="savePhases">保存阶段</view>
         </view>
       </view>
     </view>
@@ -283,6 +257,7 @@ const editingPhaseSubjIdx = ref(-1)
 const newSubject = ref({ name: '', target_score: '' })
 const allTasks = ref([])
 const phaseLoading = ref(false)
+const showActual = ref(false)
 
 const editingSubject = computed(() => {
   if (editingSubjectIndex.value >= 0) return subjects.value[editingSubjectIndex.value]
@@ -333,94 +308,66 @@ function getSubjectColor(idx) {
   return colors[idx % colors.length]
 }
 
-function getPhaseProgress(subjectName, phase) {
-  if (!planStore.currentPlan) return 0
-  const start = new Date(planStore.currentPlan.created_at || Date.now())
-  const phaseStart = new Date(start)
-  phaseStart.setDate(phaseStart.getDate() + (phase.start_week - 1) * 7)
-  const phaseEnd = new Date(start)
-  phaseEnd.setDate(phaseEnd.getDate() + phase.end_week * 7)
-
-  const phaseTasks = allTasks.value.filter(t => {
-    if (t.subject !== subjectName) return false
-    const taskDate = new Date(t.date)
-    return taskDate >= phaseStart && taskDate < phaseEnd
+// 所有科目章节展平为甘特图行
+const allChapters = computed(() => {
+  const rows = []
+  subjects.value.forEach((subj, si) => {
+    const chapters = subj.chapters || []
+    chapters.forEach((ch, ci) => {
+      const estDays = ch.duration ? Math.max(1, Math.ceil((ch.duration || 30) / 25)) : 1
+      const estWeeks = Math.max(1, Math.ceil(estDays / 5))
+      let startWeek = 1
+      for (let j = 0; j < ci; j++) {
+        const prev = chapters[j]
+        const prevDays = prev.duration ? Math.max(1, Math.ceil((prev.duration || 30) / 25)) : 1
+        startWeek += Math.max(1, Math.ceil(prevDays / 5))
+      }
+      rows.push({
+        ...ch,
+        subjectName: subj.name,
+        subjectIndex: si,
+        chapterIndex: ci,
+        isFirstInSubject: ci === 0,
+        color: getSubjectColor(si),
+        startWeek: Math.min(startWeek, totalWeeks.value),
+        plannedWeeks: estWeeks,
+        actualWeeks: ch.actualWeeks || 0,
+        progressPercent: ch.actualWeeks ? Math.round(Math.min(100, (ch.actualWeeks / estWeeks) * 100)) : 0
+      })
+    })
   })
-  if (phaseTasks.length === 0) return 0
-  const done = phaseTasks.filter(t => t.status === 'completed').length
-  return Math.round((done / phaseTasks.length) * 100)
-}
+  return rows
+})
 
-async function suggestPhasesAI() {
-  if (!planStore.currentPlan) return
-  phaseLoading.value = true
-  try {
-    const resp = await api.request('/plans/ai/phases', {
-      method: 'POST',
-      data: {
-        exam_name: planStore.currentPlan.exam_name,
-        total_weeks: totalWeeks.value,
-        subjects: subjects.value.map(s => ({ name: s.name }))
+let ganttClickTimer = null
+function editChapterPlan(ch, ci) {
+  clearTimeout(ganttClickTimer)
+  ganttClickTimer = setTimeout(() => {
+    const row = allChapters.value[ci]
+    uni.showModal({
+      title: `${row.subjectName} - ${ch.name}`,
+      editable: true,
+      placeholderText: `实际用了多少周？计划${row.plannedWeeks}周`,
+      success: (res) => {
+        if (res.confirm && res.content) {
+          const num = parseFloat(res.content)
+          if (!isNaN(num) && num > 0) {
+            updateChapterActual(row.subjectName, ch.name, Math.round(num * 10) / 10)
+            showActual.value = true
+          }
+        }
       }
     })
-    applyPhasesToSubjects(resp.phases || {})
-  } catch (e) {
-    applyPhasesToSubjects(mockPhases())
-  } finally {
-    phaseLoading.value = false
-    uni.showToast({ title: 'AI阶段建议已生成', icon: 'success' })
-  }
+  }, 200)
 }
 
-function mockPhases() {
-  const result = {}
-  const configs = [
-    [{ name: '基础学习', start_week: 1, end_week: Math.floor(totalWeeks.value / 3), color: '#4caf50' },
-     { name: '强化刷题', start_week: Math.floor(totalWeeks.value / 3) + 1, end_week: Math.floor(totalWeeks.value * 2 / 3), color: '#2196f3' },
-     { name: '真题冲刺', start_week: Math.floor(totalWeeks.value * 2 / 3) + 1, end_week: totalWeeks.value, color: '#ff9800' }],
-    [{ name: '入门理解', start_week: 1, end_week: Math.floor(totalWeeks.value / 2), color: '#8bc34a' },
-     { name: '实战演练', start_week: Math.floor(totalWeeks.value / 2) + 1, end_week: totalWeeks.value, color: '#f44336' }],
-  ]
-  subjects.value.forEach((s, i) => { result[s.name] = configs[i % configs.length] })
-  return result
-}
-
-function applyPhasesToSubjects(phasesMap) {
-  const updated = subjects.value.map(s => ({
-    ...s,
-    phases: phasesMap[s.name] || s.phases || []
-  }))
-  planStore.updatePlan(planStore.currentPlan.id, { subjects: updated })
-  setTimeout(() => loadPlan(), 500)
-}
-
-function editPhase(subj, phase, pi, si) {
-  editingPhaseSubject.value = subj.name
-  editingPhaseSubjIdx.value = si
-  editingPhases.value = JSON.parse(JSON.stringify(subj.phases || []))
-  showPhaseModal.value = true
-}
-
-function addSubjectPhases(subj, si) {
-  editingPhaseSubject.value = subj.name
-  editingPhaseSubjIdx.value = si
-  editingPhases.value = [
-    { name: '基础阶段', start_week: 1, end_week: Math.ceil(totalWeeks.value / 3), color: '#4caf50' },
-    { name: '强化阶段', start_week: Math.ceil(totalWeeks.value / 3) + 1, end_week: Math.ceil(totalWeeks.value * 2 / 3), color: '#2196f3' },
-    { name: '冲刺阶段', start_week: Math.ceil(totalWeeks.value * 2 / 3) + 1, end_week: totalWeeks.value, color: '#ff9800' }
-  ]
-  showPhaseModal.value = true
-}
-
-async function savePhases() {
-  const updated = [...subjects.value]
-  updated[editingPhaseSubjIdx.value] = {
-    ...updated[editingPhaseSubjIdx.value],
-    phases: editingPhases.value
-  }
+async function updateChapterActual(subjectName, chapterName, weeks) {
+  const updated = subjects.value.map(s => {
+    if (s.name !== subjectName) return s
+    return { ...s, chapters: (s.chapters || []).map(c => c.name === chapterName ? { ...c, actualWeeks: weeks } : c) }
+  })
   await planStore.updatePlan(planStore.currentPlan.id, { subjects: updated })
-  showPhaseModal.value = false
-  uni.showToast({ title: '阶段已保存', icon: 'success' })
+  uni.showToast({ title: `已记录: ${weeks}周`, icon: 'success' })
 }
 
 async function loadTasks() {
@@ -541,44 +488,50 @@ onMounted(async () => {
     .info-value { display: block; font-size: 16px; color: $ink; font-weight: 500; &.highlight { color: $accent; font-size: 18px; font-weight: 700; } } } }
 
 /* 甘特图 */
-.gantt-section { margin-bottom: 20px; background: #fff; border-radius: 14px; padding: 16px; border: 1px solid #e8ece9; }
-.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.section-title { font-size: 15px; font-weight: 600; color: #333; }
-.header-actions { display: flex; gap: 10px; }
-.header-btn { font-size: 13px; color: $accent; font-weight: 500; padding: 4px 10px; background: rgba(47,125,79,0.08); border-radius: 14px; }
-
-.gantt-chart { overflow-x: auto; }
-.gantt-header-row { display: flex; margin-bottom: 2px; }
-.gantt-label-col { width: 72px; flex-shrink: 0; display: flex; align-items: center; padding: 4px 8px; }
-.gantt-weeks-row { flex: 1; display: flex; }
-.gantt-week-col { flex: 1; min-width: 22px; text-align: center; padding: 2px 0;
-  &.now { background: rgba(244,67,54,0.08); border-radius: 4px; }
+/* 甘特图 - 建议电脑端查看 */
+.gantt-section {
+  margin-bottom: 20px; background: #fff; border-radius: 16px; padding: 20px;
+  border: 1px solid #e8ece9; box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  min-height: 200px;
 }
-.gantt-week-num { font-size: 10px; color: #bbb; .gantt-week-col.now & { color: #f44336; font-weight: 700; } }
+.gantt-scroll { width: 100%; max-height: 450px; overflow-y: auto; }
+.gantt-chart { min-width: calc(36px * var(--total-weeks, 20) + 130px); }
+.gantt-axis { display: flex; align-items: flex-end; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; position: sticky; top: 0; background: #fff; z-index: 5; }
+.gantt-weeks-row { flex: 1; display: flex; }
+.gantt-week-col { flex: 1; min-width: 38px; text-align: center; padding: 6px 0; position: relative;
+  &:not(:last-child)::after { content: ''; position: absolute; right: 0; top: 20%; bottom: 20%; width: 1px; background: #f0f0f0; }
+  &.now { background: rgba(244,67,54,0.06); border-radius: 6px;
+    .gantt-week-num { color: #f44336; font-weight: 700; }
+  }
+}
+.gantt-week-num { font-size: 11px; color: #999; font-weight: 500; }
 
-.gantt-subject-row { display: flex; margin-bottom: 10px; }
-.gantt-subj-name { font-size: 13px; color: #333; font-weight: 600; white-space: nowrap; }
-.gantt-bars-row { flex: 1; position: relative; height: 42px; background: #f5f7f5; border-radius: 8px; overflow: hidden; }
+.gantt-chapter-row { display: flex; align-items: center; border-bottom: 1px solid #f5f5f5; min-height: 36px;
+  &.subject-first { border-top: 2px solid #e0e0e0; }
+  &.row-actual { .gantt-bars-row { background: rgba(244,67,54,0.02); } }
+}
+.gantt-label-col { flex-shrink: 0; width: 120px; padding: 4px 8px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+.gantt-subj-name { font-size: 13px; color: #1a1a2e; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gantt-chapter-name { font-size: 11px; color: #999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.gantt-bars-row { flex: 1; position: relative; height: 30px; background: #fafbfa; }
 
 .gantt-bar {
-  position: absolute; top: 5px; bottom: 5px; border-radius: 8px;
+  position: absolute; top: 4px; bottom: 4px; border-radius: 6px;
   display: flex; align-items: center; padding: 0 8px; cursor: pointer; overflow: hidden;
-  min-width: 24px; transition: filter 0.15s;
-  &:active { filter: brightness(0.9); }
+  min-width: 16px; transition: filter 0.15s;
+  &:active { filter: brightness(0.88); }
 }
-.gantt-bar-empty {
-  position: absolute; top: 5px; bottom: 5px; left: 0; right: 0;
-  background: transparent; border: 2px dashed #d0d5d2;
-  display: flex; align-items: center; justify-content: center;
-  .gantt-bar-name { color: #999; font-size: 12px; }
+.gantt-bar-planned { z-index: 1; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.gantt-bar-actual { z-index: 2; opacity: 0.9; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(244,67,54,0.3); }
+.gantt-bar-inner {
+  position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255,255,255,0.2); border-radius: 6px 0 0 6px; transition: width 0.5s;
 }
-.gantt-bar-fill {
-  position: absolute; left: 0; top: 0; bottom: 0;
-  background: rgba(255,255,255,0.25); border-radius: 8px 0 0 8px; transition: width 0.4s;
-}
-.gantt-bar-text { position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; }
-.gantt-bar-name { font-size: 12px; color: #fff; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
-.gantt-bar-weeks { font-size: 10px; color: rgba(255,255,255,0.8); }
+.gantt-bar-label { font-size: 11px; color: #fff; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.25); position: relative; z-index: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+.gantt-bar-weeks { font-size: 10px; color: rgba(255,255,255,0.85); position: relative; z-index: 1; flex-shrink: 0; margin-left: 6px; }
+
+.gantt-empty { padding: 40px; text-align: center; }
+.gantt-empty-text { font-size: 14px; color: #999; line-height: 1.6; }
+.gantt-hint { text-align: center; padding: 8px; font-size: 11px; color: #bbb; }
 
 /* 阶段编辑弹窗 */
 .phase-edit-list { display: flex; flex-direction: column; gap: 10px; }

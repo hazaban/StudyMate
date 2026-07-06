@@ -12,9 +12,9 @@ class PlanCreate(BaseModel):
     target_scores: dict = {}
     daily_study_time: int = 480
     weak_points: list[str] = []
-    study_phase: str = "基础阶段"
     notes: str = ""
     ai_plan: Optional[dict] = None
+    subjects: list = []
 
 
 class PlanUpdate(BaseModel):
@@ -23,9 +23,9 @@ class PlanUpdate(BaseModel):
     target_scores: Optional[dict] = None
     daily_study_time: Optional[int] = None
     weak_points: Optional[list[str]] = None
-    study_phase: Optional[str] = None
     notes: Optional[str] = None
     ai_plan: Optional[dict] = None
+    subjects: Optional[list] = None
 
 
 class PlanResponse(BaseModel):
@@ -36,9 +36,9 @@ class PlanResponse(BaseModel):
     target_scores: dict
     daily_study_time: int
     weak_points: list[str]
-    study_phase: str
     notes: str
     ai_plan: Optional[dict]
+    subjects: list = []
     created_at: datetime
     updated_at: datetime
 
@@ -51,4 +51,4 @@ class AIPlanGenerateRequest(BaseModel):
     target_scores: dict = {}
     daily_study_time: int = 480
     weak_points: list[str] = []
-    study_phase: str = "基础阶段"
+    subjects: list = []
