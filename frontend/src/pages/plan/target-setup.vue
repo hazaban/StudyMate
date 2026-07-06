@@ -36,7 +36,7 @@
 
       <!-- Custom Subjects -->
       <view class="form-group">
-        <text class="form-label">科目设置（自定义添加，目标分数和学习阶段选填）</text>
+        <text class="form-label">科目设置（自定义添加，目标分数选填）</text>
         <view class="subject-list">
           <view class="subject-item" v-for="(subj, idx) in form.subjects" :key="idx">
             <view class="subject-row">
@@ -44,17 +44,8 @@
               <input class="subject-input score" v-model="subj.target_score" placeholder="目标分(选填)" />
               <view class="subject-remove" @click="form.subjects.splice(idx, 1)">✕</view>
             </view>
-            <view class="subject-phase-row">
-              <text class="phase-label">学习阶段：</text>
-              <view class="phase-tags">
-                <view class="phase-tag" :class="{ active: !subj.phase }" @click="subj.phase = ''">无</view>
-                <view class="phase-tag" :class="{ active: subj.phase === '基础阶段' }" @click="subj.phase = '基础阶段'">基础</view>
-                <view class="phase-tag" :class="{ active: subj.phase === '强化阶段' }" @click="subj.phase = '强化阶段'">强化</view>
-                <view class="phase-tag" :class="{ active: subj.phase === '冲刺阶段' }" @click="subj.phase = '冲刺阶段'">冲刺</view>
-              </view>
-            </view>
           </view>
-          <view class="add-subject-btn" @click="form.subjects.push({ name: '', target_score: '', phase: '' })">
+          <view class="add-subject-btn" @click="form.subjects.push({ name: '', target_score: '' })">
             <text>+ 添加科目</text>
           </view>
         </view>
@@ -87,10 +78,8 @@ const form = reactive({
   exam_name: '',
   exam_date: '',
   daily_study_time: 480,
-  study_phase: '',
   notes: '',
-  subjects: [],
-  subject_phases: {}
+  subjects: []
 })
 function goBack() {
   const pages = getCurrentPages()
@@ -116,10 +105,8 @@ async function savePlan() {
       exam_name: form.exam_name,
       exam_date: form.exam_date,
       daily_study_time: parseInt(form.daily_study_time) || 480,
-      study_phase: form.study_phase,
       notes: form.notes,
-      subjects,
-      subject_phases: form.subject_phases
+      subjects
     }
 
     if (isEdit.value && planStore.currentPlan) {
@@ -152,10 +139,8 @@ onMounted(async () => {
     form.exam_name = p.exam_name
     form.exam_date = p.exam_date
     form.daily_study_time = p.daily_study_time
-    form.study_phase = p.study_phase
     form.notes = p.notes || ''
     form.subjects = p.subjects ? JSON.parse(JSON.stringify(p.subjects)) : []
-    form.subject_phases = p.subject_phases ? JSON.parse(JSON.stringify(p.subject_phases)) : {}
   }
 })
 </script>
@@ -186,26 +171,18 @@ onMounted(async () => {
 .textarea-field { width: 100%; min-height: 80px; font-size: 15px; color: #1a1a2e; line-height: 1.6; border: none; outline: none; background: transparent; resize: none; }
 .picker-text { font-size: 15px; color: #1a1a2e; &.placeholder { color: #999; } }
 
-.phase-options { display: flex; gap: 8px; }
-.phase-option { flex: 1; padding: 12px; text-align: center; border-radius: 12px; font-size: 14px; color: #65746d; background: #f5f7f5; &.active { background: $accent; color: #fff; } }
-
-.subject-phase-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-.phase-label { font-size: 12px; color: #65746d; white-space: nowrap; }
-.phase-tags { display: flex; gap: 6px; flex-wrap: wrap; }
-.phase-tag { padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #65746d; background: #e8ece9; &.active { background: $accent; color: #fff; } }
-
-.subject-list { display: flex; flex-direction: column; gap: 8px; }
-.subject-item { background: #f5f7f5; border-radius: 10px; padding: 10px; }
-.subject-row { display: flex; align-items: center; gap: 8px; }
+.subject-list { display: flex; flex-direction: column; gap: 10px; }
+.subject-item { background: #f5f7f5; border-radius: 12px; padding: 12px; }
+.subject-row { display: flex; align-items: center; gap: 10px; }
 .subject-input {
-  flex: 1; padding: 8px 12px; border: 1px solid #e8ece9; border-radius: 8px; font-size: 14px; background: #fff; color: #1a1a2e;
-  &.score { flex: 0 0 100px; }
+  flex: 1; padding: 12px 14px; border: 1.5px solid #e8ece9; border-radius: 10px; font-size: 16px; background: #fff; color: #1a1a2e; min-width: 0;
+  &.score { flex: 0 0 120px; }
   :deep(.uni-input-wrapper) { background: transparent; }
-  :deep(.uni-input-input) { color: #1a1a2e; background: transparent; }
-  :deep(.uni-input-placeholder) { color: #999; }
+  :deep(.uni-input-input) { color: #1a1a2e; font-size: 16px; background: transparent; }
+  :deep(.uni-input-placeholder) { color: #999; font-size: 14px; }
 }
-.subject-remove { font-size: 16px; color: #ef5350; padding: 4px; }
-.add-subject-btn { padding: 10px; text-align: center; border: 1.5px dashed #d0d5d2; border-radius: 10px; font-size: 14px; color: $accent; }
+.subject-remove { font-size: 18px; color: #ef5350; padding: 6px; flex-shrink: 0; }
+.add-subject-btn { padding: 12px; text-align: center; border: 2px dashed #d0d5d2; border-radius: 12px; font-size: 15px; color: $accent; }
 
 .bottom-space { height: 60px; }
 </style>
