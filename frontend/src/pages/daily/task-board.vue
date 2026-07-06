@@ -90,40 +90,46 @@
         <text class="week-title">{{ weekTitle }}</text>
         <view class="week-arrow" @click="switchWeek(1)">›</view>
       </view>
-      <!-- 统一的横向滚动容器：日期头+格子体一起滚 -->
-      <view class="week-hscroll">
-        <view class="week-table" :style="{ minWidth: 44 + 7 * colWidth + 'px' }">
-          <!-- 日期头行 -->
-          <view class="week-days-header">
-            <view class="week-timeline-header"></view>
-            <view class="week-day-header" v-for="(day, idx) in weekDays" :key="idx" :class="{ today: day.isToday, weekend: day.isWeekend }" :style="{ width: colWidth + 'px' }">
-              <text class="week-day-name">{{ day.dayName }}</text>
-              <text class="week-day-num">{{ day.day }}</text>
-              <view class="week-day-dot" v-if="taskDates.has(day.dateStr)"></view>
+      <!-- 周视图主体：时间轴固定 + 日期横向滚动 -->
+      <view class="week-container">
+        <!-- 固定时间轴 -->
+        <view class="week-timeline-fixed">
+          <view class="week-timeline-header"></view>
+          <view class="week-timeline-body">
+            <view class="time-label" v-for="hour in timelineHours" :key="hour">
+              <text>{{ hour }}:00</text>
             </view>
           </view>
-          <!-- 格子体（纵向滚动） -->
-          <view class="week-scroll">
-            <view class="week-body">
-              <view class="week-timeline">
-                <view class="time-label" v-for="hour in timelineHours" :key="hour">
-                  <text>{{ hour }}:00</text>
+        </view>
+        <!-- 日期横向滚动区域 -->
+        <view class="week-scroll-area">
+          <view class="week-hscroll" @touchstart="onWeekHScrollTouchStart" @touchmove="onWeekHScrollTouchMove" @touchend="onWeekHScrollTouchEnd">
+            <view class="week-table" :style="{ minWidth: 7 * colWidth + 'px' }">
+              <!-- 日期头行 -->
+              <view class="week-days-header">
+                <view class="week-day-header" v-for="(day, idx) in weekDays" :key="idx" :class="{ today: day.isToday, weekend: day.isWeekend }" :style="{ width: colWidth + 'px' }">
+                  <text class="week-day-name">{{ day.dayName }}</text>
+                  <text class="week-day-num">{{ day.day }}</text>
+                  <view class="week-day-dot" v-if="taskDates.has(day.dateStr)"></view>
                 </view>
               </view>
-              <view class="week-grid">
-                <view class="week-column" v-for="(day, colIdx) in weekDays" :key="colIdx" :data-col="colIdx" :class="{ weekend: day.isWeekend }" :style="{ width: colWidth + 'px' }">
-                  <view class="week-cell" v-for="(hour, hourIdx) in timelineHours" :key="hourIdx" :data-hour="hour" :data-date="day.dateStr" :class="{ expanded: expandedCell === day.dateStr + '-' + hour }"
-                    @click.stop="onWeekCellClick(day.dateStr, hour)"
-                    @contextmenu.prevent="handleWeekCellRightClick(day.dateStr, hour, $event)"
-                    @touchstart="onWeekCellTouchStart(day.dateStr, hour, $event)"
-                    @touchmove="onWeekCellTouchCancel"
-                    @touchend.prevent="onWeekCellTouchEnd"
-                    @mousedown="onWeekCellMouseDown(day.dateStr, hour, $event)"
-                    @mouseup="onWeekCellMouseUp">
-                    <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed', [getSubjectClass(task.subject)]: true }">
-                      <view class="task-importance-dot" :class="getImportanceClass(task.importance)" v-if="task.importance && enableQuadrant"></view>
-                      <text class="week-task-content">{{ task.content }}</text>
-                      <text class="week-task-duration">{{ task.duration }}min</text>
+              <!-- 格子体（纵向滚动） -->
+              <view class="week-scroll">
+                <view class="week-grid">
+                  <view class="week-column" v-for="(day, colIdx) in weekDays" :key="colIdx" :data-col="colIdx" :class="{ weekend: day.isWeekend }" :style="{ width: colWidth + 'px' }">
+                    <view class="week-cell" v-for="(hour, hourIdx) in timelineHours" :key="hourIdx" :data-hour="hour" :data-date="day.dateStr" :class="{ expanded: expandedCell === day.dateStr + '-' + hour }"
+                      @click.stop="onWeekCellClick(day.dateStr, hour)"
+                      @contextmenu.prevent="handleWeekCellRightClick(day.dateStr, hour, $event)"
+                      @touchstart="onWeekCellTouchStart(day.dateStr, hour, $event)"
+                      @touchmove="onWeekCellTouchCancel"
+                      @touchend.prevent="onWeekCellTouchEnd"
+                      @mousedown="onWeekCellMouseDown(day.dateStr, hour, $event)"
+                      @mouseup="onWeekCellMouseUp">
+                      <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed', [getSubjectClass(task.subject)]: true }">
+                        <view class="task-importance-dot" :class="getImportanceClass(task.importance)" v-if="task.importance && enableQuadrant"></view>
+                        <text class="week-task-content">{{ task.content }}</text>
+                        <text class="week-task-duration">{{ task.duration }}min</text>
+                      </view>
                     </view>
                   </view>
                 </view>
@@ -1079,7 +1085,9 @@ function onWeekCellTouchStart(dateStr, hour, event) {
     weekCellDownY = touch.clientY
   }
   clearTimeout(weekCellTouchTimer)
+  if (weekHScrollIsScrolling) return
   weekCellTouchTimer = setTimeout(() => {
+    if (weekHScrollIsScrolling) return
     weekCellDidLong = true
     const tasksAtCell = getTasksAt(dateStr, hour)
     if (tasksAtCell.length > 0) {
@@ -1138,6 +1146,36 @@ function onWeekCellMouseDown(dateStr, hour, event) {
 
 function onWeekCellMouseUp() {
   clearTimeout(weekCellMouseTimer)
+}
+
+// === 横向滚动区域触摸处理：区分横向滚动和长按 ===
+let weekHScrollStartX = 0
+let weekHScrollStartY = 0
+let weekHScrollIsScrolling = false
+
+function onWeekHScrollTouchStart(event) {
+  const touch = event.touches && event.touches[0]
+  if (touch) {
+    weekHScrollStartX = touch.clientX
+    weekHScrollStartY = touch.clientY
+  }
+  weekHScrollIsScrolling = false
+}
+
+function onWeekHScrollTouchMove(event) {
+  const touch = event.touches && event.touches[0]
+  if (!touch) return
+  const dx = Math.abs(touch.clientX - weekHScrollStartX)
+  const dy = Math.abs(touch.clientY - weekHScrollStartY)
+  if (dx > 10 && dx > dy) {
+    weekHScrollIsScrolling = true
+    clearTimeout(weekCellTouchTimer)
+    weekCellDidLong = false
+  }
+}
+
+function onWeekHScrollTouchEnd() {
+  weekHScrollIsScrolling = false
 }
 
 function closeWeekMenu() {
@@ -1533,18 +1571,36 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   &:active { background: #f5f7f5; } }
 .week-title { font-size: 15px; font-weight: 600; color: #1a1a2e; }
 
+/* 周视图主体容器 */
+.week-container {
+  display: flex; flex-direction: row; width: 100%;
+}
+
+/* 固定时间轴 */
+.week-timeline-fixed {
+  width: 44px; flex-shrink: 0; background: #fafafa;
+  border-right: 1px solid #f0f0f0; display: flex; flex-direction: column;
+}
+.week-timeline-header {
+  height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  border-bottom: 2px solid #f0f0f0;
+}
+.week-timeline-body {
+  flex: 1; overflow: hidden;
+}
+
+/* 日期滚动区域 */
+.week-scroll-area {
+  flex: 1; overflow: hidden;
+}
+
 /* 横向滚动容器：日期头+格子体一起滚 */
-.week-hscroll { overflow-x: auto; overflow-y: hidden; }
+.week-hscroll { overflow-x: auto; overflow-y: hidden; width: 100%; }
 .week-table { /* min-width 由 :style 动态设置 */ }
 
 /* 日期头行 */
 .week-days-header {
   display: flex; background: #fff; border-bottom: 2px solid #f0f0f0;
-}
-.week-timeline-header {
-  width: 44px; flex-shrink: 0; background: #fafafa; border-right: 1px solid #f0f0f0;
-  display: flex; align-items: center; justify-content: center;
-  position: sticky; left: 0; z-index: 10;
 }
 .week-day-header {
   flex-shrink: 0; text-align: center; padding: 10px 2px;
@@ -1563,20 +1619,14 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .week-day-dot { width: 8px; height: 8px; border-radius: 50%; background: #2f7d4f; margin: 4px auto 0; }
 
 /* 格子体：仅纵向滚动 */
-.week-scroll { height: 480px; overflow-y: auto; overflow-x: visible; }
-.week-body { display: flex; flex-direction: row; }
+.week-scroll { height: 480px; overflow-y: auto; overflow-x: hidden; }
+.week-grid { display: flex; }
 
-/* 时间轴列 — 横向冻结 */
-.week-timeline {
-  width: 44px; flex-shrink: 0; background: #fafafa;
-  border-right: 1px solid #f0f0f0;
-  position: sticky; left: 0; z-index: 10;
-}
+/* 时间标签 */
 .time-label {
   height: 72px; display: flex; align-items: flex-start; justify-content: center;
   padding-top: 4px; font-size: 10px; color: #999; font-weight: 500;
 }
-.week-grid { display: flex; }
 .week-column { flex-shrink: 0; border-right: 1px solid #f0f0f0;
   &:last-child { border-right: none; }
   &.weekend { background: rgba(255,248,220,0.1); }
