@@ -86,7 +86,7 @@
       </view>
       <view class="week-days-header">
         <view class="week-timeline-header"></view>
-        <view class="week-day-header" v-for="(day, idx) in weekDays" :key="idx" :class="{ today: day.isToday, selected: day.dateStr === selectedDate }" @click="selectDate(day.dateStr)">
+        <view class="week-day-header" v-for="(day, idx) in weekDays" :key="idx" :class="{ today: day.isToday, selected: day.dateStr === selectedDate, weekend: day.isWeekend }" @click="selectDate(day.dateStr)">
           <text class="week-day-name">{{ day.dayName }}</text>
           <text class="week-day-num">{{ day.day }}</text>
           <view class="week-day-dot" v-if="taskDates.has(day.dateStr)"></view>
@@ -99,9 +99,9 @@
           </view>
         </view>
         <view class="week-grid">
-          <view class="week-column" v-for="(day, colIdx) in weekDays" :key="colIdx" :data-col="colIdx">
+          <view class="week-column" v-for="(day, colIdx) in weekDays" :key="colIdx" :data-col="colIdx" :class="{ weekend: day.isWeekend }">
             <view class="week-cell" v-for="hour in timelineHours" :key="hour" :data-hour="hour" :data-date="day.dateStr">
-              <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed' }" @click.stop="editTask(task)">
+              <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed', [getSubjectClass(task.subject)]: true }" @click.stop="editTask(task)">
                 <view class="task-importance-dot" :class="getImportanceClass(task.importance)" v-if="task.importance"></view>
                 <text class="week-task-content">{{ task.content }}</text>
                 <text class="week-task-duration">{{ task.duration }}min</text>
@@ -109,6 +109,7 @@
             </view>
           </view>
         </view>
+        <view class="current-time-line" v-if="viewMode === 'week'" :style="currentTimeLineStyle"></view>
         <view class="week-selection" v-if="isAddingTask && addTaskCol >= 0" :style="getSelectionStyle()"></view>
         <view class="week-add-popover" v-if="isAddingTask && showAddPopover" :style="{ top: popoverY + 'px', left: popoverX + 'px' }">
           <view class="popover-content">
@@ -791,7 +792,8 @@ function generateWeekDays() {
       day: d.getDate(),
       dayName: dayNames[i],
       dateStr: formatDate(d),
-      isToday: formatDate(d) === todayStr
+      isToday: formatDate(d) === todayStr,
+      isWeekend: i === 5 || i === 6
     })
   }
   weekDays.value = days
@@ -1412,11 +1414,19 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   &.today {
     .week-day-num { color: #2f7d4f; font-weight: 700; }
     .week-day-name { color: #2f7d4f; }
-    background: rgba(47,125,79,0.04);
+    background: rgba(47,125,79,0.06);
+    border-radius: 8px;
+    margin: 2px;
   }
   &.selected {
-    background: rgba(47,125,79,0.1);
+    background: rgba(47,125,79,0.12);
     .week-day-num { color: #2f7d4f; }
+    border-radius: 8px;
+    margin: 2px;
+  }
+  &.weekend {
+    background: rgba(255,248,220,0.4);
+    .week-day-name, .week-day-num { color: #8b7355; }
   }
   &:active { background: rgba(47,125,79,0.06); }
 }
@@ -1442,6 +1452,12 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .week-column {
   flex: 1; border-right: 1px solid #f0f0f0;
   &:last-child { border-right: none; }
+  &.weekend {
+    background: rgba(255,248,220,0.15);
+    .week-cell {
+      border-bottom-color: #fff8dc;
+    }
+  }
 }
 .week-cell {
   height: 60px; border-bottom: 1px solid #f5f5f5; position: relative;
