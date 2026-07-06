@@ -85,6 +85,7 @@
         <view class="week-arrow" @click="switchWeek(1)">›</view>
       </view>
       <view class="week-days-header">
+        <view class="week-timeline-header"></view>
         <view class="week-day-header" v-for="(day, idx) in weekDays" :key="idx" :class="{ today: day.isToday, selected: day.dateStr === selectedDate }" @click="selectDate(day.dateStr)">
           <text class="week-day-name">{{ day.dayName }}</text>
           <text class="week-day-num">{{ day.day }}</text>
@@ -883,8 +884,8 @@ function getColFromX(x) {
   const weekScroll = document.querySelector('.week-scroll')
   if (!weekScroll) return 0
   const rect = weekScroll.getBoundingClientRect()
-  const relativeX = x - rect.left - 60
-  const colWidth = (rect.width - 60) / 7
+  const relativeX = x - rect.left - 50
+  const colWidth = (rect.width - 50) / 7
   const col = Math.floor(relativeX / colWidth)
   return Math.max(0, Math.min(6, col))
 }
@@ -998,8 +999,8 @@ function getSelectionStyle() {
   if (addTaskCol.value < 0) return {}
   const top = (addTaskStartHour.value - timelineHours[0]) * cellHeight
   const height = (addTaskEndHour.value - addTaskStartHour.value) * cellHeight
-  const left = 60 + addTaskCol.value * ((window.innerWidth - 60) / 7)
-  const width = (window.innerWidth - 60) / 7
+  const left = 50 + addTaskCol.value * ((window.innerWidth - 50) / 7)
+  const width = (window.innerWidth - 50) / 7
   return {
     top: top + 'px',
     left: left + 'px',
@@ -1398,47 +1399,70 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 .week-title { font-size: 15px; font-weight: 600; color: #1a1a2e; }
 .week-days-header {
-  display: flex; border-bottom: 1px solid #f0f0f0;
+  display: flex; background: #fff; position: sticky; top: 0; z-index: 10;
+  border-bottom: 2px solid #f0f0f0;
+}
+.week-timeline-header {
+  width: 50px; background: #fafafa; border-right: 1px solid #f0f0f0;
 }
 .week-day-header {
-  flex: 1; text-align: center; padding: 10px 0; position: relative;
-  &.today { .week-day-num { color: #2f7d4f; font-weight: 700; } }
-  &.selected { background: rgba(47,125,79,0.06); }
+  flex: 1; text-align: center; padding: 12px 4px; position: relative;
+  border-right: 1px solid #f0f0f0;
+  &:last-child { border-right: none; }
+  &.today {
+    .week-day-num { color: #2f7d4f; font-weight: 700; }
+    .week-day-name { color: #2f7d4f; }
+    background: rgba(47,125,79,0.04);
+  }
+  &.selected {
+    background: rgba(47,125,79,0.1);
+    .week-day-num { color: #2f7d4f; }
+  }
+  &:active { background: rgba(47,125,79,0.06); }
 }
-.week-day-name { display: block; font-size: 12px; color: #999; margin-bottom: 2px; }
-.week-day-num { font-size: 16px; color: #1a1a2e; font-weight: 500; }
+.week-day-name { display: block; font-size: 12px; color: #999; margin-bottom: 4px; }
+.week-day-num { font-size: 18px; color: #1a1a2e; font-weight: 600; }
 .week-day-dot {
-  width: 6px; height: 6px; border-radius: 50%; background: #2f7d4f; margin: 4px auto 0;
+  width: 8px; height: 8px; border-radius: 50%; background: #2f7d4f; margin: 6px auto 0;
+  box-shadow: 0 0 4px rgba(47,125,79,0.4);
 }
 .week-scroll {
-  height: 400px; position: relative;
+  height: 450px; position: relative; background: #fff;
 }
 .week-timeline {
   position: absolute; left: 0; top: 0; width: 50px; height: 100%; background: #fafafa; border-right: 1px solid #f0f0f0;
 }
 .time-label {
-  height: 60px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #999;
+  height: 60px; display: flex; align-items: flex-start; justify-content: center; padding-top: 4px;
+  font-size: 12px; color: #999; font-weight: 500;
 }
 .week-grid {
   margin-left: 50px; display: flex;
 }
-.week-column { flex: 1; border-right: 1px solid #f0f0f0; &:last-child { border-right: none; } }
+.week-column {
+  flex: 1; border-right: 1px solid #f0f0f0;
+  &:last-child { border-right: none; }
+}
 .week-cell {
   height: 60px; border-bottom: 1px solid #f5f5f5; position: relative;
   &:active { background: rgba(47,125,79,0.04); }
+  &:nth-child(odd) { background: rgba(255,255,255,0.5); }
 }
 .week-task {
-  position: absolute; top: 4px; left: 4px; right: 4px; background: #e8f5e9; border-radius: 6px; padding: 4px; overflow: hidden;
-  &.completed { background: #f0f0f0; opacity: 0.7; }
+  position: absolute; top: 3px; left: 3px; right: 3px; background: #e8f5e9;
+  border-radius: 8px; padding: 5px; overflow: hidden; cursor: pointer;
+  box-shadow: 0 1px 3px rgba(47,125,79,0.15);
+  &:active { transform: scale(0.98); }
+  &.completed { background: #f5f5f5; box-shadow: none; }
 }
 .task-importance-dot {
   width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px;
-  &.importance-red { background: #ef5350; }
-  &.importance-blue { background: #42a5f5; }
-  &.importance-orange { background: #ff9800; }
+  &.importance-red { background: #ef5350; box-shadow: 0 0 4px rgba(239,83,80,0.6); }
+  &.importance-blue { background: #42a5f5; box-shadow: 0 0 4px rgba(66,165,245,0.6); }
+  &.importance-orange { background: #ff9800; box-shadow: 0 0 4px rgba(255,152,0,0.6); }
   &.importance-gray { background: #9e9e9e; }
 }
-.week-task-content { display: block; font-size: 11px; color: #2f7d4f; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.week-task-content { display: block; font-size: 11px; color: #2f7d4f; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .week-task-duration { font-size: 10px; color: #999; }
 
 .week-selection {
