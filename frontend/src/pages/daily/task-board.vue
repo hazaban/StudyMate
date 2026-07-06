@@ -112,7 +112,6 @@
               :key="hourIdx"
               :data-hour="hour"
               :data-date="day.dateStr"
-              @click.stop="addTaskFromWeekCell(day.dateStr, hour)"
               @contextmenu.prevent="handleWeekCellRightClick(day.dateStr, hour, $event)"
               @touchstart="onWeekCellTouchStart(day.dateStr, hour)"
               @touchend="onWeekCellTouchEnd">
@@ -126,7 +125,7 @@
         </view>
         <view class="current-time-line" v-if="viewMode === 'week'" :style="currentTimeLineStyle"></view>
         <view class="week-hint">
-          <text class="week-hint-text">点击格子快速添加任务，长按或右键也可添加</text>
+          <text class="week-hint-text">长按或右键时间格添加任务</text>
         </view>
       </view>
     </view>
