@@ -65,7 +65,12 @@
       <view class="gantt-section" v-if="subjects.length > 0">
         <view class="section-header">
           <text class="section-title">甘特图绘制</text>
-          <text class="gantt-hint-text">点击章节条编辑日期，电脑端体验更佳</text>
+          <view class="gantt-toggle">
+            <view class="toggle-opt" :class="{active:ganttMode==='plan'}" @click="ganttMode='plan'">仅计划</view>
+            <view class="toggle-opt" :class="{active:ganttMode==='actual'}" @click="ganttMode='actual'">仅实际</view>
+            <view class="toggle-opt" :class="{active:ganttMode==='both'}" @click="ganttMode='both'">对比</view>
+          </view>
+          <text class="gantt-hint-text">点击条编辑日期，电脑端体验更佳</text>
         </view>
 
         <view class="gantt-wrapper" v-if="ganttDayColumns.length > 0 && allChapters.length > 0">
@@ -87,22 +92,30 @@
                 <text class="gantt-subj-name" v-if="ch.isFirstInSubject">{{ ch.subjectName }}</text>
                 <text class="gantt-chapter-name">{{ ch.name || '未命名' }}</text>
               </view>
-              <view class="gantt-bars-row">
-                <view class="gantt-bar gantt-bar-planned"
-                  v-if="ch.planLeft !== null"
-                  :style="{ left: ch.planLeft + '%', width: Math.max(ch.planWidth, 1) + '%', background: ch.color }"
-                  @click="editChapterDate(ch)">
-                  <text class="gantt-bar-label">{{ ch.plannedLabel }}</text>
+              <view class="gantt-bars-row" :class="'mode-'+ganttMode">
+                <view class="gantt-subrow" v-if="ganttMode==='plan' || ganttMode==='both'">
+                  <text class="gantt-row-tag plan-tag" v-if="ganttMode==='both'">计划</text>
+                  <view class="gantt-bar gantt-bar-planned"
+                    v-if="ch.planLeft !== null"
+                    :style="{ left: ch.planLeft + '%', width: Math.max(ch.planWidth, 1) + '%', background: ch.color }"
+                    @click="editChapterDate(ch)">
+                    <text class="gantt-bar-label">{{ ch.plannedLabel }}</text>
+                  </view>
+                  <view class="gantt-bar gantt-bar-placeholder" v-else @click="editChapterDate(ch)">
+                    <text class="gantt-bar-ph">未设置计划</text>
+                  </view>
                 </view>
-                <view class="gantt-bar gantt-bar-actual"
-                  v-if="ch.actualLeft !== null"
-                  :style="{ left: ch.actualLeft + '%', width: Math.max(ch.actualWidth, 1) + '%' }"
-                  @click="editChapterDate(ch)">
-                  <text class="gantt-bar-label">{{ ch.actualLabel }}</text>
-                </view>
-                <view class="gantt-bar gantt-bar-empty" v-if="ch.planLeft === null && ch.actualLeft === null"
-                  @click="editChapterDate(ch)">
-                  <text class="gantt-bar-label">+ 设置日期</text>
+                <view class="gantt-subrow" v-if="ganttMode==='actual' || ganttMode==='both'">
+                  <text class="gantt-row-tag actual-tag" v-if="ganttMode==='both'">实际</text>
+                  <view class="gantt-bar gantt-bar-actual"
+                    v-if="ch.actualLeft !== null"
+                    :style="{ left: ch.actualLeft + '%', width: Math.max(ch.actualWidth, 1) + '%' }"
+                    @click="editChapterDate(ch)">
+                    <text class="gantt-bar-label">{{ ch.actualLabel }}</text>
+                  </view>
+                  <view class="gantt-bar gantt-bar-placeholder" v-else @click="editChapterDate(ch)">
+                    <text class="gantt-bar-ph">未设置实际</text>
+                  </view>
                 </view>
               </view>
             </view>
@@ -113,7 +126,6 @@
           <text class="gantt-empty-text">请先在下方科目中添加章节并设置计划日期</text>
         </view>
       </view>
-
 
       <!-- 科目列表 -->
       <view class="subjects-section" v-if="subjects.length > 0">
@@ -271,6 +283,7 @@ const editingPhaseSubjIdx = ref(-1)
 const newSubject = ref({ name: '', target_score: '' })
 const allTasks = ref([])
 const editDateModal = ref(false)
+const ganttMode = ref('both')
 
 const editingSubject = computed(() => {
   if (editingSubjectIndex.value >= 0) return subjects.value[editingSubjectIndex.value]
@@ -548,7 +561,7 @@ onMounted(async () => {
 .gantt-date-num { display: block; font-size: 11px; color: #999; }
 .gantt-date-label { display: block; font-size: 9px; color: #bbb; margin-top: 1px; }
 
-.gantt-chapter-row { display: flex; align-items: center; border-bottom: 1px solid #f0f0f0; min-height: 40px;
+.gantt-chapter-row { display: flex; align-items: stretch; border-bottom: 1px solid #f0f0f0; min-height: 48px;
   &.subject-first { border-top: 2px solid #ddd; }
 }
 .gantt-hint-text { font-size: 12px; color: #999; }
@@ -557,19 +570,31 @@ onMounted(async () => {
 }
 .gantt-subj-name { font-size: 12px; color: #1a1a2e; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gantt-chapter-name { font-size: 11px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gantt-bars-row { flex: 1; position: relative; height: 44px; background: #f8f9f8; }
+.gantt-bars-row { flex: 1; display: flex; flex-direction: column;
+  &.mode-plan, &.mode-actual { background: #f8f9f8; }
+}
+.gantt-subrow { flex: 1; position: relative; min-height: 26px; display: flex; align-items: center; }
+.gantt-row-tag { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px; position: absolute; left: 2px; z-index: 3; }
+.plan-tag { background: rgba(76,175,80,0.15); color: #2f7d4f; }
+.actual-tag { background: rgba(244,67,54,0.12); color: #c62828; }
 
 .gantt-bar {
-  position: absolute; top: 6px; bottom: 6px; border-radius: 10px;
-  display: flex; align-items: center; padding: 0 10px; cursor: pointer; overflow: hidden;
-  min-width: 20px; transition: filter 0.15s;
-  &:active { filter: brightness(0.85); }
+  position: absolute; top: 3px; bottom: 3px; border-radius: 8px;
+  display: flex; align-items: center; padding: 0 8px; cursor: pointer; overflow: hidden;
+  min-width: 16px; transition: filter 0.15s;
+  &:active { filter: brightness(0.88); }
 }
-.gantt-bar-planned { z-index: 1; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
-.gantt-bar-actual { z-index: 2; opacity: 0.95; box-shadow: 0 2px 8px rgba(244,67,54,0.25); }
-.gantt-bar-empty { position: absolute; left: 0; right: 0; top: 6px; bottom: 6px; border: 2px dashed #ddd; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.gantt-bar-label { font-size: 12px; color: #fff; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.25); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gantt-bar-empty .gantt-bar-label { color: #999; font-size: 12px; text-shadow: none; }
+.gantt-bar-planned { box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.gantt-bar-actual { background: #f44336; box-shadow: 0 1px 4px rgba(244,67,54,0.2); }
+.gantt-bar-placeholder { position: absolute; left: 0; right: 0; top: 3px; bottom: 3px; display: flex; align-items: center; padding-left: 8px; cursor: pointer; }
+.gantt-bar-label { font-size: 11px; color: #fff; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gantt-bar-ph { font-size: 10px; color: #ccc; }
+
+/* 切换按钮 */
+.gantt-toggle { display: flex; background: #f0f0f0; border-radius: 10px; padding: 2px; gap: 2px; }
+.toggle-opt { padding: 4px 12px; border-radius: 8px; font-size: 12px; color: #888; font-weight: 500; transition: all 0.2s;
+  &.active { background: #fff; color: #1a1a2e; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+}
 .gantt-bar-weeks { display: none; }
 
 .gantt-empty { padding: 40px; text-align: center; }
@@ -652,7 +677,8 @@ onMounted(async () => {
 .ch-picker {
   flex: 1; padding: 12px 14px; border: 1.5px solid #d0d5d2; border-radius: 10px;
   font-size: 16px; background: #fafafa; color: #1a1a2e; text-align: center; min-width: 100px;
-  &:active { border-color: $accent; background: #fff; }
+  overflow: hidden; position: relative;
+  :deep(input), :deep(.uni-input-input) { display: none; }
 }
 
 .add-chapter-btn { padding: 16px; text-align: center; border: 2px dashed #d0d5d2; border-radius: 14px; font-size: 16px; color: $accent; font-weight: 500; margin-top: 10px; }
