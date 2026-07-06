@@ -39,6 +39,52 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
+    // ── AI 代理：后端直连 GLM（OpenAI 兼容协议）──
+    if (url.pathname.startsWith('/api/ai-proxy/')) {
+      if (request.method !== 'POST') {
+        return new Response(JSON.stringify({ error: 'Method Not Allowed' }), {
+          status: 405,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+
+      try {
+        const body = await request.json();
+        const resp = await fetch(GLM_URL, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${GLM_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: body.model || 'glm-4.5-air',
+            messages: body.messages,
+            temperature: body.temperature ?? 0.7,
+            max_tokens: body.max_tokens ?? 2048,
+          }),
+        });
+
+        if (!resp.ok) {
+          const errText = await resp.text();
+          return new Response(JSON.stringify({ error: `GLM returned ${resp.status}: ${errText.substring(0, 200)}` }), {
+            status: resp.status,
+            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        const data = await resp.json();
+        return new Response(JSON.stringify(data), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      } catch (err) {
+        return new Response(
+          JSON.stringify({ error: err.message || 'AI proxy error' }),
+          { status: 502, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+        );
+      }
+    }
+
     // ── AI 调用：Worker 直接调 GLM ──
     if (url.pathname.startsWith('/api/ai/')) {
       // 只允许 POST
