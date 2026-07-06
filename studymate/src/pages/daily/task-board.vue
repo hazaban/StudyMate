@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page" @click="closeCalMenu">
     <view class="header">
       <view class="header-top">
         <view class="header-left">
@@ -61,10 +61,24 @@
             selected: day.dateStr === selectedDate,
             'has-task': taskDates.has(day.dateStr)
           }"
-          @click="selectDate(day.dateStr)">
+          @click="selectDate(day.dateStr)"
+          @contextmenu.prevent="handleCalRightClick(day.dateStr, $event)"
+          @touchstart="onCalTouchStart(day.dateStr)"
+          @touchend="onCalTouchEnd">
           <text class="day-num">{{ day.day }}</text>
           <view class="day-dot" v-if="taskDates.has(day.dateStr)"></view>
         </view>
+      </view>
+    </view>
+
+    <view class="cal-menu" v-if="showCalMenu" :style="{ left: calMenuX + 'px', top: calMenuY + 'px' }" @click.stop>
+      <view class="cal-menu-item" @click="addTaskFromCal">
+        <text class="cal-menu-icon">+</text>
+        <text class="cal-menu-text">添加任务</text>
+      </view>
+      <view class="cal-menu-item" @click="selectCalDate">
+        <text class="cal-menu-icon">📋</text>
+        <text class="cal-menu-text">查看任务</text>
       </view>
     </view>
 
@@ -387,6 +401,12 @@ const timelineHours = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 2
 const weekStartDate = ref(getWeekStart(new Date()))
 const weekDays = ref([])
 
+const showCalMenu = ref(false)
+const calMenuX = ref(0)
+const calMenuY = ref(0)
+const calSelectedDate = ref('')
+const calLongPressTimer = ref(null)
+
 const isAddingTask = ref(false)
 const addTaskStartHour = ref(9)
 const addTaskEndHour = ref(10)
@@ -698,6 +718,54 @@ function switchWeek(delta) {
   generateWeekDays()
   selectedDate.value = formatDate(d)
   loadTasks()
+}
+
+function handleCalRightClick(date, event) {
+  showCalMenu.value = false
+  calSelectedDate.value = date
+  calMenuX.value = event.clientX
+  calMenuY.value = event.clientY
+  showCalMenu.value = true
+}
+
+function onCalTouchStart(date) {
+  calSelectedDate.value = date
+  calLongPressTimer.value = setTimeout(() => {
+    uni.showActionSheet({
+      itemList: ['添加任务', '查看任务'],
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          addTaskFromCal()
+        } else if (res.tapIndex === 1) {
+          selectCalDate()
+        }
+      }
+    })
+  }, 500)
+}
+
+function onCalTouchEnd() {
+  if (calLongPressTimer.value) {
+    clearTimeout(calLongPressTimer.value)
+    calLongPressTimer.value = null
+  }
+}
+
+function addTaskFromCal() {
+  showCalMenu.value = false
+  selectedDate.value = calSelectedDate.value
+  showAddForm.value = true
+  form.value.date = calSelectedDate.value
+}
+
+function selectCalDate() {
+  showCalMenu.value = false
+  selectedDate.value = calSelectedDate.value
+  loadTasks()
+}
+
+function closeCalMenu() {
+  showCalMenu.value = false
 }
 
 function selectDate(date) {
@@ -1133,6 +1201,22 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   margin-top: 2px;
 }
 .cal-day.selected .day-dot { background: #fff; }
+
+.cal-menu {
+  position: fixed;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  padding: 8px;
+  z-index: 1000;
+  min-width: 140px;
+}
+.cal-menu-item {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 8px;
+  &:active { background: #f5f7f5; }
+}
+.cal-menu-icon { font-size: 16px; }
+.cal-menu-text { font-size: 14px; color: #333; }
 
 .week-view {
   background: #fff;
