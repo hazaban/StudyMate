@@ -318,6 +318,9 @@ const weekMenuY = ref(0)
 const weekCellDate = ref('')
 const weekCellHour = ref(9)
 let weekCellTouchTimer = null
+// 页面刚切到周视图时禁止长按，防止加载过程中滑动误触
+const weekViewReady = ref(false)
+let weekViewReadyTimer = null
 
 const subjectOptions = computed(() => subjectsStore.mergedSubjects)
 
@@ -724,6 +727,9 @@ let weekCellDownX = 0
 let weekCellDownY = 0
 
 function onWeekCellTouchStart(dateStr, hour, event) {
+  // 页面加载中禁止长按，防止滑动误触
+  if (!weekViewReady.value) return
+
   weekCellDidLong = false
   weekCellDownDate = dateStr
   weekCellDownHour = hour
@@ -734,9 +740,7 @@ function onWeekCellTouchStart(dateStr, hour, event) {
     weekCellDownY = touch.clientY
   }
   clearTimeout(weekCellTouchTimer)
-  if (weekHScrollIsScrolling) return
   weekCellTouchTimer = setTimeout(() => {
-    if (weekHScrollIsScrolling) return
     weekCellDidLong = true
     const tasksAtCell = getTasksAt(dateStr, hour)
     if (tasksAtCell.length > 0) {
@@ -748,7 +752,7 @@ function onWeekCellTouchStart(dateStr, hour, event) {
       weekMenuX.value = weekCellDownX
       weekMenuY.value = weekCellDownY
     }
-  }, 300)
+  }, 600)
 }
 
 function onWeekCellTouchCancel() {
@@ -764,6 +768,7 @@ function onWeekCellTouchEnd() {
 }
 
 function onWeekCellMouseDown(dateStr, hour, event) {
+  if (!weekViewReady.value) return
   weekCellDidLong = false
   weekCellDownDate = dateStr
   weekCellDownHour = hour
@@ -790,7 +795,7 @@ function onWeekCellMouseDown(dateStr, hour, event) {
       weekMenuX.value = weekCellDownX
       weekMenuY.value = weekCellDownY
     }
-  }, 300)
+  }, 600)
 }
 
 function onWeekCellMouseUp() {
@@ -864,11 +869,18 @@ function onTaskTouchEnd() {
 async function switchView(mode) {
   if (viewMode.value === mode) return
   viewMode.value = mode
+  // 切换视图时重置周视图长按就绪状态
+  clearTimeout(weekViewReadyTimer)
+  weekViewReady.value = false
+  expandedCell.value = ''
   if (mode === 'month') {
     loadTaskDates()
     generateCalendar()
     await loadTasks()
   } else if (mode === 'week') {
+    weekViewReady.value = false
+    clearTimeout(weekViewReadyTimer)
+    weekViewReadyTimer = setTimeout(() => { weekViewReady.value = true }, 800)
     generateWeekDays()
     await loadWeekTasks()
   } else {
