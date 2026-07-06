@@ -21,9 +21,15 @@
           <view class="quadrant-entry-btn" v-if="enableQuadrant" @click="goToQuadrant">
             <text class="quadrant-entry-icon">◻️</text>
           </view>
-          <view class="add-btn" @click="showAddForm = true">
-            <text class="add-icon">+</text>
-            <text class="add-text">添加任务</text>
+          <view class="header-btns">
+            <view class="add-btn" @click="openManualAdd">
+              <text class="add-icon">+</text>
+              <text class="add-text">添加任务</text>
+            </view>
+            <view class="ai-add-btn" @click="openAIAdd">
+              <text class="add-icon">🤖</text>
+              <text class="add-text">AI添加</text>
+            </view>
           </view>
         </view>
       </view>
@@ -509,7 +515,7 @@ const manageNewSubject = ref('')
 const showAIParseModal = ref(false)
 const aiParseInput = ref('')
 const aiParseResult = ref([])
-const addMode = ref('ai')
+const addMode = ref('manual')
 const hourOptions = Array.from({ length: 18 }, (_, i) => String(i + 6))
 
 async function loadTaskSubjects() {
@@ -737,11 +743,21 @@ function editTask(task) {
   showAddForm.value = false
 }
 
+function openManualAdd() {
+  addMode.value = 'manual'
+  showAddForm.value = true
+}
+
+function openAIAdd() {
+  addMode.value = 'ai'
+  showAddForm.value = true
+}
+
 function closeForm() {
   showAddForm.value = false
   editingTask.value = null
   form.value = { ...defaultForm }
-  addMode.value = 'ai'
+  addMode.value = 'manual'
   aiParseInput.value = ''
   aiParseResult.value = []
 }
@@ -1261,11 +1277,18 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 .quadrant-entry-icon { font-size: 14px; }
 
+.header-btns { display: flex; gap: 8px; align-items: center; }
 .add-btn {
   display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.2); padding: 10px 16px; border-radius: 25px;
   &:active { background: rgba(255,255,255,0.3); transform: scale(0.96); }
   .add-icon { font-size: 18px; color: #fff; }
   .add-text { font-size: 14px; color: #fff; font-weight: 500; }
+}
+.ai-add-btn {
+  display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.2); padding: 10px 16px; border-radius: 25px;
+  &:active { background: rgba(255,255,255,0.3); transform: scale(0.96); }
+  .add-icon { font-size: 16px; }
+  .add-text { font-size: 13px; color: #fff; font-weight: 500; }
 }
 
 .progress-summary {
