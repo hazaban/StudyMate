@@ -294,7 +294,6 @@ async function confirmPlan() {
       exam_date: new Date(Date.now() + 150 * 24 * 3600 * 1000).toISOString().split('T')[0],
       daily_study_time: 480,
       weak_points: [],
-      study_phase: '基础阶段',
       notes: '',
       ai_plan: currentPlanResult.value,
       subjects: [],

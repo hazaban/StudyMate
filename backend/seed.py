@@ -37,11 +37,11 @@ db.flush()
 # 2. Two plans
 # ═══════════════════════════════════════════════════════════════════
 pid408 = uuid4()
-db.add(StudyPlan(id=pid408, user_id=uid, exam_name="考研408计算机专业基础综合", exam_date=today+timedelta(days=150), target_scores={"数学":130,"英语":80,"政治":70,"408专业课":120}, daily_study_time=480, weak_points=["算法题","PV操作","子网划分"], study_phase="强化阶段", notes="每天8小时，重点攻克数据结构和操作系统"))
+db.add(StudyPlan(id=pid408, user_id=uid, exam_name="考研408计算机专业基础综合", exam_date=today+timedelta(days=150), target_scores={"数学":130,"英语":80,"政治":70,"408专业课":120}, daily_study_time=480, weak_points=["算法题","PV操作","子网划分"], notes="每天8小时，重点攻克数据结构和操作系统"))
 db.flush()
 
 pidSoft = uuid4()
-db.add(StudyPlan(id=pidSoft, user_id=uid, exam_name="软考中级-软件设计师", exam_date=today+timedelta(days=90), target_scores={"基础知识":75,"应用技术":75}, daily_study_time=240, weak_points=["数据库设计","UML建模"], study_phase="基础阶段", notes="利用碎片时间备考软考"))
+db.add(StudyPlan(id=pidSoft, user_id=uid, exam_name="软考中级-软件设计师", exam_date=today+timedelta(days=90), target_scores={"基础知识":75,"应用技术":75}, daily_study_time=240, weak_points=["数据库设计","UML建模"], notes="利用碎片时间备考软考"))
 db.flush()
 
 # ═══════════════════════════════════════════════════════════════════

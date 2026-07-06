@@ -31,7 +31,7 @@
         >
           <view class="switch-plan-info">
             <text class="switch-plan-name">{{ p.exam_name }}</text>
-            <text class="switch-plan-meta">{{ p.study_phase }} · {{ p.exam_date }}</text>
+            <text class="switch-plan-meta">{{ p.exam_date }}</text>
           </view>
           <view class="switch-plan-check" v-if="planStore.currentPlan?.id === p.id">✓</view>
         </view>
@@ -164,19 +164,75 @@
         </view>
       </view>
 
-      <view class="phase-section">
-        <text class="section-title">学习阶段</text>
-        <view class="phase-badge">{{ planStore.currentPlan.study_phase }}</view>
+      <!-- 考试倒计时 + 整体进度 -->
+      <view class="progress-section">
+        <view class="section-header">
+          <text class="section-title">备考进度</text>
+          <text class="section-subtitle">距考试还有 {{ daysRemaining }} 天</text>
+        </view>
+        <view class="timeline-bar">
+          <view class="timeline-fill" :style="{ width: overallProgress + '%' }"></view>
+          <view class="timeline-marker" :style="{ left: todayPosition + '%' }">
+            <text class="marker-label">今天</text>
+          </view>
+        </view>
+        <view class="timeline-labels">
+          <text class="tl-start">开始</text>
+          <text class="tl-end">{{ planStore.currentPlan?.exam_date }}</text>
+        </view>
+        <view class="progress-stats">
+          <view class="stat-item">
+            <text class="stat-num primary">{{ totalTasks }}</text>
+            <text class="stat-desc">总任务</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-num success">{{ completedTasks }}</text>
+            <text class="stat-desc">已完成</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-num warn">{{ pendingTasks }}</text>
+            <text class="stat-desc">待完成</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-num">{{ overallProgress }}%</text>
+            <text class="stat-desc">完成率</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 各科目进度 -->
+      <view class="subjects-section" v-if="subjects.length > 0">
+        <view class="section-header">
+          <text class="section-title">各科进度</text>
+          <view class="add-subject-btn" @click="startAddSubject">
+            <text>+ 添加科目</text>
+          </view>
+        </view>
+        <view class="subject-progress-list">
+          <view class="subject-progress-card" v-for="(subj, idx) in subjects" :key="idx">
+            <view class="sp-header">
+              <text class="sp-name">{{ subj.name }}</text>
+              <text class="sp-score" v-if="subj.target_score">目标 {{ subj.target_score }}分</text>
+            </view>
+            <view class="sp-bar">
+              <view class="sp-bar-fill" :style="{ width: getSubjectProgress(subj.name) + '%', background: getSubjectColor(idx) }"></view>
+            </view>
+            <view class="sp-meta">
+              <text class="sp-percent">{{ getSubjectProgress(subj.name) }}%</text>
+              <text class="sp-chapter-hint" v-if="subj.chapters && subj.chapters.length > 0">{{ subj.chapters.length }}个章节</text>
+            </view>
+            <view class="sp-actions" v-if="subj.chapters && subj.chapters.length > 0">
+              <text class="sp-action-link" @click.stop="editSubjectPhase(idx)">编辑章节</text>
+              <text class="sp-action-link apply" @click.stop="applyChaptersToTasks(idx)">→ 今日任务</text>
+            </view>
+          </view>
+        </view>
       </view>
 
       <view class="action-buttons">
         <view class="action-btn primary" @click="goToTaskBoard">
           <text class="btn-icon">📋</text>
           <text class="btn-text">今日任务</text>
-        </view>
-        <view class="action-btn secondary" @click="openGanttChart">
-          <text class="btn-icon">📊</text>
-          <text class="btn-text">甘特图</text>
         </view>
         <view class="action-btn danger" @click="deletePlan">
           <text class="btn-icon">🗑</text>
@@ -191,75 +247,6 @@
       <text class="empty-hint">点击下方按钮创建新计划</text>
       <view class="empty-btn" @click="createPlan">
         <text class="empty-btn-text">创建计划</text>
-      </view>
-    </view>
-
-    <view class="modal-overlay" v-if="showGanttChart" @click="showGanttChart = false">
-      <view class="modal-content gantt-modal" @click.stop>
-        <view class="modal-header">
-          <text class="modal-title">计划甘特图</text>
-          <view class="modal-close" @click="showGanttChart = false">✕</view>
-        </view>
-        <scroll-view scroll-y class="modal-body gantt-body">
-          <view class="gantt-container">
-            <view class="gantt-header">
-              <view class="gantt-label-col">科目/任务</view>
-              <scroll-view scroll-x class="gantt-dates-scroll">
-                <view class="gantt-dates">
-                  <view class="gantt-date" v-for="d in ganttDates" :key="d.date">
-                    <text class="date-day">{{ d.day }}</text>
-                    <text class="date-week">{{ d.week }}</text>
-                  </view>
-                </view>
-              </scroll-view>
-            </view>
-            <view class="gantt-body-scroll">
-              <view class="gantt-row" v-for="(subject, sIdx) in ganttData" :key="sIdx">
-                <view class="gantt-label-col">
-                  <text class="gantt-subject-name">{{ subject.name }}</text>
-                </view>
-                <scroll-view scroll-x class="gantt-bars-scroll">
-                  <view class="gantt-bars-container">
-                    <view class="gantt-bar-wrapper" v-for="d in ganttDates" :key="d.date">
-                      <view class="gantt-bar-cell" :class="{ today: d.isToday }">
-                        <view class="gantt-bar" v-if="hasTaskOnDate(subject, d.date)" :class="getTaskStatusClass(subject, d.date)">
-                        </view>
-                      </view>
-                    </view>
-                  </view>
-                </scroll-view>
-              </view>
-              <view class="gantt-summary-row">
-                <view class="gantt-label-col">
-                  <text class="gantt-summary-label">完成率</text>
-                </view>
-                <scroll-view scroll-x class="gantt-bars-scroll">
-                  <view class="gantt-bars-container">
-                    <view class="gantt-bar-wrapper" v-for="d in ganttDates" :key="d.date">
-                      <view class="gantt-bar-cell" :class="{ today: d.isToday }">
-                        <text class="gantt-date-progress">{{ getDailyProgress(d.date) }}%</text>
-                      </view>
-                    </view>
-                  </view>
-                </scroll-view>
-              </view>
-            </view>
-          </view>
-          <view class="gantt-legend">
-            <view class="legend-item">
-              <view class="legend-dot completed"></view>
-              <text class="legend-text">已完成</text>
-            </view>
-            <view class="legend-item">
-              <view class="legend-dot pending"></view>
-              <text class="legend-text">待完成</text>
-            </view>
-            <view class="legend-item">
-              <view class="legend-dot today"></view>
-              <text class="legend-text">今天</text>
-            </view>
-          </view>
-        </scroll-view>
       </view>
     </view>
 
@@ -280,11 +267,10 @@ const userStore = useUserStore()
 const showSubjectModal = ref(false)
 const showAddSubject = ref(false)
 const showPlanSwitcher = ref(false)
-const showGanttChart = ref(false)
 const editingSubjectIndex = ref(-1)
 const editingChapters = ref([])
 const newSubject = ref({ name: '', target_score: '' })
-const ganttTasks = ref([])
+const allTasks = ref([])
 
 const editingSubject = computed(() => {
   if (editingSubjectIndex.value >= 0) {
@@ -297,61 +283,50 @@ const subjects = computed(() => {
   return planStore.currentPlan?.subjects || []
 })
 
+const DAYS_TOTAL = 150  // 典型备考周期，从计划创建到考试
+
 const daysRemaining = computed(() => {
   if (!planStore.currentPlan) return 0
   return dateUtil.getDaysBetween(dateUtil.today(), planStore.currentPlan.exam_date)
 })
 
-const ganttDates = computed(() => {
-  const dates = []
-  const today = new Date()
-  const dayNames = ['日', '一', '二', '三', '四', '五', '六']
-  
-  for (let i = -6; i <= 14; i++) {
-    const d = new Date(today)
-    d.setDate(d.getDate() + i)
-    dates.push({
-      date: d.toISOString().split('T')[0],
-      day: d.getDate(),
-      week: dayNames[d.getDay()],
-      isToday: i === 0
-    })
-  }
-  return dates
+const totalTasks = computed(() => allTasks.value.length)
+const completedTasks = computed(() => allTasks.value.filter(t => t.status === 'completed').length)
+const pendingTasks = computed(() => allTasks.value.filter(t => t.status !== 'completed').length)
+
+const overallProgress = computed(() => {
+  if (totalTasks.value === 0) return 0
+  return Math.round((completedTasks.value / totalTasks.value) * 100)
 })
 
-const ganttData = computed(() => {
-  const subjectNames = new Set()
-  ganttTasks.value.forEach(t => subjectNames.add(t.subject))
-  return [...subjectNames].map(name => ({
-    name,
-    tasks: ganttTasks.value.filter(t => t.subject === name)
-  }))
+const todayPosition = computed(() => {
+  // 假设备考周期 150 天，今天在时间轴上的百分比位置
+  const remaining = daysRemaining.value
+  const elapsed = DAYS_TOTAL - remaining
+  if (elapsed <= 0) return 2
+  if (elapsed >= DAYS_TOTAL) return 98
+  return Math.round((elapsed / DAYS_TOTAL) * 100)
 })
 
-function hasTaskOnDate(subject, dateStr) {
-  return subject.tasks.some(t => t.date === dateStr)
+function getSubjectProgress(subjectName) {
+  const subjTasks = allTasks.value.filter(t => t.subject === subjectName)
+  if (subjTasks.length === 0) return 0
+  const done = subjTasks.filter(t => t.status === 'completed').length
+  return Math.round((done / subjTasks.length) * 100)
 }
 
-function getTaskStatusClass(subject, dateStr) {
-  const task = subject.tasks.find(t => t.date === dateStr)
-  return task?.status === 'completed' ? 'completed' : 'pending'
+function getSubjectColor(idx) {
+  const colors = ['#2f7d4f', '#1565c0', '#e65100', '#7b1fa2', '#00838f', '#c62828', '#558b2f', '#4527a0']
+  return colors[idx % colors.length]
 }
 
-function getDailyProgress(dateStr) {
-  const dayTasks = ganttTasks.value.filter(t => t.date === dateStr)
-  if (dayTasks.length === 0) return 0
-  const completed = dayTasks.filter(t => t.status === 'completed').length
-  return Math.round((completed / dayTasks.length) * 100)
-}
-
-async function loadGanttData() {
+async function loadTasks() {
   if (!planStore.currentPlan) return
   try {
     const tasks = await api.getTasks(planStore.currentPlan.id)
-    ganttTasks.value = tasks || []
+    allTasks.value = tasks || []
   } catch (e) {
-    ganttTasks.value = []
+    allTasks.value = []
   }
 }
 
@@ -462,16 +437,12 @@ async function deletePlan() {
   })
 }
 
-async function openGanttChart() {
-  await loadGanttData()
-  showGanttChart.value = true
-}
-
 onMounted(async () => {
   await userStore.getUserInfo()
 
   if (userStore.isLoggedIn && userStore.user) {
     await planStore.getPlansByUserId(userStore.user.id)
+    await loadTasks()
   }
 })
 </script>
@@ -670,8 +641,57 @@ onMounted(async () => {
 
 .section-title { display: block; font-size: 14px; color: $muted; margin-bottom: 12px; }
 
-.phase-section { margin-bottom: 24px; }
-.phase-badge { display: inline-block; padding: 10px 20px; background: $accent; color: #fff; border-radius: 20px; font-size: 14px; font-weight: 500; }
+/* 备考进度 */
+.progress-section {
+  background: linear-gradient(135deg, rgba(47,125,79,0.06), rgba(47,125,79,0.02));
+  border-radius: 16px; padding: 20px; margin: 0 0 20px;
+  border: 1px solid rgba(47,125,79,0.12);
+}
+.section-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.section-subtitle { font-size: 15px; font-weight: 700; color: $accent; }
+.timeline-bar {
+  height: 10px; background: #e8ece9; border-radius: 5px; position: relative; margin-bottom: 6px;
+}
+.timeline-fill {
+  height: 100%; background: linear-gradient(90deg, #2f7d4f, #4caf50); border-radius: 5px; transition: width 0.6s;
+  min-width: 20px;
+}
+.timeline-marker {
+  position: absolute; top: -6px; transform: translateX(-50%);
+  .marker-label {
+    font-size: 10px; color: #ef5350; font-weight: 600; background: #fff;
+    padding: 1px 6px; border-radius: 8px; border: 1px solid #ef5350; white-space: nowrap;
+  }
+}
+.timeline-labels { display: flex; justify-content: space-between; margin-bottom: 16px; }
+.tl-start, .tl-end { font-size: 11px; color: #999; }
+.progress-stats { display: flex; gap: 8px; }
+.stat-item {
+  flex: 1; text-align: center; background: #fff; border-radius: 10px; padding: 10px 6px;
+}
+.stat-num { display: block; font-size: 20px; font-weight: 700; color: #333;
+  &.primary { color: #1565c0; } &.success { color: #2f7d4f; } &.warn { color: #e65100; }
+}
+.stat-desc { font-size: 11px; color: #999; margin-top: 2px; }
+
+/* 各科进度 */
+.subject-progress-list { display: flex; flex-direction: column; gap: 12px; }
+.subject-progress-card {
+  background: #fff; border-radius: 14px; padding: 14px 16px;
+  border: 1px solid #e8ece9;
+}
+.sp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.sp-name { font-size: 15px; font-weight: 600; color: #1a1a2e; }
+.sp-score { font-size: 12px; color: $accent; font-weight: 500; }
+.sp-bar { height: 8px; background: #f0f0f0; border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
+.sp-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
+.sp-meta { display: flex; justify-content: space-between; }
+.sp-percent { font-size: 13px; font-weight: 600; color: #333; }
+.sp-chapter-hint { font-size: 11px; color: #999; }
+.sp-actions { display: flex; gap: 12px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #f5f5f5; }
+.sp-action-link { font-size: 12px; color: $accent;
+  &.apply { color: #ef5350; font-weight: 500; }
+}
 
 .action-buttons { display: flex; gap: 12px; }
 .action-btn {
