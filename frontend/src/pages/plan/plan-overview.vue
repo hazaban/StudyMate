@@ -169,7 +169,7 @@
 
     <!-- 科目章节编辑弹窗 -->
     <view class="modal-overlay" v-if="showSubjectModal" @click="showSubjectModal = false">
-      <view class="modal-content chapter-modal">
+      <view class="modal-content chapter-modal" @click.stop>
         <view class="modal-header">
           <text class="modal-title">编辑「{{ editingSubject?.name }}」章节</text>
           <view class="modal-close" @click="showSubjectModal = false">✕</view>
@@ -178,24 +178,24 @@
           <view class="ch-hint">💡 填写章节名和分钟/天，设置计划与实际起止日期</view>
           <view class="chapter-list">
             <view class="chapter-item" v-for="(ch, ci) in editingChapters" :key="ci">
-              <input class="ch-name" :value="ch.name" @input="e => ch.name = e.detail.value" placeholder="章节名" maxlength="50" />
+              <input class="ch-name" v-model="ch.name" placeholder="章节名" maxlength="50" />
               <view class="ch-row-2">
                 <view class="ch-min-wrap">
                   <text class="ch-min-label">分钟/天</text>
-                  <input class="ch-min" :value="ch.duration || 30" @input="e => ch.duration = parseInt(e.detail.value)||30" type="number" placeholder="30" />
+                  <input class="ch-min" v-model.number="ch.duration" type="number" placeholder="30" />
                 </view>
               </view>
               <view class="ch-dt-row">
                 <text class="ch-dt-label">📋 计划</text>
-                <input class="ch-dt" type="date" :value="ch.planned_start" @input="e => ch.planned_start = e.detail.value" />
+                <input class="ch-dt" type="date" v-model="ch.planned_start" />
                 <text class="ch-dt-arrow">→</text>
-                <input class="ch-dt" type="date" :value="ch.planned_end" @input="e => ch.planned_end = e.detail.value" />
+                <input class="ch-dt" type="date" v-model="ch.planned_end" />
               </view>
               <view class="ch-dt-row actual">
                 <text class="ch-dt-label">✅ 实际</text>
-                <input class="ch-dt" type="date" :value="ch.actual_start" @input="e => ch.actual_start = e.detail.value" />
+                <input class="ch-dt" type="date" v-model="ch.actual_start" />
                 <text class="ch-dt-arrow">→</text>
-                <input class="ch-dt" type="date" :value="ch.actual_end" @input="e => ch.actual_end = e.detail.value" />
+                <input class="ch-dt" type="date" v-model="ch.actual_end" />
               </view>
               <view class="ch-del" @click="editingChapters.splice(ci, 1)">删除此章节 ✕</view>
             </view>

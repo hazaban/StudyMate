@@ -1055,25 +1055,31 @@ let weekCellDownDate = ''
 let weekCellDownHour = 0
 let weekCellMouseTimer = null
 
-function onWeekCellTouchStart(dateStr, hour) {
+let weekCellDownX = 0
+let weekCellDownY = 0
+
+function onWeekCellTouchStart(dateStr, hour, event) {
   weekCellDidLong = false
   weekCellDownDate = dateStr
   weekCellDownHour = hour
   weekCellDownTime = Date.now()
+  const touch = event.touches && event.touches[0]
+  if (touch) {
+    weekCellDownX = touch.clientX
+    weekCellDownY = touch.clientY
+  }
   clearTimeout(weekCellTouchTimer)
   weekCellTouchTimer = setTimeout(() => {
     weekCellDidLong = true
     const tasksAtCell = getTasksAt(dateStr, hour)
     if (tasksAtCell.length > 0) {
-      // 有任务：直接编辑第一个
       editTask(tasksAtCell[0])
     } else {
-      // 无任务：弹右键菜单
       weekCellDate.value = dateStr
       weekCellHour.value = hour
       showWeekMenu.value = true
-      weekMenuX.value = 100
-      weekMenuY.value = 200
+      weekMenuX.value = weekCellDownX
+      weekMenuY.value = weekCellDownY
     }
   }, 300)
 }
@@ -1090,11 +1096,20 @@ function onWeekCellTouchEnd() {
   setTimeout(() => { weekCellDidLong = false }, 50)
 }
 
-function onWeekCellMouseDown(dateStr, hour) {
+function onWeekCellMouseDown(dateStr, hour, event) {
   weekCellDidLong = false
   weekCellDownDate = dateStr
   weekCellDownHour = hour
   weekCellDownTime = Date.now()
+  const nativeEvent = event && event.detail ? event.detail : event
+  if (nativeEvent && nativeEvent.button === 2) {
+    handleWeekCellRightClick(dateStr, hour, nativeEvent)
+    return
+  }
+  if (nativeEvent && typeof nativeEvent.clientX === 'number') {
+    weekCellDownX = nativeEvent.clientX
+    weekCellDownY = nativeEvent.clientY
+  }
   clearTimeout(weekCellMouseTimer)
   weekCellMouseTimer = setTimeout(() => {
     weekCellDidLong = true
@@ -1104,7 +1119,9 @@ function onWeekCellMouseDown(dateStr, hour) {
     } else {
       weekCellDate.value = dateStr
       weekCellHour.value = hour
-      handleWeekCellRightClick(dateStr, hour, { clientX: 200, clientY: 300 })
+      showWeekMenu.value = true
+      weekMenuX.value = weekCellDownX
+      weekMenuY.value = weekCellDownY
     }
   }, 300)
 }
