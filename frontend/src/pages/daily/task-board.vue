@@ -21,15 +21,9 @@
           <view class="quadrant-entry-btn" v-if="enableQuadrant" @click="goToQuadrant">
             <text class="quadrant-entry-icon">◻️</text>
           </view>
-          <view class="header-btns">
-            <view class="add-btn" @click="openManualAdd">
-              <text class="add-icon">+</text>
-              <text class="add-text">添加任务</text>
-            </view>
-            <view class="ai-add-btn" @click="openAIAdd">
-              <text class="add-icon">🤖</text>
-              <text class="add-text">AI添加</text>
-            </view>
+          <view class="add-btn" @click="openManualAdd">
+            <text class="add-icon">+</text>
+            <text class="add-text">添加任务</text>
           </view>
         </view>
       </view>
@@ -228,19 +222,13 @@
       <view class="modal-content" @click.stop>
         <view class="modal-header">
           <text class="modal-title">{{ editingTask ? '编辑任务' : '添加任务' }}</text>
-          <view class="modal-close" @click="closeForm">✕</view>
+          <view class="modal-header-actions">
+            <text class="modal-ai-btn" v-if="!editingTask && addMode === 'manual'" @click="addMode = 'ai'">🤖 AI添加</text>
+            <text class="modal-ai-btn" v-if="!editingTask && addMode === 'ai'" @click="addMode = 'manual'">✏️ 手动输入</text>
+            <view class="modal-close" @click="closeForm">✕</view>
+          </view>
         </view>
         <scroll-view scroll-y class="modal-body">
-          <view class="add-mode-tabs" v-if="!editingTask">
-            <view class="add-mode-tab" :class="{ active: addMode === 'ai' }" @click="addMode = 'ai'">
-              <text class="tab-icon">🤖</text>
-              <text class="tab-text">AI解析</text>
-            </view>
-            <view class="add-mode-tab" :class="{ active: addMode === 'manual' }" @click="addMode = 'manual'">
-              <text class="tab-icon">✏️</text>
-              <text class="tab-text">自定义添加</text>
-            </view>
-          </view>
 
           <view v-if="addMode === 'ai' && !editingTask" class="ai-section">
             <view class="ai-hint-box">
@@ -1277,18 +1265,11 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 .quadrant-entry-icon { font-size: 14px; }
 
-.header-btns { display: flex; gap: 8px; align-items: center; }
 .add-btn {
   display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.2); padding: 10px 16px; border-radius: 25px;
   &:active { background: rgba(255,255,255,0.3); transform: scale(0.96); }
   .add-icon { font-size: 18px; color: #fff; }
   .add-text { font-size: 14px; color: #fff; font-weight: 500; }
-}
-.ai-add-btn {
-  display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.2); padding: 10px 16px; border-radius: 25px;
-  &:active { background: rgba(255,255,255,0.3); transform: scale(0.96); }
-  .add-icon { font-size: 16px; }
-  .add-text { font-size: 13px; color: #fff; font-weight: 500; }
 }
 
 .progress-summary {
@@ -1412,11 +1393,11 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   border-bottom: 2px solid #f0f0f0; overflow: hidden;
 }
 .week-timeline-header {
-  width: 50px; flex-shrink: 0; background: #fafafa; border-right: 1px solid #f0f0f0;
+  width: 40px; flex-shrink: 0; background: #fafafa; border-right: 1px solid #f0f0f0;
   display: flex; align-items: center; justify-content: center;
 }
 .week-day-header {
-  width: 130px; flex-shrink: 0; text-align: center; padding: 12px 2px; position: relative;
+  flex: 1; min-width: 0; text-align: center; padding: 10px 2px; position: relative;
   border-right: 1px solid #f0f0f0;
   &:last-child { border-right: none; }
   &.today {
@@ -1440,35 +1421,34 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   box-shadow: 0 0 4px rgba(47,125,79,0.4);
 }
 .week-scroll {
-  height: 480px; position: relative; background: #fff;
-  overflow: auto;
+  height: 500px; position: relative; background: #fff;
+  overflow-y: auto; overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
 }
-
 .week-timeline {
-  position: sticky; left: 0; top: 0; width: 50px; height: 100%;
+  position: sticky; left: 0; top: 0; width: 40px; height: 100%;
   background: #fafafa; border-right: 1px solid #f0f0f0; z-index: 2;
 }
 .time-label {
-  height: 80px; display: flex; align-items: flex-start; justify-content: center;
-  padding-top: 6px; font-size: 12px; color: #999; font-weight: 500;
+  height: 64px; display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 4px; font-size: 10px; color: #999; font-weight: 500;
 }
 .week-grid {
-  margin-left: 50px; display: inline-flex; min-width: 100%;
+  margin-left: 40px; display: flex;
 }
 .week-column {
-  width: 130px; flex-shrink: 0; border-right: 1px solid #f0f0f0;
+  flex: 1; min-width: 0; border-right: 1px solid #f0f0f0;
   &:last-child { border-right: none; }
   &.weekend { background: rgba(255,248,220,0.1); }
 }
 .week-cell {
-  height: 80px; border-bottom: 1px solid #f5f5f5; position: relative; padding: 4px;
+  height: 64px; border-bottom: 1px solid #f5f5f5; position: relative; padding: 2px;
+  overflow: hidden;
   &:nth-child(odd) { background: rgba(248,250,248,0.5); }
 }
 .week-task {
-  position: relative; background: #e8f5e9; border-radius: 8px; padding: 5px 6px;
-  margin-bottom: 3px; cursor: pointer; box-shadow: 0 1px 2px rgba(47,125,79,0.12);
-  display: flex; flex-wrap: wrap; align-items: flex-start; gap: 2px;
+  background: #e8f5e9; border-radius: 6px; padding: 3px 4px;
+  margin-bottom: 1px; cursor: pointer; box-shadow: 0 1px 2px rgba(47,125,79,0.12);
   &:active { transform: scale(0.98); }
   &.completed { background: #f0f0f0; box-shadow: none; opacity: 0.7; }
   &.subject-ds { background: #e3f2fd; .week-task-content { color: #1565c0; } }
@@ -1492,11 +1472,12 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   &.importance-gray { background: #9e9e9e; }
 }
 .week-task-content {
-  display: block; font-size: 13px; color: #2f7d4f;
-  white-space: normal; word-break: break-all;
-  font-weight: 500; line-height: 1.3; flex: 1; min-width: 0;
+  font-size: 11px; color: #2f7d4f;
+  white-space: normal; word-break: break-all; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  font-weight: 500; line-height: 1.3;
 }
-.week-task-duration { font-size: 10px; color: #999; flex-shrink: 0; }
+.week-task-duration { font-size: 9px; color: #999; }
 
 .week-hint {
   position: absolute;
@@ -1551,6 +1532,8 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .modal-content { background: #fff; border-radius: 20px; width: 100%; max-width: 440px; max-height: 75vh; display: flex; flex-direction: column; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f0f0f0; }
 .modal-title { font-size: 18px; font-weight: 700; color: #1a1a2e; }
+.modal-header-actions { display: flex; align-items: center; gap: 8px; }
+.modal-ai-btn { font-size: 13px; color: #6b4ce6; padding: 4px 10px; background: #f3f0ff; border-radius: 14px; font-weight: 500; }
 .modal-close { font-size: 20px; color: #999; padding: 4px; }
 .modal-body { padding: 20px 24px; flex: 1; overflow-y: auto; }
 .modal-footer { display: flex; gap: 12px; padding: 16px 24px; border-top: 1px solid #f0f0f0; }
