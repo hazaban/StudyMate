@@ -76,10 +76,6 @@
         <text class="cal-menu-icon">+</text>
         <text class="cal-menu-text">添加任务</text>
       </view>
-      <view class="cal-menu-item" @click="selectCalDate">
-        <text class="cal-menu-icon">📋</text>
-        <text class="cal-menu-text">查看任务</text>
-      </view>
     </view>
 
     <view class="week-view" v-if="viewMode === 'week'">
@@ -102,9 +98,9 @@
           </view>
         </view>
         <view class="week-grid">
-          <view class="week-column" v-for="(day, colIdx) in weekDays" :key="colIdx">
+          <view class="week-column" v-for="(day, colIdx) in weekDays" :key="colIdx" :data-col="colIdx">
             <view class="week-cell" v-for="hour in timelineHours" :key="hour" :data-hour="hour" :data-date="day.dateStr">
-              <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed' }" @click="editTask(task)">
+              <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed' }" @click.stop="editTask(task)">
                 <view class="task-importance-dot" :class="getImportanceClass(task.importance)" v-if="task.importance"></view>
                 <text class="week-task-content">{{ task.content }}</text>
                 <text class="week-task-duration">{{ task.duration }}min</text>
@@ -112,12 +108,16 @@
             </view>
           </view>
         </view>
-        <view class="week-add-hint" v-if="isAddingTask" :style="{ top: addTaskY + 'px', left: addTaskX + 'px' }">
-          <view class="add-hint-content">
-            <text>{{ addTaskStartHour }}:00 - {{ addTaskEndHour }}:00</text>
-            <text>{{ addTaskDate }}</text>
-            <view class="add-hint-btn" @click="confirmWeekAdd">添加</view>
+        <view class="week-selection" v-if="isAddingTask && addTaskCol >= 0" :style="getSelectionStyle()"></view>
+        <view class="week-add-popover" v-if="isAddingTask && showAddPopover" :style="{ top: popoverY + 'px', left: popoverX + 'px' }">
+          <view class="popover-content">
+            <text class="popover-time">{{ addTaskStartHour }}:00 - {{ addTaskEndHour }}:00</text>
+            <text class="popover-date">{{ addTaskDate }}</text>
+            <view class="popover-btn" @click.stop="confirmWeekAdd">新建任务</view>
           </view>
+        </view>
+        <view class="week-hint" v-if="!isAddingTask">
+          <text class="week-hint-text">长按并拖拽可快速添加任务</text>
         </view>
       </scroll-view>
     </view>
@@ -209,55 +209,105 @@
           <view class="modal-close" @click="closeForm">✕</view>
         </view>
         <scroll-view scroll-y class="modal-body">
-          <view class="form-group">
-            <view class="form-label-row">
-              <text class="form-label">科目</text>
-              <text class="form-manage-link" @click="showManageSubjects = true">管理科目</text>
+          <view class="add-mode-tabs" v-if="!editingTask">
+            <view class="add-mode-tab" :class="{ active: addMode === 'ai' }" @click="addMode = 'ai'">
+              <text class="tab-icon">🤖</text>
+              <text class="tab-text">AI解析</text>
             </view>
-            <view class="subject-grid">
-              <view
-                class="subject-item"
-                v-for="s in subjectOptions"
-                :key="s"
-                :class="{ active: form.subject === s }"
-                @click="form.subject = s"
-              >{{ s }}</view>
-              <view class="subject-item subject-add" @click="showSubjectInput = !showSubjectInput">
-                <text v-if="!showSubjectInput">+ 自定义</text>
-                <text v-else>收起</text>
+            <view class="add-mode-tab" :class="{ active: addMode === 'manual' }" @click="addMode = 'manual'">
+              <text class="tab-icon">✏️</text>
+              <text class="tab-text">自定义添加</text>
+            </view>
+          </view>
+
+          <view v-if="addMode === 'ai' && !editingTask" class="ai-section">
+            <view class="ai-hint-box">
+              <text class="ai-hint-title">粘贴文字计划，AI自动生成任务</text>
+              <text class="ai-hint-desc">例如：明天上午9点复习数学第三章，下午2点做英语阅读</text>
+            </view>
+            <textarea class="ai-textarea-large" v-model="aiParseInput" placeholder="请粘贴您的文字计划..." />
+            <view class="ai-parse-btn-primary" @click="parseWithAI">
+              <text class="btn-icon">🔍</text>
+              <text class="btn-text">开始解析</text>
+            </view>
+            <view class="ai-result-list" v-if="aiParseResult.length > 0">
+              <view class="ai-result-header">
+                <text class="result-title">解析结果（{{ aiParseResult.filter(t=>t.selected).length }}/{{ aiParseResult.length }}）</text>
+                <text class="select-all-btn" @click="toggleSelectAll">{{ allSelected ? '取消全选' : '全选' }}</text>
+              </view>
+              <view class="ai-task-card" v-for="(task, idx) in aiParseResult" :key="idx" @click="task.selected = !task.selected">
+                <view class="task-checkbox" :class="{ checked: task.selected }"></view>
+                <view class="task-card-body">
+                  <text class="task-card-content">{{ task.content }}</text>
+                  <view class="task-card-meta">
+                    <text class="meta-tag">{{ task.subject }}</text>
+                    <text class="meta-text">{{ task.date }}</text>
+                    <text class="meta-text">{{ task.duration }}分钟</text>
+                  </view>
+                </view>
+              </view>
+              <view class="ai-add-all-btn" @click="addParsedTasks">
+                <text>添加选中的任务</text>
               </view>
             </view>
-            <view class="input-wrapper" v-if="showSubjectInput" style="margin-top: 10px;">
-              <input class="input-field" v-model="customSubject" placeholder="输入自定义科目..." @confirm="addCustomSubject" />
-            </view>
           </view>
 
-          <view class="form-group">
-            <text class="form-label">章节</text>
-            <view class="input-wrapper">
-              <input class="input-field" v-model="form.chapter" placeholder="如：第3章 二叉树" />
+          <view v-if="addMode === 'manual' || editingTask">
+            <view class="form-group">
+              <view class="form-label-row">
+                <text class="form-label">科目</text>
+                <text class="form-manage-link" @click="showManageSubjects = true">管理科目</text>
+              </view>
+              <view class="subject-grid">
+                <view
+                  class="subject-item"
+                  v-for="s in subjectOptions"
+                  :key="s"
+                  :class="{ active: form.subject === s }"
+                  @click="form.subject = s"
+                >{{ s }}</view>
+                <view class="subject-item subject-add" @click="showSubjectInput = !showSubjectInput">
+                  <text v-if="!showSubjectInput">+ 自定义</text>
+                  <text v-else>收起</text>
+                </view>
+              </view>
+              <view class="input-wrapper" v-if="showSubjectInput" style="margin-top: 10px;">
+                <input class="input-field" v-model="customSubject" placeholder="输入自定义科目..." @confirm="addCustomSubject" />
+              </view>
             </view>
-          </view>
 
-          <view class="form-group">
-            <text class="form-label">任务内容</text>
-            <view class="input-wrapper">
-              <textarea class="textarea-field" v-model="form.content" placeholder="请输入任务内容..." maxlength="500" />
-            </view>
-            <view class="ai-parse-btn" @click="showAIParseModal = true">
-              <text class="ai-icon">🤖</text>
-              <text class="ai-text">AI解析文字计划</text>
-            </view>
-          </view>
-
-          <view class="form-row">
-            <view class="form-group half">
-              <text class="form-label">预计时间（分钟）</text>
+            <view class="form-group">
+              <text class="form-label">章节</text>
               <view class="input-wrapper">
-                <input class="input-field" v-model="form.duration" type="number" placeholder="25" />
+                <input class="input-field" v-model="form.chapter" placeholder="如：第3章 二叉树" />
               </view>
             </view>
-            <view class="form-group half">
+
+            <view class="form-group">
+              <text class="form-label">任务内容</text>
+              <view class="input-wrapper">
+                <textarea class="textarea-field" v-model="form.content" placeholder="请输入任务内容..." maxlength="500" />
+              </view>
+            </view>
+
+            <view class="form-row">
+              <view class="form-group half">
+                <text class="form-label">预计时间（分钟）</text>
+                <view class="input-wrapper">
+                  <input class="input-field" v-model="form.duration" type="number" placeholder="25" />
+                </view>
+              </view>
+              <view class="form-group half">
+                <text class="form-label">开始时间</text>
+                <view class="input-wrapper">
+                  <picker mode="selector" :range="hourOptions" @change="onStartHourChange">
+                    <view class="picker-value">{{ form.start_hour }}:00</view>
+                  </picker>
+                </view>
+              </view>
+            </view>
+
+            <view class="form-group">
               <text class="form-label">任务类型</text>
               <view class="type-row">
                 <view class="type-item" :class="{ active: form.type === 'new_study' }" @click="form.type = 'new_study'">新学</view>
@@ -265,32 +315,44 @@
                 <view class="type-item" :class="{ active: form.type === 'mistake' }" @click="form.type = 'mistake'">错题</view>
               </view>
             </view>
-          </view>
 
-          <view class="form-group" v-if="enableQuadrant">
-            <text class="form-label">四象限分类</text>
-            <view class="type-row">
-              <view class="type-item" :class="{ active: form.importance === 'important_urgent' }" @click="form.importance = 'important_urgent'">重要紧急</view>
-              <view class="type-item" :class="{ active: form.importance === 'important_not_urgent' }" @click="form.importance = 'important_not_urgent'">重要不紧急</view>
-              <view class="type-item" :class="{ active: form.importance === 'urgent_not_important' }" @click="form.importance = 'urgent_not_important'">紧急不重要</view>
-              <view class="type-item" :class="{ active: form.importance === 'not_important_not_urgent' }" @click="form.importance = 'not_important_not_urgent'">不紧急不重要</view>
+            <view class="form-group" v-if="enableQuadrant">
+              <text class="form-label">四象限分类</text>
+              <view class="type-row">
+                <view class="type-item importance-item" :class="{ active: form.importance === 'important_urgent' }" @click="form.importance = 'important_urgent'">
+                  <view class="imp-dot imp-red"></view>
+                  <text>重要紧急</text>
+                </view>
+                <view class="type-item importance-item" :class="{ active: form.importance === 'important_not_urgent' }" @click="form.importance = 'important_not_urgent'">
+                  <view class="imp-dot imp-blue"></view>
+                  <text>重要不紧急</text>
+                </view>
+                <view class="type-item importance-item" :class="{ active: form.importance === 'urgent_not_important' }" @click="form.importance = 'urgent_not_important'">
+                  <view class="imp-dot imp-orange"></view>
+                  <text>紧急不重要</text>
+                </view>
+                <view class="type-item importance-item" :class="{ active: form.importance === 'not_important_not_urgent' }" @click="form.importance = 'not_important_not_urgent'">
+                  <view class="imp-dot imp-gray"></view>
+                  <text>不紧急不重要</text>
+                </view>
+              </view>
             </view>
-          </view>
 
-          <view class="form-group">
-            <text class="form-label">循环方式</text>
-            <view class="type-row repeat-row">
-              <view class="type-item" :class="{ active: form.repeat_type === 'none' }" @click="form.repeat_type = 'none'">不循环</view>
-              <view class="type-item" :class="{ active: form.repeat_type === 'daily' }" @click="form.repeat_type = 'daily'">每天</view>
-              <view class="type-item" :class="{ active: form.repeat_type === 'weekday' }" @click="form.repeat_type = 'weekday'">工作日</view>
-              <view class="type-item" :class="{ active: form.repeat_type === 'holiday' }" @click="form.repeat_type = 'holiday'">节假日</view>
+            <view class="form-group">
+              <text class="form-label">循环方式</text>
+              <view class="type-row repeat-row">
+                <view class="type-item" :class="{ active: form.repeat_type === 'none' }" @click="form.repeat_type = 'none'">不循环</view>
+                <view class="type-item" :class="{ active: form.repeat_type === 'daily' }" @click="form.repeat_type = 'daily'">每天</view>
+                <view class="type-item" :class="{ active: form.repeat_type === 'weekday' }" @click="form.repeat_type = 'weekday'">工作日</view>
+                <view class="type-item" :class="{ active: form.repeat_type === 'holiday' }" @click="form.repeat_type = 'holiday'">节假日</view>
+              </view>
             </view>
-          </view>
 
-          <view class="form-group" v-if="editingTask">
-            <text class="form-label">实际用时（系统根据番茄钟自动记录）</text>
-            <view class="input-wrapper">
-              <input class="input-field" v-model="form.actual_duration" type="number" placeholder="0" />
+            <view class="form-group" v-if="editingTask">
+              <text class="form-label">实际用时（系统根据番茄钟自动记录）</text>
+              <view class="input-wrapper">
+                <input class="input-field" v-model="form.actual_duration" type="number" placeholder="0" />
+              </view>
             </view>
           </view>
         </scroll-view>
@@ -408,12 +470,20 @@ const calSelectedDate = ref('')
 const calLongPressTimer = ref(null)
 
 const isAddingTask = ref(false)
+const addTaskCol = ref(-1)
 const addTaskStartHour = ref(9)
 const addTaskEndHour = ref(10)
 const addTaskDate = ref('')
 const addTaskX = ref(0)
 const addTaskY = ref(0)
-const addTaskStartTime = ref(null)
+const showAddPopover = ref(false)
+const popoverX = ref(0)
+const popoverY = ref(0)
+const cellHeight = 60
+let longPressTimer = null
+let startX = 0
+let startY = 0
+let weekScrollTop = 0
 
 const allSubjects = ['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络']
 const subjectOptions = ref([...allSubjects])
@@ -423,6 +493,8 @@ const manageNewSubject = ref('')
 const showAIParseModal = ref(false)
 const aiParseInput = ref('')
 const aiParseResult = ref([])
+const addMode = ref('ai')
+const hourOptions = Array.from({ length: 18 }, (_, i) => String(i + 6))
 
 async function loadTaskSubjects() {
   try { const res = await api.getUserSubjects(); const saved = res.subjects || []; customSubjectOptions.value = saved.filter(s => !allSubjects.includes(s)); subjectOptions.value = [...allSubjects]; saved.forEach(s => { if (!subjectOptions.value.includes(s)) subjectOptions.value.push(s) }) } catch (e) { /* offline */ }
@@ -460,7 +532,8 @@ const defaultForm = {
   actual_duration: 0,
   type: 'new_study',
   repeat_type: 'none',
-  importance: ''
+  importance: '',
+  start_hour: 9
 }
 
 const form = ref({ ...defaultForm })
@@ -572,7 +645,7 @@ const getImportanceClass = (type) => {
 }
 
 function getTasksAt(dateStr, hour) {
-  return taskStore.todayTasks.filter(t => t.date === dateStr)
+  return taskStore.weekTasks.filter(t => t.date === dateStr && t.start_hour === hour)
 }
 
 async function toggleTask(task) {
@@ -616,6 +689,25 @@ function closeForm() {
   showAddForm.value = false
   editingTask.value = null
   form.value = { ...defaultForm }
+  addMode.value = 'ai'
+  aiParseInput.value = ''
+  aiParseResult.value = []
+}
+
+function onStartHourChange(e) {
+  form.value.start_hour = parseInt(hourOptions[e.detail.value])
+}
+
+const allSelected = computed(() => {
+  if (aiParseResult.value.length === 0) return false
+  return aiParseResult.value.every(t => t.selected)
+})
+
+function toggleSelectAll() {
+  const target = !allSelected.value
+  aiParseResult.value.forEach(t => {
+    t.selected = target
+  })
 }
 
 function toggleQuadrant() {
@@ -646,7 +738,8 @@ async function submitForm() {
         content: form.value.content,
         duration: parseInt(form.value.duration) || 25,
         repeat_type: form.value.repeat_type,
-        importance: form.value.importance
+        importance: form.value.importance,
+        start_hour: form.value.start_hour || 9
       })
       taskDates.value.add(selectedDate.value)
       saveTaskDatesToStorage()
@@ -731,16 +824,7 @@ function handleCalRightClick(date, event) {
 function onCalTouchStart(date) {
   calSelectedDate.value = date
   calLongPressTimer.value = setTimeout(() => {
-    uni.showActionSheet({
-      itemList: ['添加任务', '查看任务'],
-      success: (res) => {
-        if (res.tapIndex === 0) {
-          addTaskFromCal()
-        } else if (res.tapIndex === 1) {
-          selectCalDate()
-        }
-      }
-    })
+    addTaskFromCal()
   }, 500)
 }
 
@@ -795,74 +879,142 @@ function loadTaskDates() {
   }
 }
 
+function getColFromX(x) {
+  const weekScroll = document.querySelector('.week-scroll')
+  if (!weekScroll) return 0
+  const rect = weekScroll.getBoundingClientRect()
+  const relativeX = x - rect.left - 60
+  const colWidth = (rect.width - 60) / 7
+  const col = Math.floor(relativeX / colWidth)
+  return Math.max(0, Math.min(6, col))
+}
+
 function getHourFromY(y, scrollTop) {
-  const cellHeight = 60
-  const adjustedY = y + scrollTop - 50
-  const hourIndex = Math.floor(adjustedY / cellHeight)
+  const weekScroll = document.querySelector('.week-scroll')
+  if (!weekScroll) return 9
+  const rect = weekScroll.getBoundingClientRect()
+  const relativeY = y - rect.top + scrollTop
+  const hourIndex = Math.floor(relativeY / cellHeight)
   return timelineHours[hourIndex] || 9
 }
 
 function onWeekTouchStart(e) {
   const touch = e.touches[0]
-  startAddTask(touch.clientX, touch.clientY)
+  startX = touch.clientX
+  startY = touch.clientY
+  const weekScroll = e.target.closest('.week-scroll')
+  weekScrollTop = weekScroll ? weekScroll.scrollTop : 0
+  startAddTask(touch.clientX, touch.clientY, weekScrollTop)
 }
 
 function onWeekTouchMove(e) {
-  if (!isAddingTask.value) return
   const touch = e.touches[0]
-  updateAddTask(touch.clientX, touch.clientY)
+  if (!isAddingTask.value) {
+    const dx = Math.abs(touch.clientX - startX)
+    const dy = Math.abs(touch.clientY - startY)
+    if (dx > 10 || dy > 10) {
+      clearTimeout(longPressTimer)
+    }
+    return
+  }
+  updateAddTask(touch.clientX, touch.clientY, weekScrollTop)
 }
 
 function onWeekTouchEnd() {
-  finishAddTask()
+  clearTimeout(longPressTimer)
+  if (isAddingTask.value) {
+    showAddPopover.value = true
+    popoverX.value = addTaskX.value
+    popoverY.value = Math.min(addTaskY.value, window.innerHeight - 120)
+  }
 }
 
 function onWeekMouseDown(e) {
-  startAddTask(e.clientX, e.clientY)
+  startX = e.clientX
+  startY = e.clientY
+  const weekScroll = e.target.closest('.week-scroll')
+  weekScrollTop = weekScroll ? weekScroll.scrollTop : 0
+  startAddTask(e.clientX, e.clientY, weekScrollTop)
 }
 
 function onWeekMouseMove(e) {
-  if (!isAddingTask.value) return
-  updateAddTask(e.clientX, e.clientY)
-}
-
-function onWeekMouseUp() {
-  finishAddTask()
-}
-
-function startAddTask(x, y) {
-  addTaskStartTime = Date.now()
-  setTimeout(() => {
-    if (Date.now() - addTaskStartTime > 300) {
-      isAddingTask.value = true
-      addTaskStartHour.value = getHourFromY(y, 0)
-      addTaskEndHour.value = addTaskStartHour.value + 1
-      addTaskX.value = x
-      addTaskY.value = y
-      addTaskDate.value = weekDays.value[0]?.dateStr || selectedDate.value
+  if (!isAddingTask.value) {
+    const dx = Math.abs(e.clientX - startX)
+    const dy = Math.abs(e.clientY - startY)
+    if (dx > 10 || dy > 10) {
+      clearTimeout(longPressTimer)
     }
-  }, 300)
+    return
+  }
+  e.preventDefault()
+  updateAddTask(e.clientX, e.clientY, weekScrollTop)
 }
 
-function updateAddTask(x, y) {
-  if (!isAddingTask.value) return
+function onWeekMouseUp(e) {
+  clearTimeout(longPressTimer)
+  if (isAddingTask.value) {
+    showAddPopover.value = true
+    popoverX.value = e.clientX
+    popoverY.value = Math.min(e.clientY, window.innerHeight - 120)
+  }
+}
+
+function startAddTask(x, y, scrollTop) {
+  clearTimeout(longPressTimer)
+  longPressTimer = setTimeout(() => {
+    uni.vibrateShort && uni.vibrateShort()
+    isAddingTask.value = true
+    showAddPopover.value = false
+    const col = getColFromX(x)
+    addTaskCol.value = col
+    addTaskDate.value = weekDays.value[col]?.dateStr || selectedDate.value
+    const hour = getHourFromY(y, scrollTop)
+    addTaskStartHour.value = hour
+    addTaskEndHour.value = hour + 1
+    addTaskX.value = x
+    addTaskY.value = y
+  }, 350)
+}
+
+function updateAddTask(x, y, scrollTop) {
   addTaskX.value = x
   addTaskY.value = y
-  const hour = getHourFromY(y, 0)
-  addTaskEndHour.value = Math.max(addTaskStartHour.value + 1, hour)
+  const col = getColFromX(x)
+  addTaskCol.value = col
+  addTaskDate.value = weekDays.value[col]?.dateStr || selectedDate.value
+  const hour = getHourFromY(y, scrollTop)
+  if (hour > addTaskStartHour.value) {
+    addTaskEndHour.value = hour + 1
+  } else {
+    addTaskEndHour.value = addTaskStartHour.value + 1
+  }
 }
 
 function finishAddTask() {
   if (!isAddingTask.value) return
-  setTimeout(() => {
-    isAddingTask.value = false
-  }, 300)
+}
+
+function getSelectionStyle() {
+  if (addTaskCol.value < 0) return {}
+  const top = (addTaskStartHour.value - timelineHours[0]) * cellHeight
+  const height = (addTaskEndHour.value - addTaskStartHour.value) * cellHeight
+  const left = 60 + addTaskCol.value * ((window.innerWidth - 60) / 7)
+  const width = (window.innerWidth - 60) / 7
+  return {
+    top: top + 'px',
+    left: left + 'px',
+    width: width + 'px',
+    height: height + 'px'
+  }
 }
 
 function confirmWeekAdd() {
+  isAddingTask.value = false
+  showAddPopover.value = false
   showAddForm.value = true
   form.value.date = addTaskDate.value
   form.value.duration = (addTaskEndHour.value - addTaskStartHour.value) * 60
+  form.value.start_hour = addTaskStartHour.value
 }
 
 async function parseWithAI() {
@@ -988,11 +1140,22 @@ async function switchView(mode) {
     await loadTasks()
   } else if (mode === 'week') {
     generateWeekDays()
-    await loadTasks()
+    await loadWeekTasks()
   } else {
     selectedDate.value = formatDate(new Date())
     calendarMonth.value = new Date()
     await loadTasks()
+  }
+}
+
+async function loadWeekTasks() {
+  if (!planStore.currentPlan) return
+  const result = await taskStore.getAllTasks(planStore.currentPlan.id)
+  if (result.success) {
+    const dates = new Set(result.tasks.map(t => t.date))
+    dates.forEach(d => taskDates.value.add(d))
+    saveTaskDatesToStorage()
+    generateCalendar()
   }
 }
 
@@ -1277,15 +1440,58 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 .week-task-content { display: block; font-size: 11px; color: #2f7d4f; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .week-task-duration { font-size: 10px; color: #999; }
-.week-add-hint {
-  position: absolute; z-index: 10; background: #fff; border: 1px solid #2f7d4f; border-radius: 8px; padding: 8px 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+
+.week-selection {
+  position: absolute;
+  background: rgba(47, 125, 79, 0.25);
+  border: 2px solid #2f7d4f;
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 5;
 }
-.add-hint-content {
-  text-align: center; font-size: 13px; color: #2f7d4f; margin-bottom: 8px;
+
+.week-add-popover {
+  position: fixed;
+  z-index: 20;
+  transform: translateX(-50%);
 }
-.add-hint-btn {
-  background: #2f7d4f; color: #fff; padding: 6px 16px; border-radius: 6px; font-size: 13px; margin-top: 8px;
+.popover-content {
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  text-align: center;
+  min-width: 160px;
+  border: 1px solid #f0f0f0;
+  &::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid #fff;
+  }
 }
+.popover-time { display: block; font-size: 15px; font-weight: 600; color: #333; margin-bottom: 4px; }
+.popover-date { display: block; font-size: 12px; color: #999; margin-bottom: 10px; }
+.popover-btn {
+  background: linear-gradient(135deg, #2f7d4f, #3d9960);
+  color: #fff; padding: 8px 20px; border-radius: 20px;
+  font-size: 13px; font-weight: 600;
+}
+
+.week-hint {
+  position: absolute;
+  bottom: 12px; left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  background: rgba(0,0,0,0.6);
+  border-radius: 12px;
+  pointer-events: none;
+}
+.week-hint-text { font-size: 11px; color: #fff; }
 
 .tabs { display: flex; margin-bottom: 16px; background: #f5f7f5; border-radius: 12px; padding: 4px; }
 .tab { flex: 1; text-align: center; padding: 10px; border-radius: 10px; transition: all 0.2s;
@@ -1405,41 +1611,88 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   &:active { opacity: 0.85; }
 }
 
-.ai-parse-btn {
-  display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px;
-  padding: 10px; background: #f3f0ff; border-radius: 10px;
-  .ai-icon { font-size: 16px; }
-  .ai-text { font-size: 13px; color: #6b4ce6; font-weight: 500; }
+.add-mode-tabs {
+  display: flex; gap: 10px; margin-bottom: 20px;
+}
+.add-mode-tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 12px; border-radius: 12px; background: #f5f7f5;
+  .tab-icon { font-size: 20px; }
+  .tab-text { font-size: 13px; color: #666; }
+  &.active {
+    background: linear-gradient(135deg, #2f7d4f, #3d9960);
+    .tab-text { color: #fff; font-weight: 600; }
+  }
 }
 
-.ai-dialog { max-width: 400px; }
-.ai-hint { margin-bottom: 12px; }
-.ai-hint-text { display: block; font-size: 13px; color: #666; margin-bottom: 4px; }
-.ai-hint-example { display: block; font-size: 12px; color: #999; background: #f5f5f5; padding: 8px; border-radius: 6px; }
-.ai-textarea {
-  width: 100%; min-height: 100px; padding: 12px; border: 1px solid #e8ece9; border-radius: 10px;
-  font-size: 14px; color: #333; background: #fafafa; margin-bottom: 12px;
+.ai-section {
+  .ai-hint-box {
+    background: linear-gradient(135deg, #f3f0ff, #e8f5ff);
+    border-radius: 12px; padding: 14px; margin-bottom: 16px;
+  }
+  .ai-hint-title { display: block; font-size: 14px; font-weight: 600; color: #333; margin-bottom: 4px; }
+  .ai-hint-desc { font-size: 12px; color: #888; }
+  .ai-textarea-large {
+    width: 100%; min-height: 120px; padding: 14px;
+    border: 1px solid #e8ece9; border-radius: 12px;
+    font-size: 14px; color: #333; background: #fafafa;
+    margin-bottom: 12px;
+  }
+  .ai-parse-btn-primary {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 14px; background: linear-gradient(135deg, #6b4ce6, #8b6df0);
+    border-radius: 12px; margin-bottom: 20px;
+    .btn-icon { font-size: 18px; }
+    .btn-text { font-size: 15px; color: #fff; font-weight: 600; }
+    &:active { opacity: 0.9; }
+  }
 }
-.ai-parse-btn-large {
-  display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px;
-  background: #6b4ce6; border-radius: 12px; margin-bottom: 16px;
-  .ai-icon { font-size: 18px; }
-  .ai-text { font-size: 15px; color: #fff; font-weight: 600; }
+
+.ai-result-list {
+  .ai-result-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px;
+  }
+  .result-title { font-size: 14px; font-weight: 600; color: #333; }
+  .select-all-btn { font-size: 13px; color: #2f7d4f; font-weight: 500; }
 }
-.ai-result { padding-top: 16px; border-top: 1px solid #f0f0f0; }
-.ai-result-title { display: block; font-size: 14px; font-weight: 600; color: #333; margin-bottom: 10px; }
-.ai-task-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: #f5f7f5; border-radius: 10px; margin-bottom: 8px; }
-.ai-task-checkbox {
-  width: 20px; height: 20px; border: 2px solid #d0d5d2; border-radius: 50%; flex-shrink: 0; margin-top: 2px;
-  &.checked { background: #2f7d4f; border-color: #2f7d4f; }
+
+.ai-task-card {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px; background: #f5f7f5; border-radius: 12px;
+  margin-bottom: 10px;
+  &:active { background: #e8f0eb; }
+  .task-checkbox {
+    width: 22px; height: 22px; border: 2px solid #d0d5d2;
+    border-radius: 6px; flex-shrink: 0; margin-top: 2px;
+    &.checked { background: #2f7d4f; border-color: #2f7d4f; }
+  }
+  .task-card-body { flex: 1; min-width: 0; }
+  .task-card-content {
+    display: block; font-size: 14px; color: #333;
+    margin-bottom: 6px; word-break: break-all;
+  }
+  .task-card-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .meta-tag {
+    font-size: 11px; padding: 2px 8px; background: #e8f0eb;
+    color: #2f7d4f; border-radius: 4px;
+  }
+  .meta-text { font-size: 11px; color: #999; }
 }
-.ai-task-info { flex: 1; min-width: 0; }
-.ai-task-content { display: block; font-size: 14px; color: #333; margin-bottom: 4px; }
-.ai-task-meta { font-size: 12px; color: #999; }
-.ai-add-all-btn {
-  margin-top: 12px; padding: 12px; text-align: center;
-  background: #2f7d4f; color: #fff; border-radius: 12px;
-  font-size: 15px; font-weight: 600;
+
+.picker-value {
+  height: 44px; line-height: 44px; color: #333; font-size: 14px;
+}
+
+.importance-item {
+  display: flex; align-items: center; gap: 6px;
+  .imp-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+  .imp-red { background: #ff4d4f; }
+  .imp-blue { background: #1890ff; }
+  .imp-orange { background: #fa8c16; }
+  .imp-gray { background: #bfbfbf; }
 }
 
 .bottom-space { height: 100px; }

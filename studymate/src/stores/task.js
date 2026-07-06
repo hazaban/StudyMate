@@ -5,6 +5,7 @@ import * as api from '@/api/client'
 export const useTaskStore = defineStore('task', {
   state: () => ({
     todayTasks: [],
+    weekTasks: [],
     currentTask: null,
     completedCount: 0,
     totalCount: 0
@@ -23,6 +24,16 @@ export const useTaskStore = defineStore('task', {
         this.totalCount = tasks.length
         this.completedCount = tasks.filter(t => t.status === 'completed').length
         return { success: true }
+      } catch (error) {
+        return { success: false, error: error.message }
+      }
+    },
+
+    async getAllTasks(planId) {
+      try {
+        const tasks = await api.getTasks(planId)
+        this.weekTasks = tasks
+        return { success: true, tasks }
       } catch (error) {
         return { success: false, error: error.message }
       }
