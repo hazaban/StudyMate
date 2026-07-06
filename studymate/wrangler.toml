@@ -1,0 +1,6 @@
+[build]
+command = "./build.sh"
+publish = "dist/build/h5"
+
+[env]
+NODE_VERSION = "22"
