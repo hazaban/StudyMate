@@ -92,8 +92,39 @@ export async function deletePlan(id) {
   return request(`/plans/${id}`, { method: 'DELETE' })
 }
 
+/** 直接调用 CF Worker AI 端点（绕过 Vercel 超时限制） */
+async function aiRequest(url, body) {
+  const token = getToken()
+  const headers = { 'Content-Type': 'application/json' }
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const res = await uni.request({
+    url: `/api/ai${url}`,
+    method: 'POST',
+    data: body,
+    header: headers,
+    timeout: 30000
+  })
+
+  if (res.statusCode >= 200 && res.statusCode < 300) {
+    return res.data
+  }
+  throw new Error(res.data?.error || res.data?.detail || 'AI请求失败')
+}
+
 export async function aiGeneratePlan(data) {
-  return request('/plans/ai/generate', { method: 'POST', data })
+  const today = new Date().toISOString().split('T')[0]
+  const prompt = `请根据以下信息生成一份详细的备考计划：
+
+考试名称：${data.exam_name || data.description || '未知考试'}
+考试日期：${data.exam_date || '未指定'}
+目标分数：${JSON.stringify(data.target_scores || {})}
+每日学习时间：${data.daily_study_time || 480}分钟
+薄弱点：${(data.weak_points || []).join('、') || '无'}
+补充描述：${data.description || ''}
+
+请生成包含阶段划分（每阶段名称、时长、重点科目、每日安排）、每周目标、复习策略的完整计划。返回JSON格式。`
+  return aiRequest('/generate-plan', { prompt, temperature: 0.3 })
 }
 
 // ==================== Tasks ====================
@@ -136,7 +167,26 @@ export async function aiGenerateTasks(data) {
 }
 
 export async function aiParsePlan(data) {
-  return request('/tasks/ai/parse-plan', { method: 'POST', data })
+  const today = new Date().toISOString().split('T')[0]
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+  const prompt = `当前日期：${today}，明天：${tomorrow}
+
+用户输入的自然语言计划：
+${data.text}
+
+请把以上文字拆成结构化的任务列表。每个任务必须包含：
+- content: 20字以内的简洁摘要（不能照搬原文）
+- subject: 科目名
+- chapter: 章节名（提到了就提取，没提填空字符串""）
+- duration: 分钟数整数（默认30）
+- type: "new_study"/"review"/"mistake"
+- date: YYYY-MM-DD（明天=${tomorrow}，今天或无时间词=${today}）
+- start_hour: 0-23整数（默认9）
+- repeat_type: "none"
+- selected: true
+
+返回JSON格式：{"tasks": [{"content":"...","subject":"...","chapter":"...","duration":30,"type":"new_study","date":"${today}","start_hour":9,"repeat_type":"none","selected":true}]}`
+  return aiRequest('/parse-tasks', { prompt, temperature: 0.1 })
 }
 
 // ==================== Cards ====================
