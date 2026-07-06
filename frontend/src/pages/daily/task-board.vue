@@ -397,6 +397,7 @@
           </view>
         </scroll-view>
         <view class="modal-footer">
+          <view class="delete-btn" v-if="editingTask" @click="confirmDeleteTask(editingTask)">删除</view>
           <view class="cancel-btn" @click="closeForm">取消</view>
           <view class="submit-btn" @click="submitForm">{{ editingTask ? '保存' : '添加' }}</view>
         </view>
