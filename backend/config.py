@@ -46,11 +46,13 @@ DB_SSLMODE = os.getenv("DB_SSLMODE", "require" if IS_PRODUCTION else "prefer")
 
 # =============================================================================
 # 智谱 GLM AI（OpenAI 兼容协议）
-# 文本对话 + 工具调用 + Agent（不需要看图）→ glm-4.5-air（性价比高、快速）
-# 传图 / 传视频 / GUI 理解           → glm-4.1v-thinking-flashx（便宜、极速）
+# 生产环境(Vercel)通过 Cloudflare Worker 代理访问国内 API
+# 本地开发直连 open.bigmodel.cn
 # =============================================================================
+_GLM_DIRECT = "https://open.bigmodel.cn/api/paas/v4"
+_GLM_PROXY = os.getenv("GLM_PROXY_URL", "https://studymate-5w0.pages.dev/api/ai-proxy")
 GLM_API_KEY = os.getenv("GLM_API_KEY", "")
-GLM_BASE_URL = os.getenv("GLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4")
+GLM_BASE_URL = os.getenv("GLM_BASE_URL", _GLM_PROXY if IS_PRODUCTION else _GLM_DIRECT)
 
 # 纯文本模型（计划生成、任务拆解、卡片生成、复盘总结）
 GLM_TEXT_MODEL = os.getenv("GLM_TEXT_MODEL", "glm-4.5-air")
