@@ -92,13 +92,13 @@
       </view>
       <view class="week-days-header">
         <view class="week-timeline-header"></view>
-        <view class="week-day-header" v-for="(day, idx) in weekDays" :key="idx" :class="{ today: day.isToday, selected: day.dateStr === selectedDate, weekend: day.isWeekend }" @click="selectDate(day.dateStr)">
+        <view class="week-day-header" v-for="(day, idx) in weekDays" :key="idx" :class="{ today: day.isToday, weekend: day.isWeekend }">
           <text class="week-day-name">{{ day.dayName }}</text>
           <text class="week-day-num">{{ day.day }}</text>
           <view class="week-day-dot" v-if="taskDates.has(day.dateStr)"></view>
         </view>
       </view>
-      <view class="week-scroll" @touchstart="onWeekTouchStart" @touchmove="onWeekTouchMove" @touchend="onWeekTouchEnd" @mousedown="onWeekMouseDown" @mousemove="onWeekMouseMove" @mouseup="onWeekMouseUp" @mouseleave="onWeekMouseUp" @contextmenu.prevent>
+      <view class="week-scroll">
         <view class="week-timeline">
           <view class="time-label" v-for="hour in timelineHours" :key="hour">
             <text>{{ hour }}:00</text>
@@ -106,7 +106,16 @@
         </view>
         <view class="week-grid">
           <view class="week-column" v-for="(day, colIdx) in weekDays" :key="colIdx" :data-col="colIdx" :class="{ weekend: day.isWeekend }">
-            <view class="week-cell" v-for="hour in timelineHours" :key="hour" :data-hour="hour" :data-date="day.dateStr">
+            <view
+              class="week-cell"
+              v-for="(hour, hourIdx) in timelineHours"
+              :key="hourIdx"
+              :data-hour="hour"
+              :data-date="day.dateStr"
+              @click.stop="addTaskFromWeekCell(day.dateStr, hour)"
+              @contextmenu.prevent="handleWeekCellRightClick(day.dateStr, hour, $event)"
+              @touchstart="onWeekCellTouchStart(day.dateStr, hour)"
+              @touchend="onWeekCellTouchEnd">
               <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed', [getSubjectClass(task.subject)]: true }" @click.stop="editTask(task)">
                 <view class="task-importance-dot" :class="getImportanceClass(task.importance)" v-if="task.importance && enableQuadrant"></view>
                 <text class="week-task-content">{{ task.content }}</text>
@@ -116,17 +125,17 @@
           </view>
         </view>
         <view class="current-time-line" v-if="viewMode === 'week'" :style="currentTimeLineStyle"></view>
-        <view class="week-selection" v-if="isAddingTask && addTaskCol >= 0" :style="getSelectionStyle()"></view>
-        <view class="week-add-popover" v-if="isAddingTask && showAddPopover" :style="{ top: popoverY + 'px', left: popoverX + 'px' }">
-          <view class="popover-content">
-            <text class="popover-time">{{ addTaskStartHour }}:00 - {{ addTaskEndHour }}:00</text>
-            <text class="popover-date">{{ addTaskDate }}</text>
-            <view class="popover-btn" @click.stop="confirmWeekAdd">新建任务</view>
-          </view>
+        <view class="week-hint">
+          <text class="week-hint-text">点击格子快速添加任务，长按或右键也可添加</text>
         </view>
-        <view class="week-hint" v-if="!isAddingTask">
-          <text class="week-hint-text">长按并拖拽可快速添加任务</text>
-        </view>
+      </view>
+    </view>
+
+    <!-- 周视图右键菜单 -->
+    <view class="cal-menu" v-if="showWeekMenu" :style="{ left: weekMenuX + 'px', top: weekMenuY + 'px' }" @click.stop>
+      <view class="cal-menu-item" @click="addTaskFromWeekCell(weekCellDate, weekCellHour)">
+        <text class="cal-menu-icon">+</text>
+        <text class="cal-menu-text">添加任务</text>
       </view>
     </view>
 
@@ -485,21 +494,13 @@ const calSelectedDate = ref('')
 const calLongPressTimer = ref(null)
 let calMouseTimer = null
 
-const isAddingTask = ref(false)
-const addTaskCol = ref(-1)
-const addTaskStartHour = ref(9)
-const addTaskEndHour = ref(10)
-const addTaskDate = ref('')
-const addTaskX = ref(0)
-const addTaskY = ref(0)
-const showAddPopover = ref(false)
-const popoverX = ref(0)
-const popoverY = ref(0)
-const cellHeight = 60
-let longPressTimer = null
-let startX = 0
-let startY = 0
-let weekScrollTop = 0
+// 周视图时间格交互
+const showWeekMenu = ref(false)
+const weekMenuX = ref(0)
+const weekMenuY = ref(0)
+const weekCellDate = ref('')
+const weekCellHour = ref(9)
+let weekCellTouchTimer = null
 
 const allSubjects = ['数学', '英语', '政治', '数据结构', '计算机组成原理', '操作系统', '计算机网络']
 const subjectOptions = ref([...allSubjects])
@@ -673,14 +674,14 @@ const getSubjectClass = (subject) => {
   return map[subject] || 'subject-default'
 }
 
+// 当前时间线（周视图中显示红色横线标识当前时间）
 const currentTimeLineStyle = computed(() => {
   const now = new Date()
   const hour = now.getHours()
   const minute = now.getMinutes()
+  const CELL_H = 60
   if (hour < timelineHours[0] || hour > timelineHours[timelineHours.length - 1]) return { display: 'none' }
-  const weekScroll = document?.querySelector?.('.week-scroll')
-  const scrollTop = weekScroll?.scrollTop || 0
-  const top = (hour - timelineHours[0]) * cellHeight + (minute / 60) * cellHeight - scrollTop
+  const top = (hour - timelineHours[0]) * CELL_H + (minute / 60) * CELL_H
   return {
     position: 'absolute',
     left: '50px',
@@ -959,157 +960,42 @@ function loadTaskDates() {
   }
 }
 
-function getColFromX(x) {
-  const weekScroll = document.querySelector('.week-scroll')
-  if (!weekScroll) return 0
-  const rect = weekScroll.getBoundingClientRect()
-  const scrollLeft = weekScroll.scrollLeft || 0
-  const relativeX = x - rect.left - 50 + scrollLeft
-  const colWidth = (rect.width - 50) / 7
-  const col = Math.floor(relativeX / colWidth)
-  return Math.max(0, Math.min(6, col))
+// ==================== 周视图时间格交互 ====================
+
+function handleWeekCellRightClick(dateStr, hour, event) {
+  showWeekMenu.value = false
+  weekCellDate.value = dateStr
+  weekCellHour.value = hour
+  const nativeEvent = event.detail || event
+  weekMenuX.value = nativeEvent.clientX || event.x || 0
+  weekMenuY.value = nativeEvent.clientY || event.y || 0
+  showWeekMenu.value = true
 }
 
-function getHourFromY(y, scrollTop) {
-  const weekScroll = document.querySelector('.week-scroll')
-  if (!weekScroll) return 9
-  const rect = weekScroll.getBoundingClientRect()
-  const relativeY = y - rect.top + (scrollTop || weekScroll.scrollTop || 0)
-  const hourIndex = Math.floor(relativeY / cellHeight)
-  return timelineHours[hourIndex] || 9
+function onWeekCellTouchStart(dateStr, hour) {
+  weekCellDate.value = dateStr
+  weekCellHour.value = hour
+  clearTimeout(weekCellTouchTimer)
+  weekCellTouchTimer = setTimeout(() => {
+    addTaskFromWeekCell(dateStr, hour)
+  }, 500)
 }
 
-function onWeekTouchStart(e) {
-  const touch = e.touches[0]
-  startX = touch.clientX
-  startY = touch.clientY
-  const weekScroll = e.target.closest('.week-scroll')
-  weekScrollTop = weekScroll ? weekScroll.scrollTop : 0
-  startAddTask(touch.clientX, touch.clientY, weekScrollTop)
+function onWeekCellTouchEnd() {
+  clearTimeout(weekCellTouchTimer)
 }
 
-function onWeekTouchMove(e) {
-  const touch = e.touches[0]
-  if (!isAddingTask.value) {
-    const dx = Math.abs(touch.clientX - startX)
-    const dy = Math.abs(touch.clientY - startY)
-    if (dx > 10 || dy > 10) {
-      clearTimeout(longPressTimer)
-    }
-    return
-  }
-  updateAddTask(touch.clientX, touch.clientY, weekScrollTop)
-}
-
-function onWeekTouchEnd() {
-  clearTimeout(longPressTimer)
-  if (isAddingTask.value) {
-    showAddPopover.value = true
-    popoverX.value = addTaskX.value
-    popoverY.value = Math.min(addTaskY.value, window.innerHeight - 120)
-  }
-}
-
-function onWeekMouseDown(e) {
-  startX = e.clientX
-  startY = e.clientY
-  // UniApp H5 的 e.target 可能不是标准 DOM 元素（被 Vue/UniApp 包装），
-  // 所以用 document.querySelector 替代 e.target.closest
-  const weekScroll = document.querySelector('.week-scroll')
-  weekScrollTop = weekScroll ? weekScroll.scrollTop : 0
-  startAddTask(e.clientX, e.clientY, weekScrollTop)
-}
-
-function onWeekMouseMove(e) {
-  if (!isAddingTask.value) {
-    const dx = Math.abs(e.clientX - startX)
-    const dy = Math.abs(e.clientY - startY)
-    if (dx > 10 || dy > 10) {
-      clearTimeout(longPressTimer)
-    }
-    return
-  }
-  e.preventDefault()
-  updateAddTask(e.clientX, e.clientY, weekScrollTop)
-}
-
-function onWeekMouseUp(e) {
-  clearTimeout(longPressTimer)
-  if (isAddingTask.value) {
-    showAddPopover.value = true
-    popoverX.value = e.clientX
-    popoverY.value = Math.min(e.clientY, window.innerHeight - 120)
-  }
-}
-
-function startAddTask(x, y, scrollTop) {
-  clearTimeout(longPressTimer)
-  longPressTimer = setTimeout(() => {
-    try {
-      // #ifdef APP-PLUS || MP
-      uni.vibrateShort && uni.vibrateShort({ type: 'medium' })
-      // #endif
-      // #ifdef H5
-      if ('vibrate' in navigator) navigator.vibrate(30)
-      // #endif
-    } catch (e) { /* ignore */ }
-
-    isAddingTask.value = true
-    showAddPopover.value = false
-    const col = getColFromX(x)
-    addTaskCol.value = col
-    addTaskDate.value = weekDays.value[col]?.dateStr || selectedDate.value
-    const hour = getHourFromY(y, scrollTop)
-    addTaskStartHour.value = hour
-    addTaskEndHour.value = hour + 1
-    addTaskX.value = x
-    addTaskY.value = y
-  }, 350)
-}
-
-function updateAddTask(x, y, scrollTop) {
-  addTaskX.value = x
-  addTaskY.value = y
-  const col = getColFromX(x)
-  addTaskCol.value = col
-  addTaskDate.value = weekDays.value[col]?.dateStr || selectedDate.value
-  const hour = getHourFromY(y, scrollTop)
-  if (hour > addTaskStartHour.value) {
-    addTaskEndHour.value = hour + 1
-  } else {
-    addTaskEndHour.value = addTaskStartHour.value + 1
-  }
-}
-
-function finishAddTask() {
-  if (!isAddingTask.value) return
-}
-
-function getSelectionStyle() {
-  if (addTaskCol.value < 0) return {}
-  const weekScroll = document.querySelector('.week-scroll')
-  if (!weekScroll) return {}
-  const rect = weekScroll.getBoundingClientRect()
-  const scrollTop = weekScroll.scrollTop || 0
-  const colWidth = (rect.width - 50) / 7
-  const top = (addTaskStartHour.value - timelineHours[0]) * cellHeight - scrollTop
-  const height = (addTaskEndHour.value - addTaskStartHour.value) * cellHeight
-  const left = 50 + addTaskCol.value * colWidth
-  return {
-    top: top + 'px',
-    left: left + 'px',
-    width: colWidth + 'px',
-    height: height + 'px'
-  }
-}
-
-function confirmWeekAdd() {
-  isAddingTask.value = false
-  showAddPopover.value = false
+function addTaskFromWeekCell(dateStr, hour) {
+  showWeekMenu.value = false
+  selectedDate.value = dateStr
   showAddForm.value = true
-  form.value.date = addTaskDate.value
-  form.value.duration = (addTaskEndHour.value - addTaskStartHour.value) * 60
-  form.value.start_hour = addTaskStartHour.value
+  form.value.date = dateStr
+  form.value.start_hour = hour
+  form.value.duration = 60
+}
+
+function closeWeekMenu() {
+  showWeekMenu.value = false
 }
 
 async function parseWithAI() {
@@ -1520,12 +1406,6 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
     margin: 2px;
     border: 1px solid rgba(47,125,79,0.2);
   }
-  &.selected {
-    background: rgba(47,125,79,0.12);
-    .week-day-num { color: #2f7d4f; }
-    border-radius: 8px;
-    margin: 2px;
-  }
   &.weekend {
     background: rgba(255,248,220,0.3);
     .week-day-name, .week-day-num { color: #8b7355; }
@@ -1597,56 +1477,19 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   &.importance-orange { background: #ff9800; box-shadow: 0 0 4px rgba(255,152,0,0.6); }
   &.importance-gray { background: #9e9e9e; }
 }
-.week-task-content { display: block; font-size: 11px; color: #2f7d4f; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-.week-task-duration { font-size: 10px; color: #999; }
-
-.week-selection {
-  position: absolute;
-  background: rgba(47, 125, 79, 0.25);
-  border: 2px solid #2f7d4f;
-  border-radius: 8px;
-  pointer-events: none;
-  z-index: 5;
+.week-task-content {
+  display: block; font-size: 12px; color: #2f7d4f;
+  overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; font-weight: 500; line-height: 1.3;
 }
-
-.week-add-popover {
-  position: fixed;
-  z-index: 20;
-  transform: translateX(-50%);
-}
-.popover-content {
-  background: #fff;
-  border-radius: 12px;
-  padding: 12px 16px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-  text-align: center;
-  min-width: 160px;
-  border: 1px solid #f0f0f0;
-  &::before {
-    content: '';
-    position: absolute;
-    top: -8px;
-    left: 50%;
-    transform: translateX(-50%);
-    border-left: 8px solid transparent;
-    border-right: 8px solid transparent;
-    border-bottom: 8px solid #fff;
-  }
-}
-.popover-time { display: block; font-size: 15px; font-weight: 600; color: #333; margin-bottom: 4px; }
-.popover-date { display: block; font-size: 12px; color: #999; margin-bottom: 10px; }
-.popover-btn {
-  background: linear-gradient(135deg, #2f7d4f, #3d9960);
-  color: #fff; padding: 8px 20px; border-radius: 20px;
-  font-size: 13px; font-weight: 600;
-}
+.week-task-duration { font-size: 10px; color: #999; flex-shrink: 0; }
 
 .week-hint {
   position: absolute;
   bottom: 12px; left: 50%;
   transform: translateX(-50%);
   padding: 6px 12px;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.55);
   border-radius: 12px;
   pointer-events: none;
 }
