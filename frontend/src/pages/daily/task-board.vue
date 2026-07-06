@@ -475,7 +475,7 @@ import { useTaskStore } from '@/stores/task'
 import { usePlanStore } from '@/stores/plan'
 import { useUserStore } from '@/stores/user'
 import { useFarmStore } from '@/stores/farm'
-import { getFocusRecords } from '@/api/client'
+import * as api from '@/api/client'
 
 const taskStore = useTaskStore()
 const planStore = usePlanStore()
@@ -543,33 +543,6 @@ const aiParseResult = ref([])
 const addMode = ref('manual')
 const hourOptions = Array.from({ length: 18 }, (_, i) => String(i + 6))
 
-// 章节下拉选项：从当前计划科目中提取
-const availableChapters = computed(() => {
-  const planSubjects = planStore.currentPlan?.subjects || []
-  // 找到当前选中科目的章节列表
-  const currentSubj = planSubjects.find(s => s.name === form.value.subject)
-  if (!currentSubj || !currentSubj.chapters || currentSubj.chapters.length === 0) return []
-  return currentSubj.chapters.map(c => c.name || '').filter(Boolean)
-})
-
-function onChapterChange(e) {
-  const idx = e.detail.value
-  if (availableChapters.value[idx]) {
-    form.value.chapter = availableChapters.value[idx]
-    // 如果有章节时长，自动填入预计时间
-    const planSubjects = planStore.currentPlan?.subjects || []
-    const currentSubj = planSubjects.find(s => s.name === form.value.subject)
-    if (currentSubj?.chapters?.[idx]?.duration) {
-      form.value.duration = currentSubj.chapters[idx].duration
-    }
-  }
-}
-
-// 科目切换时清空章节（如果不是同一科目）
-watch(() => form.value.subject, () => {
-  form.value.chapter = ''
-})
-
 async function loadTaskSubjects() {
   try { const res = await api.getUserSubjects(); const saved = res.subjects || []; customSubjectOptions.value = saved.filter(s => !allSubjects.includes(s)); subjectOptions.value = [...allSubjects]; saved.forEach(s => { if (!subjectOptions.value.includes(s)) subjectOptions.value.push(s) }) } catch (e) { /* offline */ }
 }
@@ -611,6 +584,27 @@ const defaultForm = {
 }
 
 const form = ref({ ...defaultForm })
+
+const availableChapters = computed(() => {
+  const planSubjects = planStore.currentPlan?.subjects || []
+  const currentSubj = planSubjects.find(s => s.name === form.value.subject)
+  if (!currentSubj?.chapters?.length) return []
+  return currentSubj.chapters.map(c => c.name || '').filter(Boolean)
+})
+
+function onChapterChange(e) {
+  const idx = e.detail.value
+  if (availableChapters.value[idx]) {
+    form.value.chapter = availableChapters.value[idx]
+    const planSubjects = planStore.currentPlan?.subjects || []
+    const currentSubj = planSubjects.find(s => s.name === form.value.subject)
+    if (currentSubj?.chapters?.[idx]?.duration) {
+      form.value.duration = currentSubj.chapters[idx].duration
+    }
+  }
+}
+
+watch(() => form.value.subject, () => { form.value.chapter = '' })
 
 function formatDate(d) {
   const y = d.getFullYear()
@@ -1346,7 +1340,7 @@ async function loadTasks() {
 async function loadFocusRecords() {
   if (!planStore.currentPlan) { dateFocusRecords.value = []; return }
   try {
-    const records = await getFocusRecords(planStore.currentPlan.id, selectedDate.value, selectedDate.value)
+    const records = await api.getFocusRecords(planStore.currentPlan.id, selectedDate.value, selectedDate.value)
     dateFocusRecords.value = records || []
   } catch (e) {
     dateFocusRecords.value = []
