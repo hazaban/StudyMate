@@ -77,7 +77,7 @@
                 <text class="subject-empty-text">还没有科目，点击「+ 自定义」或「管理科目」添加你的科目</text>
               </view>
               <view class="input-wrapper" v-if="showSubjectInput" style="margin-top: 10px;">
-                <input class="input-field" v-model="customSubject" placeholder="输入自定义科目..." @confirm="addCustomSubject" />
+                <input class="input-field" v-model="customSubject" placeholder="输入自定义科目，按回车添加..." @confirm="addCustomSubject" />
               </view>
             </view>
 
