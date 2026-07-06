@@ -113,7 +113,9 @@
           </view>
           <view class="form-group">
             <text class="form-label">预计时间（分钟）</text>
-            <input class="input-field" type="number" v-model="form.duration" placeholder="25" />
+            <view class="input-wrapper">
+              <input class="input-inner" type="number" v-model="form.duration" placeholder="25" />
+            </view>
           </view>
           <view class="form-group">
             <text class="form-label">日期</text>
@@ -123,6 +125,7 @@
           </view>
         </scroll-view>
         <view class="modal-bot">
+          <view class="btn-delete" v-if="editingTask" @click="deleteTask">删除</view>
           <view class="btn-cancel" @click="showAddForm = false">取消</view>
           <view class="btn-submit" @click="submitForm">保存</view>
         </view>
@@ -255,6 +258,25 @@ async function submitForm() {
   } catch (e) {
     uni.showToast({ title: '操作失败', icon: 'none' })
   }
+}
+
+async function deleteTask() {
+  if (!editingTask.value) return
+  uni.showModal({
+    title: '删除任务',
+    content: '确定删除这个任务吗？',
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        await taskStore.deleteTask(editingTask.value.id)
+        await taskStore.getAllTasks(planStore.currentPlan.id)
+        showAddForm.value = false
+        uni.showToast({ title: '删除成功', icon: 'success' })
+      } catch (e) {
+        uni.showToast({ title: '删除失败', icon: 'none' })
+      }
+    }
+  })
 }
 
 async function loadTasks() {
@@ -398,9 +420,12 @@ onMounted(async () => {
   width: 100%; min-height: 80px; padding: 12px; border: 1px solid #e8ece9;
   border-radius: 12px; font-size: 14px; color: #1a1a2e; background: #fafafa;
 }
-.input-field {
-  width: 100%; padding: 12px; border: 1px solid #e8ece9;
-  border-radius: 12px; font-size: 14px; color: #1a1a2e; background: #fafafa;
+.input-wrapper {
+  width: 100%; padding: 12px 14px; border: 1px solid #e8ece9;
+  border-radius: 12px; background: #fafafa;
+}
+.input-inner {
+  width: 100%; font-size: 14px; color: #1a1a2e; border: none; outline: none; background: transparent;
 }
 .picker-value {
   padding: 12px; border: 1px solid #e8ece9; border-radius: 12px;
@@ -411,6 +436,11 @@ onMounted(async () => {
   flex: 1; padding: 13px; text-align: center; border-radius: 12px;
   font-size: 15px; color: #999; background: #f5f7f5; font-weight: 500;
   &:active { background: #e8f0eb; }
+}
+.btn-delete {
+  flex: 1; padding: 13px; text-align: center; border-radius: 12px;
+  font-size: 15px; color: #c62828; background: #ffebee; font-weight: 500;
+  &:active { background: #ffcdd2; }
 }
 .btn-submit {
   flex: 2; padding: 13px; text-align: center; border-radius: 12px;
