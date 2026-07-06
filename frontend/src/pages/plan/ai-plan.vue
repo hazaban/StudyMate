@@ -49,6 +49,19 @@
       </scroll-view>
 
       <view class="chat-input-area">
+        <view class="chat-hint" v-if="planMessages.length <= 1">
+          <view class="chat-hint-header" @click="toggleHint">
+            <text class="chat-hint-title">💡 请尽量包含以下信息，AI规划更精准：</text>
+            <text class="hint-toggle">{{ showHintDetail ? '▼' : '▶' }}</text>
+          </view>
+          <view class="chat-hint-tags" v-if="showHintDetail">
+            <text class="hint-tag">考试名称（如：考研408）</text>
+            <text class="hint-tag">考试日期（如：2026年12月）</text>
+            <text class="hint-tag">目标分数（如：数学130分）</text>
+            <text class="hint-tag">每天可用时间（如：每天8小时）</text>
+            <text class="hint-tag">薄弱科目（如：算法题较弱）</text>
+          </view>
+        </view>
         <view class="quick-tips" v-if="planMessages.length <= 1">
           <view class="tip-item" @click="quickFill('考研408计算机，还有150天，每天8小时')">
             <text>考研408，150天，每天8小时</text>
@@ -58,16 +71,6 @@
           </view>
         </view>
         <view class="input-row">
-          <view class="chat-hint" v-if="planMessages.length <= 1">
-            <text class="chat-hint-title">💡 请尽量包含以下信息，AI规划更精准：</text>
-            <view class="chat-hint-tags">
-              <text class="hint-tag">考试名称（如：考研408）</text>
-              <text class="hint-tag">考试日期（如：2026年12月）</text>
-              <text class="hint-tag">目标分数（如：数学130分）</text>
-              <text class="hint-tag">每天可用时间（如：每天8小时）</text>
-              <text class="hint-tag">薄弱科目（如：算法题较弱）</text>
-            </view>
-          </view>
           <input class="chat-input" v-model="planInput" placeholder="比如：我要备战考研408，考试在2026年12月，每天能学8小时..." @confirm="sendPlanMessage" />
           <view class="send-btn" :class="{ disabled: !planInput.trim() || planLoading }" @click="sendPlanMessage">
             <text class="send-icon">➤</text>
@@ -207,6 +210,11 @@ const activeTab = ref('plan')
 const scrollToMsg = ref('')
 const showAddSubject = ref(false)
 const newSubjectName = ref('')
+const showHintDetail = ref(false)
+
+function toggleHint() {
+  showHintDetail.value = !showHintDetail.value
+}
 
 // ========== 整体规划对话 ==========
 const planInput = ref('')
@@ -586,12 +594,14 @@ function goBack() {
   display: flex;
   flex-direction: column;
   padding: 0 16px;
+  min-height: 0;
 }
 
 .chat-messages {
   flex: 1;
   height: 0;
   padding: 8px 0;
+  overflow-y: auto;
 }
 
 .msg-item {
@@ -704,11 +714,15 @@ function goBack() {
 }
 
 .chat-hint {
-  background: #f0f7ff; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
+  background: #f0f7ff; border-radius: 12px; padding: 10px 14px; margin-bottom: 10px;
   border: 1px solid #bbdefb;
 }
-.chat-hint-title { display: block; font-size: 13px; color: #1565c0; font-weight: 600; margin-bottom: 8px; }
-.chat-hint-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.chat-hint-header {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.chat-hint-title { font-size: 13px; color: #1565c0; font-weight: 600; }
+.hint-toggle { font-size: 12px; color: #1565c0; }
+.chat-hint-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .hint-tag { font-size: 11px; padding: 3px 10px; background: #fff; color: #555; border-radius: 10px; border: 1px solid #e0e0e0; }
 
 .quick-tips {
