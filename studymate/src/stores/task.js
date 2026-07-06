@@ -8,7 +8,8 @@ export const useTaskStore = defineStore('task', {
     weekTasks: [],
     currentTask: null,
     completedCount: 0,
-    totalCount: 0
+    totalCount: 0,
+    _currentPlanId: null
   }),
 
   getters: {
@@ -17,12 +18,19 @@ export const useTaskStore = defineStore('task', {
   },
 
   actions: {
+    _refreshAll(planId) {
+      if (!planId) planId = this._currentPlanId
+      if (!planId) return
+      return this.getAllTasks(planId)
+    },
+
     async getTasksByDate(planId, date) {
       try {
         const tasks = await api.getTasks(planId, date)
         this.todayTasks = tasks
         this.totalCount = tasks.length
         this.completedCount = tasks.filter(t => t.status === 'completed').length
+        this._currentPlanId = planId
         return { success: true }
       } catch (error) {
         return { success: false, error: error.message }
@@ -33,6 +41,7 @@ export const useTaskStore = defineStore('task', {
       try {
         const tasks = await api.getTasks(planId)
         this.weekTasks = tasks
+        this._currentPlanId = planId
         return { success: true, tasks }
       } catch (error) {
         return { success: false, error: error.message }
@@ -42,8 +51,12 @@ export const useTaskStore = defineStore('task', {
     async createTask(data) {
       try {
         const task = await api.createTask(data)
-        this.todayTasks.push(task)
-        this.totalCount++
+        if (task.date === data.date) {
+          this.todayTasks.push(task)
+          this.totalCount = this.todayTasks.length
+          this.completedCount = this.todayTasks.filter(t => t.status === 'completed').length
+        }
+        this.weekTasks.push(task)
         return { success: true, task }
       } catch (error) {
         return { success: false, error: error.message }
@@ -53,8 +66,10 @@ export const useTaskStore = defineStore('task', {
     async updateTask(id, data) {
       try {
         const task = await api.updateTask(id, data)
-        const idx = this.todayTasks.findIndex(t => t.id === id)
-        if (idx !== -1) this.todayTasks[idx] = task
+        const todayIdx = this.todayTasks.findIndex(t => t.id === id)
+        if (todayIdx !== -1) this.todayTasks[todayIdx] = task
+        const weekIdx = this.weekTasks.findIndex(t => t.id === id)
+        if (weekIdx !== -1) this.weekTasks[weekIdx] = task
         this._updateCounts()
         return { success: true, task }
       } catch (error) {
@@ -65,8 +80,10 @@ export const useTaskStore = defineStore('task', {
     async completeTask(id, taskDate) {
       try {
         const task = await api.completeTask(id, taskDate)
-        const idx = this.todayTasks.findIndex(t => t.id === id)
-        if (idx !== -1) this.todayTasks[idx] = task
+        const todayIdx = this.todayTasks.findIndex(t => t.id === id)
+        if (todayIdx !== -1) this.todayTasks[todayIdx] = task
+        const weekIdx = this.weekTasks.findIndex(t => t.id === id)
+        if (weekIdx !== -1) this.weekTasks[weekIdx] = task
         this._updateCounts()
         return { success: true, task }
       } catch (error) {
@@ -77,10 +94,24 @@ export const useTaskStore = defineStore('task', {
     async uncompleteTask(id, taskDate) {
       try {
         const task = await api.uncompleteTask(id, taskDate)
-        const idx = this.todayTasks.findIndex(t => t.id === id)
-        if (idx !== -1) this.todayTasks[idx] = task
+        const todayIdx = this.todayTasks.findIndex(t => t.id === id)
+        if (todayIdx !== -1) this.todayTasks[todayIdx] = task
+        const weekIdx = this.weekTasks.findIndex(t => t.id === id)
+        if (weekIdx !== -1) this.weekTasks[weekIdx] = task
         this._updateCounts()
         return { success: true, task }
+      } catch (error) {
+        return { success: false, error: error.message }
+      }
+    },
+
+    async deleteTask(id) {
+      try {
+        await api.deleteTask(id)
+        this.todayTasks = this.todayTasks.filter(t => t.id !== id)
+        this.weekTasks = this.weekTasks.filter(t => t.id !== id)
+        this._updateCounts()
+        return { success: true }
       } catch (error) {
         return { success: false, error: error.message }
       }

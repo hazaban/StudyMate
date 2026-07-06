@@ -12,9 +12,14 @@
           <text class="date">{{ currentDate }}</text>
         </view>
         <view class="header-actions">
-          <view class="quadrant-btn" @click="goToQuadrant">
-            <text class="quadrant-icon">◻️</text>
-            <text class="quadrant-text">四象限</text>
+          <view class="quadrant-switch" @click="toggleQuadrant">
+            <view class="switch-track" :class="{ active: enableQuadrant }">
+              <view class="switch-thumb"></view>
+            </view>
+            <text class="switch-label">四象限</text>
+          </view>
+          <view class="quadrant-entry-btn" v-if="enableQuadrant" @click="goToQuadrant">
+            <text class="quadrant-entry-icon">◻️</text>
           </view>
           <view class="add-btn" @click="showAddForm = true">
             <text class="add-icon">+</text>
@@ -316,7 +321,7 @@
               </view>
             </view>
 
-            <view class="form-group">
+            <view class="form-group" v-if="enableQuadrant">
               <text class="form-label">四象限分类</text>
               <view class="type-row">
                 <view class="type-item importance-item" :class="{ active: form.importance === 'important_urgent' }" @click="form.importance = 'important_urgent'">
@@ -450,6 +455,14 @@ const showAddForm = ref(false)
 const editingTask = ref(null)
 const showSubjectInput = ref(false)
 const customSubject = ref('')
+
+const QUADRANT_KEY = 'studymate_quadrant_enabled'
+const enableQuadrant = ref(uni.getStorageSync(QUADRANT_KEY) === 'true')
+
+function toggleQuadrant() {
+  enableQuadrant.value = !enableQuadrant.value
+  uni.setStorageSync(QUADRANT_KEY, enableQuadrant.value ? 'true' : 'false')
+}
 
 const viewMode = ref('today')
 const selectedDate = ref(formatDate(new Date()))
@@ -699,6 +712,9 @@ async function toggleTask(task) {
       } catch (e) { /* silent */ }
     }
   }
+  if (planStore.currentPlan && viewMode.value === 'week') {
+    await taskStore.getAllTasks(planStore.currentPlan.id)
+  }
 }
 
 function startPomodoro(task) {
@@ -781,6 +797,12 @@ async function submitForm() {
       taskDates.value.add(selectedDate.value)
       saveTaskDatesToStorage()
       generateCalendar()
+    }
+    if (planStore.currentPlan) {
+      await taskStore.getAllTasks(planStore.currentPlan.id)
+      if (viewMode.value === 'today') {
+        await taskStore.getTasksByDate(planStore.currentPlan.id, selectedDate.value)
+      }
     }
     closeForm()
     uni.showToast({ title: editingTask.value ? '已更新' : '已添加', icon: 'success' })
@@ -1312,14 +1334,25 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   display: flex; gap: 8px; align-items: center;
 }
 
-.quadrant-btn {
-  display: flex; align-items: center; gap: 4px;
-  padding: 8px 12px; border-radius: 20px;
-  background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
-  &:active { background: rgba(255,255,255,0.3); }
+.quadrant-switch {
+  display: flex; align-items: center; gap: 6px;
+  .switch-track {
+    width: 36px; height: 20px; border-radius: 10px; background: rgba(255,255,255,0.3); transition: all 0.3s; position: relative;
+    &.active { background: #fff; }
+    .switch-thumb {
+      width: 16px; height: 16px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: all 0.3s;
+    }
+    &.active .switch-thumb { left: 18px; background: #2f7d4f; }
+  }
+  .switch-label { font-size: 12px; color: rgba(255,255,255,0.85); }
 }
-.quadrant-icon { font-size: 14px; }
-.quadrant-text { font-size: 12px; color: #fff; font-weight: 500; }
+.quadrant-entry-btn {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(255,255,255,0.25); border: 1px solid rgba(255,255,255,0.35);
+  display: flex; align-items: center; justify-content: center;
+  &:active { background: rgba(255,255,255,0.4); transform: scale(0.92); }
+}
+.quadrant-entry-icon { font-size: 14px; }
 
 .add-btn {
   display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.2); padding: 10px 16px; border-radius: 25px;

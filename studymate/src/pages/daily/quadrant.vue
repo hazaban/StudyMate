@@ -235,7 +235,8 @@ async function submitForm() {
         subject: form.value.subject,
         content: form.value.content,
         duration: parseInt(form.value.duration) || 25,
-        importance: form.value.importance
+        importance: form.value.importance,
+        date: form.value.date
       })
     } else {
       await taskStore.createTask({
@@ -248,7 +249,7 @@ async function submitForm() {
         importance: form.value.importance
       })
     }
-    await loadTasks()
+    await taskStore.getAllTasks(planStore.currentPlan.id)
     showAddForm.value = false
     uni.showToast({ title: editingTask.value ? '保存成功' : '添加成功', icon: 'success' })
   } catch (e) {
