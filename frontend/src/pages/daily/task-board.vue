@@ -1534,7 +1534,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   display: flex; align-items: center; justify-content: center;
 }
 .week-day-header {
-  flex: 1; min-width: 0; text-align: center; padding: 10px 2px;
+  flex: 1; min-width: 90px; text-align: center; padding: 10px 2px;
   border-right: 1px solid #f0f0f0;
   &:last-child { border-right: none; }
   &.today {
@@ -1554,7 +1554,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .week-day-dot { width: 8px; height: 8px; border-radius: 50%; background: #2f7d4f; margin: 4px auto 0; box-shadow: 0 0 4px rgba(47,125,79,0.4); }
 
 .week-scroll { height: 480px; overflow: auto; }
-.week-body { display: flex; flex-direction: row; }
+.week-body { display: flex; flex-direction: row; min-width: 744px; }
 
 /* 左侧时间轴 — 水平冻结，垂直跟随滚动 */
 .week-timeline {
@@ -1567,7 +1567,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   padding-top: 4px; font-size: 10px; color: #999; font-weight: 500;
 }
 .week-grid { display: flex; flex: 1; }
-.week-column { flex: 1; border-right: 1px solid #f0f0f0;
+.week-column { flex: 1; min-width: 90px; border-right: 1px solid #f0f0f0;
   &:last-child { border-right: none; }
   &.weekend { background: rgba(255,248,220,0.1); }
 }
