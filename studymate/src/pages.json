@@ -64,6 +64,13 @@
       }
     },
     {
+      "path": "pages/daily/quadrant",
+      "style": {
+        "navigationBarTitleText": "四象限管理",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/statistics/stats",
       "style": {
         "navigationBarTitleText": "学习统计",

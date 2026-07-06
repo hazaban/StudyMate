@@ -12,11 +12,9 @@
           <text class="date">{{ currentDate }}</text>
         </view>
         <view class="header-actions">
-          <view class="quadrant-switch" @click="toggleQuadrant">
-            <view class="switch-track" :class="{ active: enableQuadrant }">
-              <view class="switch-thumb"></view>
-            </view>
-            <text class="switch-label">四象限</text>
+          <view class="quadrant-btn" @click="goToQuadrant">
+            <text class="quadrant-icon">◻️</text>
+            <text class="quadrant-text">四象限</text>
           </view>
           <view class="add-btn" @click="showAddForm = true">
             <text class="add-icon">+</text>
@@ -318,7 +316,7 @@
               </view>
             </view>
 
-            <view class="form-group" v-if="enableQuadrant">
+            <view class="form-group">
               <text class="form-label">四象限分类</text>
               <view class="type-row">
                 <view class="type-item importance-item" :class="{ active: form.importance === 'important_urgent' }" @click="form.importance = 'important_urgent'">
@@ -452,7 +450,6 @@ const showAddForm = ref(false)
 const editingTask = ref(null)
 const showSubjectInput = ref(false)
 const customSubject = ref('')
-const enableQuadrant = ref(false)
 
 const viewMode = ref('today')
 const selectedDate = ref(formatDate(new Date()))
@@ -712,8 +709,8 @@ function toggleSelectAll() {
   })
 }
 
-function toggleQuadrant() {
-  enableQuadrant.value = !enableQuadrant.value
+function goToQuadrant() {
+  uni.navigateTo({ url: '/pages/daily/quadrant' })
 }
 
 async function submitForm() {
@@ -1264,18 +1261,14 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   display: flex; gap: 8px; align-items: center;
 }
 
-.quadrant-switch {
-  display: flex; align-items: center; gap: 6px;
-  .switch-track {
-    width: 36px; height: 20px; border-radius: 10px; background: rgba(255,255,255,0.3); transition: all 0.3s; position: relative;
-    &.active { background: #fff; }
-    .switch-thumb {
-      width: 16px; height: 16px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: all 0.3s;
-    }
-    &.active .switch-thumb { left: 18px; }
-  }
-  .switch-label { font-size: 12px; color: rgba(255,255,255,0.85); }
+.quadrant-btn {
+  display: flex; align-items: center; gap: 4px;
+  padding: 8px 12px; border-radius: 20px;
+  background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
+  &:active { background: rgba(255,255,255,0.3); }
 }
+.quadrant-icon { font-size: 14px; }
+.quadrant-text { font-size: 12px; color: #fff; font-weight: 500; }
 
 .add-btn {
   display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.2); padding: 10px 16px; border-radius: 25px;
@@ -1406,17 +1399,20 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 .week-timeline-header {
   width: 50px; background: #fafafa; border-right: 1px solid #f0f0f0;
+  display: flex; align-items: center; justify-content: center;
 }
 .week-day-header {
-  flex: 1; text-align: center; padding: 12px 4px; position: relative;
+  flex: 1; text-align: center; padding: 12px 2px; position: relative;
   border-right: 1px solid #f0f0f0;
+  min-width: 0;
   &:last-child { border-right: none; }
   &.today {
     .week-day-num { color: #2f7d4f; font-weight: 700; }
     .week-day-name { color: #2f7d4f; }
-    background: rgba(47,125,79,0.06);
+    background: rgba(47,125,79,0.08);
     border-radius: 8px;
     margin: 2px;
+    border: 1px solid rgba(47,125,79,0.2);
   }
   &.selected {
     background: rgba(47,125,79,0.12);
@@ -1425,15 +1421,15 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
     margin: 2px;
   }
   &.weekend {
-    background: rgba(255,248,220,0.4);
+    background: rgba(255,248,220,0.3);
     .week-day-name, .week-day-num { color: #8b7355; }
   }
   &:active { background: rgba(47,125,79,0.06); }
 }
-.week-day-name { display: block; font-size: 12px; color: #999; margin-bottom: 4px; }
+.week-day-name { display: block; font-size: 11px; color: #999; margin-bottom: 3px; }
 .week-day-num { font-size: 18px; color: #1a1a2e; font-weight: 600; }
 .week-day-dot {
-  width: 8px; height: 8px; border-radius: 50%; background: #2f7d4f; margin: 6px auto 0;
+  width: 8px; height: 8px; border-radius: 50%; background: #2f7d4f; margin: 4px auto 0;
   box-shadow: 0 0 4px rgba(47,125,79,0.4);
 }
 .week-scroll {
@@ -1443,7 +1439,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   position: absolute; left: 0; top: 0; width: 50px; height: 100%; background: #fafafa; border-right: 1px solid #f0f0f0;
 }
 .time-label {
-  height: 60px; display: flex; align-items: flex-start; justify-content: center; padding-top: 4px;
+  height: 60px; display: flex; align-items: flex-start; justify-content: center; padding-top: 6px;
   font-size: 12px; color: #999; font-weight: 500;
 }
 .week-grid {
@@ -1453,7 +1449,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   flex: 1; border-right: 1px solid #f0f0f0;
   &:last-child { border-right: none; }
   &.weekend {
-    background: rgba(255,248,220,0.15);
+    background: rgba(255,248,220,0.1);
     .week-cell {
       border-bottom-color: #fff8dc;
     }
@@ -1462,14 +1458,14 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .week-cell {
   height: 60px; border-bottom: 1px solid #f5f5f5; position: relative;
   &:active { background: rgba(47,125,79,0.04); }
-  &:nth-child(odd) { background: rgba(255,255,255,0.5); }
+  &:nth-child(odd) { background: rgba(248,250,248,0.5); }
 }
 .week-task {
-  position: absolute; top: 3px; left: 3px; right: 3px; background: #e8f5e9;
-  border-radius: 8px; padding: 5px; overflow: hidden; cursor: pointer;
-  box-shadow: 0 1px 3px rgba(47,125,79,0.15);
+  position: absolute; top: 4px; left: 4px; right: 4px; background: #e8f5e9;
+  border-radius: 8px; padding: 4px 5px; overflow: hidden; cursor: pointer;
+  box-shadow: 0 1px 2px rgba(47,125,79,0.15);
   &:active { transform: scale(0.98); }
-  &.completed { background: #f5f5f5; box-shadow: none; }
+  &.completed { background: #f0f0f0; box-shadow: none; }
 }
 .task-importance-dot {
   width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px;
