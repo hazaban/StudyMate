@@ -116,10 +116,10 @@
               :class="{ expanded: expandedCell === day.dateStr + '-' + hour }"
               @click.stop="onWeekCellClick(day.dateStr, hour)"
               @contextmenu.prevent="handleWeekCellRightClick(day.dateStr, hour, $event)"
-              @touchstart="onWeekCellTouchStart(day.dateStr, hour)"
+              @touchstart="onWeekCellTouchStart(day.dateStr, hour, $event)"
               @touchmove="onWeekCellTouchCancel"
               @touchend.prevent="onWeekCellTouchEnd"
-              @mousedown="onWeekCellMouseDown(day.dateStr, hour)"
+              @mousedown="onWeekCellMouseDown(day.dateStr, hour, $event)"
               @mouseup="onWeekCellMouseUp">
               <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed', [getSubjectClass(task.subject)]: true }">
                 <view class="task-importance-dot" :class="getImportanceClass(task.importance)" v-if="task.importance && enableQuadrant"></view>
