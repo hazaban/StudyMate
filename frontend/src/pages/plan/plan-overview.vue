@@ -64,63 +64,56 @@
       <!-- 备考进度甘特图 -->
       <view class="gantt-section" v-if="subjects.length > 0">
         <view class="section-header">
-          <text class="section-title">📐 甘特图绘制</text>
-          <text class="header-btn" @click="showActual = !showActual">
-            {{ showActual ? '📊 实际时间' : '📋 计划时间' }}
-          </text>
+          <text class="section-title">甘特图绘制</text>
+          <text class="gantt-hint-text">点击章节条编辑日期，电脑端体验更佳</text>
         </view>
 
-        <scroll-view scroll-x class="gantt-scroll" v-if="allChapters.length > 0">
-          <view class="gantt-chart">
-            <!-- 顶部周数轴 -->
+        <view class="gantt-wrapper" v-if="ganttDayColumns.length > 0 && allChapters.length > 0">
+          <view class="gantt-chart" :style="{ minWidth: ganttDayColumns.length * 32 + 130 + 'px' }">
             <view class="gantt-axis">
               <view class="gantt-label-col gantt-label-wide">科目 / 章节</view>
-              <view class="gantt-weeks-row">
-                <view class="gantt-week-col" v-for="w in totalWeeks" :key="w" :class="{ now: w === currentWeek }">
-                  <text class="gantt-week-num">W{{ w }}</text>
+              <view class="gantt-date-row">
+                <view class="gantt-date-col" v-for="(d, di) in ganttDayColumns" :key="di"
+                  :class="{ today: d.isToday, 'week-start': d.isWeekStart }">
+                  <text class="gantt-date-num">{{ d.day }}</text>
+                  <text class="gantt-date-label" v-if="d.showMonth">{{ d.month }}月</text>
                 </view>
               </view>
             </view>
 
-            <!-- 每条章节一行 -->
             <view class="gantt-chapter-row" v-for="(ch, ci) in allChapters" :key="ci"
-              :class="{ 'subject-first': ch.isFirstInSubject, 'row-actual': showActual }">
+              :class="{ 'subject-first': ch.isFirstInSubject }">
               <view class="gantt-label-col gantt-label-wide">
                 <text class="gantt-subj-name" v-if="ch.isFirstInSubject">{{ ch.subjectName }}</text>
                 <text class="gantt-chapter-name">{{ ch.name || '未命名' }}</text>
               </view>
               <view class="gantt-bars-row">
-                <!-- 计划进度（始终显示） -->
                 <view class="gantt-bar gantt-bar-planned"
-                  :style="{
-                    left: ((ch.startWeek - 1) / totalWeeks * 100) + '%',
-                    width: (Math.max(ch.plannedWeeks, 0.5) / totalWeeks * 100) + '%',
-                    background: ch.color
-                  }"
-                  @click="editChapterPlan(ch, ci)">
-                  <view class="gantt-bar-inner" :style="{ width: ch.progressPercent + '%' }"></view>
-                  <text class="gantt-bar-label">{{ ch.name }}</text>
-                  <text class="gantt-bar-weeks">{{ ch.plannedWeeks }}周</text>
+                  v-if="ch.planLeft !== null"
+                  :style="{ left: ch.planLeft + '%', width: Math.max(ch.planWidth, 1) + '%', background: ch.color }"
+                  @click="editChapterDate(ch)">
+                  <text class="gantt-bar-label">{{ ch.name }} 计划</text>
                 </view>
-                <!-- 实际进度（开关打开时显示） -->
-                <view class="gantt-bar gantt-bar-actual" v-if="showActual && ch.actualWeeks > 0"
-                  :style="{
-                    left: ((ch.startWeek - 1) / totalWeeks * 100) + '%',
-                    width: (Math.max(ch.actualWeeks, 0.3) / totalWeeks * 100) + '%',
-                    background: '#f44336'
-                  }">
-                  <text class="gantt-bar-label">实际</text>
-                  <text class="gantt-bar-weeks">{{ ch.actualWeeks }}周</text>
+                <view class="gantt-bar gantt-bar-actual"
+                  v-if="ch.actualLeft !== null"
+                  :style="{ left: ch.actualLeft + '%', width: Math.max(ch.actualWidth, 1) + '%' }"
+                  @click="editChapterDate(ch)">
+                  <text class="gantt-bar-label">{{ ch.name }} 实际</text>
+                </view>
+                <view class="gantt-bar gantt-bar-empty" v-if="ch.planLeft === null && ch.actualLeft === null"
+                  @click="editChapterDate(ch)">
+                  <text class="gantt-bar-label">+ 设置日期</text>
                 </view>
               </view>
             </view>
           </view>
-        </scroll-view>
+        </view>
 
         <view class="gantt-empty" v-else>
-          <text class="gantt-empty-text">请先在下方科目中添加章节，章节将自动绘制到此甘特图中</text>
+          <text class="gantt-empty-text">请先在下方科目中添加章节并设置计划日期</text>
         </view>
       </view>
+
 
       <!-- 科目列表 -->
       <view class="subjects-section" v-if="subjects.length > 0">
@@ -179,8 +172,18 @@
                   <input class="chapter-input chapter-dur" v-model="ch.duration" type="number" placeholder="分钟/天" />
                   <view class="chapter-remove" @click.stop="editingChapters.splice(ci, 1)">✕</view>
                 </view>
+                <view class="chapter-date-row">
+                  <text class="chapter-date-label">计划:</text>
+                  <input class="chapter-date-input" v-model="ch.planned_start" placeholder="开始日期" @click.stop />
+                  <text class="chapter-date-sep">-</text>
+                  <input class="chapter-date-input" v-model="ch.planned_end" placeholder="结束日期" @click.stop />
+                  <text class="chapter-date-label actual-label">实际:</text>
+                  <input class="chapter-date-input" v-model="ch.actual_start" placeholder="开始日期" @click.stop />
+                  <text class="chapter-date-sep">-</text>
+                  <input class="chapter-date-input" v-model="ch.actual_end" placeholder="结束日期" @click.stop />
+                </view>
               </view>
-              <view class="add-chapter-btn" @click="editingChapters.push({ name: '', duration: 30 })">+ 添加章节</view>
+              <view class="add-chapter-btn" @click="editingChapters.push({ name: '', duration: 30, planned_start: '', planned_end: '', actual_start: '', actual_end: '' })">+ 添加章节</view>
             </view>
           </view>
         </view>
@@ -254,7 +257,7 @@ const editingPhaseSubject = ref('')
 const editingPhaseSubjIdx = ref(-1)
 const newSubject = ref({ name: '', target_score: '' })
 const allTasks = ref([])
-const showActual = ref(false)
+const editDateModal = ref(false)
 
 const editingSubject = computed(() => {
   if (editingSubjectIndex.value >= 0) return subjects.value[editingSubjectIndex.value]
@@ -305,31 +308,76 @@ function getSubjectColor(idx) {
   return colors[idx % colors.length]
 }
 
-// 所有科目章节展平为甘特图行
+function parseDate(s) { if (!s) return null; const d = new Date(s); return isNaN(d.getTime()) ? null : d }
+
+// 甘特图日期列
+const ganttDayColumns = computed(() => {
+  const cols = []
+  let minDate = null, maxDate = null
+  subjects.value.forEach(s => (s.chapters||[]).forEach(ch => {
+    const ps = parseDate(ch.planned_start), pe = parseDate(ch.planned_end)
+    const as_ = parseDate(ch.actual_start), ae = parseDate(ch.actual_end)
+    ;[ps, pe, as_, ae].forEach(d => {
+      if (d) { if (!minDate || d < minDate) minDate = d; if (!maxDate || d > maxDate) maxDate = d }
+    })
+  }))
+  if (!minDate) minDate = new Date(); if (!maxDate) maxDate = new Date(minDate.getTime() + 30*86400000)
+  if (maxDate - minDate < 7*86400000) { maxDate = new Date(minDate.getTime() + 30*86400000) }
+  if (maxDate - minDate > 365*86400000) { maxDate = new Date(minDate.getTime() + 365*86400000) }
+
+  const d = new Date(minDate)
+  const todayStr = new Date().toISOString().split('T')[0]
+  while (d <= maxDate) {
+    const ds = d.toISOString().split('T')[0]
+    cols.push({
+      date: ds, day: d.getDate(), month: d.getMonth() + 1,
+      isToday: ds === todayStr,
+      isWeekStart: d.getDay() === 1,
+      showMonth: d.getDate() === 1 || d.getDay() === 1
+    })
+    d.setDate(d.getDate() + 1)
+  }
+  return cols
+})
+
+// 所有科目章节展平为甘特图行，计算位置百分比
 const allChapters = computed(() => {
+  const cols = ganttDayColumns.value
+  if (cols.length === 0) return []
+  const totalDays = cols.length
+
   const rows = []
   subjects.value.forEach((subj, si) => {
-    const chapters = subj.chapters || []
-    chapters.forEach((ch, ci) => {
-      const estDays = ch.duration ? Math.max(1, Math.ceil((ch.duration || 30) / 25)) : 1
-      const estWeeks = Math.max(1, Math.ceil(estDays / 5))
-      let startWeek = 1
-      for (let j = 0; j < ci; j++) {
-        const prev = chapters[j]
-        const prevDays = prev.duration ? Math.max(1, Math.ceil((prev.duration || 30) / 25)) : 1
-        startWeek += Math.max(1, Math.ceil(prevDays / 5))
+    (subj.chapters||[]).forEach((ch, ci) => {
+      const ps = parseDate(ch.planned_start)
+      const pe = parseDate(ch.planned_end)
+      const as_ = parseDate(ch.actual_start)
+      const ae = parseDate(ch.actual_end)
+
+      let planLeft = null, planWidth = null, actualLeft = null, actualWidth = null
+      let plannedLabel = '', actualLabel = ''
+
+      if (ps && pe) {
+        const startIdx = Math.max(0, Math.round((ps - parseDate(cols[0].date)) / 86400000))
+        const endIdx = Math.min(totalDays - 1, Math.round((pe - parseDate(cols[0].date)) / 86400000))
+        planLeft = (startIdx / totalDays) * 100
+        planWidth = ((endIdx - startIdx + 1) / totalDays) * 100
+        const diffDays = Math.round((pe - ps)/86400000)+1
+        plannedLabel = diffDays + '天 计划'
       }
+      if (as_ && ae) {
+        const startIdx = Math.max(0, Math.round((as_ - parseDate(cols[0].date)) / 86400000))
+        const endIdx = Math.min(totalDays - 1, Math.round((ae - parseDate(cols[0].date)) / 86400000))
+        actualLeft = (startIdx / totalDays) * 100
+        actualWidth = ((endIdx - startIdx + 1) / totalDays) * 100
+        const diffDays = Math.round((ae - as_)/86400000)+1
+        actualLabel = diffDays + '天 实际'
+      }
+
       rows.push({
-        ...ch,
-        subjectName: subj.name,
-        subjectIndex: si,
-        chapterIndex: ci,
-        isFirstInSubject: ci === 0,
-        color: getSubjectColor(si),
-        startWeek: Math.min(startWeek, totalWeeks.value),
-        plannedWeeks: estWeeks,
-        actualWeeks: ch.actualWeeks || 0,
-        progressPercent: ch.actualWeeks ? Math.round(Math.min(100, (ch.actualWeeks / estWeeks) * 100)) : 0
+        ...ch, subjectName: subj.name, subjectIndex: si, chapterIndex: ci,
+        isFirstInSubject: ci === 0, color: getSubjectColor(si),
+        planLeft, planWidth, plannedLabel, actualLeft, actualWidth, actualLabel
       })
     })
   })
@@ -337,34 +385,12 @@ const allChapters = computed(() => {
 })
 
 let ganttClickTimer = null
-function editChapterPlan(ch, ci) {
-  clearTimeout(ganttClickTimer)
-  ganttClickTimer = setTimeout(() => {
-    const row = allChapters.value[ci]
-    uni.showModal({
-      title: `${row.subjectName} - ${ch.name}`,
-      editable: true,
-      placeholderText: `实际用了多少周？计划${row.plannedWeeks}周`,
-      success: (res) => {
-        if (res.confirm && res.content) {
-          const num = parseFloat(res.content)
-          if (!isNaN(num) && num > 0) {
-            updateChapterActual(row.subjectName, ch.name, Math.round(num * 10) / 10)
-            showActual.value = true
-          }
-        }
-      }
-    })
-  }, 200)
-}
-
-async function updateChapterActual(subjectName, chapterName, weeks) {
-  const updated = subjects.value.map(s => {
-    if (s.name !== subjectName) return s
-    return { ...s, chapters: (s.chapters || []).map(c => c.name === chapterName ? { ...c, actualWeeks: weeks } : c) }
-  })
-  await planStore.updatePlan(planStore.currentPlan.id, { subjects: updated })
-  uni.showToast({ title: `已记录: ${weeks}周`, icon: 'success' })
+function editChapterDate(ch) {
+  const subj = subjects.value.find(s => s.name === ch.subjectName)
+  if (!subj) return
+  editingSubjectIndex.value = subjects.value.indexOf(subj)
+  editingChapters.value = JSON.parse(JSON.stringify(subj.chapters || []))
+  showSubjectModal.value = true
 }
 
 async function loadTasks() {
@@ -491,25 +517,30 @@ onMounted(async () => {
   border: 1px solid #e8ece9; box-shadow: 0 2px 12px rgba(0,0,0,0.04);
   min-height: 200px;
 }
-.gantt-scroll { width: 100%; max-height: 450px; overflow-y: auto; }
-.gantt-chart { min-width: calc(36px * var(--total-weeks, 20) + 130px); }
-.gantt-axis { display: flex; align-items: flex-end; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; position: sticky; top: 0; background: #fff; z-index: 5; }
-.gantt-weeks-row { flex: 1; display: flex; }
-.gantt-week-col { flex: 1; min-width: 38px; text-align: center; padding: 6px 0; position: relative;
-  &:not(:last-child)::after { content: ''; position: absolute; right: 0; top: 20%; bottom: 20%; width: 1px; background: #f0f0f0; }
-  &.now { background: rgba(244,67,54,0.06); border-radius: 6px;
-    .gantt-week-num { color: #f44336; font-weight: 700; }
-  }
+.gantt-wrapper {
+  width: 100%; max-height: 400px; overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid #f0f0f0; border-radius: 8px;
 }
-.gantt-week-num { font-size: 11px; color: #999; font-weight: 500; }
+.gantt-chart { min-width: 800px; }
+.gantt-axis { display: flex; align-items: flex-end; border-bottom: 2px solid #e0e0e0; padding-bottom: 6px; position: sticky; top: 0; left: 0; background: #fff; z-index: 5; }
+.gantt-date-row { flex: 1; display: flex; overflow: hidden; }
+.gantt-date-col { min-width: 32px; text-align: center; padding: 4px 0;
+  &.today { background: rgba(244,67,54,0.08); .gantt-date-num { color: #f44336; font-weight: 700; } }
+  &.week-start { border-left: 1px solid #ddd; }
+}
+.gantt-date-num { display: block; font-size: 11px; color: #999; }
+.gantt-date-label { display: block; font-size: 9px; color: #bbb; margin-top: 1px; }
 
 .gantt-chapter-row { display: flex; align-items: center; border-bottom: 1px solid #f5f5f5; min-height: 36px;
   &.subject-first { border-top: 2px solid #e0e0e0; }
-  &.row-actual { .gantt-bars-row { background: rgba(244,67,54,0.02); } }
 }
-.gantt-label-col { flex-shrink: 0; width: 120px; padding: 4px 8px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+.gantt-hint-text { font-size: 12px; color: #999; }
+.gantt-label-col { flex-shrink: 0; width: 120px; padding: 4px 8px; display: flex; flex-direction: column; justify-content: center; overflow: hidden;
+  &.gantt-label-wide { width: 130px; }
+}
 .gantt-subj-name { font-size: 13px; color: #1a1a2e; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gantt-chapter-name { font-size: 11px; color: #999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.gantt-chapter-name { font-size: 11px; color: #998; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
 .gantt-bars-row { flex: 1; position: relative; height: 30px; background: #fafbfa; }
 
 .gantt-bar {
@@ -582,6 +613,10 @@ onMounted(async () => {
 .chapter-list { display: flex; flex-direction: column; gap: 8px; }
 .chapter-item { background: #f5f7f5; border-radius: 12px; padding: 12px; margin-bottom: 8px; position: relative; z-index: 1; }
 .chapter-row { display: flex; align-items: center; gap: 10px; position: relative; z-index: 2; }
+.chapter-date-row { display: flex; align-items: center; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e0e0e0; flex-wrap: wrap; }
+.chapter-date-label { font-size: 11px; color: #888; font-weight: 500; white-space: nowrap; &.actual-label { color: #c62828; } }
+.chapter-date-input { width: 100px; padding: 6px 8px; border: 1px solid #d0d5d2; border-radius: 6px; font-size: 12px; background: #fff; color: #333; }
+.chapter-date-sep { font-size: 12px; color: #ccc; }
 .chapter-input {
   flex: 1; padding: 14px 14px; border: 1.5px solid #d0d5d2; border-radius: 10px;
   font-size: 16px; background: #fff; color: #1a1a2e; min-width: 0;
