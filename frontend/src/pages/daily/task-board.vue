@@ -1165,8 +1165,9 @@ async function parseWithAI() {
       selected: true
     }))
   } catch (e) {
-    uni.showToast({ title: 'AI服务暂不可用', icon: 'none' })
-    aiParseResult.value = mockParsePlan(aiParseInput.value.trim())
+    uni.hideLoading()
+    uni.showToast({ title: 'AI 服务连接失败，请稍后重试', icon: 'none' })
+    throw e
   } finally {
     uni.hideLoading()
   }
@@ -1509,40 +1510,38 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .cal-menu-text { font-size: 14px; color: #333; }
 
 .week-view {
-  background: #fff;
-  border-radius: 12px;
-  margin-bottom: 16px;
-  border: 1px solid #e8ece9;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+  background: #fff; border-radius: 12px; margin-bottom: 16px;
+  border: 1px solid #e8ece9; box-shadow: 0 1px 4px rgba(0,0,0,0.03);
   overflow: hidden;
 }
 .week-header {
-  display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #f0f0f0;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px; border-bottom: 1px solid #f0f0f0;
 }
-.week-arrow {
-  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #2f7d4f; border-radius: 50%; font-weight: 600;
-  &:active { background: #f5f7f5; }
-}
+.week-arrow { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #2f7d4f; border-radius: 50%; font-weight: 600;
+  &:active { background: #f5f7f5; } }
 .week-title { font-size: 15px; font-weight: 600; color: #1a1a2e; }
+
+/* 日期头 — 冻结在顶部 */
 .week-days-header {
-  display: flex; background: #fff; position: sticky; top: 0; z-index: 10;
-  border-bottom: 2px solid #f0f0f0; overflow: hidden;
+  display: flex; background: #fff;
+  position: sticky; top: 0; z-index: 5;
+  border-bottom: 2px solid #f0f0f0;
 }
 .week-timeline-header {
-  width: 40px; flex-shrink: 0; background: #fafafa; border-right: 1px solid #f0f0f0;
+  width: 44px; flex-shrink: 0; background: #fafafa; border-right: 1px solid #f0f0f0;
+  position: sticky; left: 0; z-index: 6;
   display: flex; align-items: center; justify-content: center;
 }
 .week-day-header {
-  flex: 1; min-width: 90px; text-align: center; padding: 10px 2px; position: relative;
+  flex: 1; min-width: 0; text-align: center; padding: 10px 2px;
   border-right: 1px solid #f0f0f0;
   &:last-child { border-right: none; }
   &.today {
     .week-day-num { color: #2f7d4f; font-weight: 700; }
     .week-day-name { color: #2f7d4f; }
-    background: rgba(47,125,79,0.08);
-    border-radius: 8px;
-    margin: 2px;
-    border: 1px solid rgba(47,125,79,0.2);
+    background: rgba(47,125,79,0.08); border-radius: 8px;
+    margin: 2px; border: 1px solid rgba(47,125,79,0.2);
   }
   &.weekend {
     background: rgba(255,248,220,0.3);
@@ -1552,36 +1551,29 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 .week-day-name { display: block; font-size: 11px; color: #999; margin-bottom: 3px; }
 .week-day-num { font-size: 18px; color: #1a1a2e; font-weight: 600; }
-.week-day-dot {
-  width: 8px; height: 8px; border-radius: 50%; background: #2f7d4f; margin: 4px auto 0;
-  box-shadow: 0 0 4px rgba(47,125,79,0.4);
-}
-.week-scroll {
-  height: 500px;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-}
-.week-body {
-  display: flex; flex-direction: row;
-}
+.week-day-dot { width: 8px; height: 8px; border-radius: 50%; background: #2f7d4f; margin: 4px auto 0; box-shadow: 0 0 4px rgba(47,125,79,0.4); }
+
+.week-scroll { height: 480px; overflow: auto; }
+.week-body { display: flex; flex-direction: row; }
+
+/* 左侧时间轴 — 水平冻结，垂直跟随滚动 */
 .week-timeline {
-  width: 40px; flex-shrink: 0; background: #fafafa; border-right: 1px solid #f0f0f0;
+  width: 44px; flex-shrink: 0; background: #fafafa;
+  border-right: 1px solid #f0f0f0;
+  position: sticky; left: 0; z-index: 2;
 }
 .time-label {
   height: 72px; display: flex; align-items: flex-start; justify-content: center;
   padding-top: 4px; font-size: 10px; color: #999; font-weight: 500;
 }
-.week-grid {
-  flex: 1; display: flex; min-width: 630px;
-}
-.week-column {
-  flex: 1; min-width: 90px; border-right: 1px solid #f0f0f0;
+.week-grid { display: flex; flex: 1; }
+.week-column { flex: 1; border-right: 1px solid #f0f0f0;
   &:last-child { border-right: none; }
   &.weekend { background: rgba(255,248,220,0.1); }
 }
 .week-cell {
-  min-height: 72px; max-height: 120px; border-bottom: 1px solid #f5f5f5; position: relative; padding: 3px;
-  overflow-y: auto;
+  min-height: 72px; max-height: 120px; border-bottom: 1px solid #f5f5f5;
+  position: relative; padding: 3px; overflow-y: auto;
   &:nth-child(odd) { background: rgba(248,250,248,0.5); }
   &.expanded {
     max-height: none; overflow: visible; background: rgba(47,125,79,0.06);
