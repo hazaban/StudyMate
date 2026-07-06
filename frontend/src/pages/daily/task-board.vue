@@ -1574,20 +1574,21 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 
 /* 周视图主体容器 */
 .week-container {
-  display: flex; flex-direction: row;
+  display: flex; flex-direction: row; height: 524px;
 }
 
 /* 左侧固定时间轴容器 */
 .week-timeline-container {
   width: 50px; flex-shrink: 0; background: #fafafa;
   border-right: 1px solid #f0f0f0; display: flex; flex-direction: column;
+  height: 100%;
 }
 .week-timeline-header {
   height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
   border-bottom: 2px solid #f0f0f0; font-size: 11px; color: #999; font-weight: 500;
 }
 .week-timeline-scroll {
-  flex: 1; height: 480px;
+  flex: 1; width: 100%;
 }
 .week-timeline {
   width: 50px;
@@ -1595,12 +1596,12 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 
 /* 右侧日期区域 */
 .week-dates-container {
-  flex: 1; overflow: hidden;
+  flex: 1; overflow: hidden; height: 100%;
 }
 .week-dates-hscroll {
-  overflow-x: auto; overflow-y: hidden;
+  overflow-x: auto; overflow-y: hidden; height: 100%;
 }
-.week-dates-table { /* min-width 由 :style 动态设置 */ }
+.week-dates-table { height: 100%; display: flex; flex-direction: column; }
 
 /* 日期头行 */
 .week-days-header {
@@ -1624,7 +1625,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 
 /* 格子体纵向滚动 */
 .week-dates-scroll {
-  height: 480px;
+  flex: 1;
 }
 
 /* 时间标签 */
