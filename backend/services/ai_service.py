@@ -6,6 +6,7 @@
 """
 
 import json
+import re
 import os
 import logging
 import httpx
@@ -264,12 +265,30 @@ async def parse_task_text(text: str, plan_id: str = "") -> dict:
 严格返回纯JSON，不带```标记。"""
 
     messages = [
-        {"role": "system", "content": "你是 Strict JSON 输出器。只输出合法 JSON，不要任何解释。"},
+        {"role": "system", "content": "你是一个 JSON 格式化输出器。你的唯一任务是输出合法 JSON，不输出任何其他文字。不要加 ```json``` 标记，不要加解释，不要加问候语。如果你不能完成任务，输出 {\"error\": true} 这个 JSON。"},
         {"role": "user", "content": prompt}
     ]
     try:
-        result = await _call_glm(messages, temperature=0.1)
-        data = json.loads(result)
+        raw = await _call_glm(messages, temperature=0.1)
+        # 1) 先尝试直接 parse
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            # 2) 尝试剥离 markdown 代码块
+            cleaned = raw.strip()
+            if cleaned.startswith("```"):
+                cleaned = re.sub(r'^```(?:json)?\s*\n?', '', cleaned, flags=re.IGNORECASE)
+                cleaned = re.sub(r'\n?```\s*$', '', cleaned)
+            # 3) 尝试找到第一个 { 到最后一个 }
+            m = re.search(r'\{[\s\S]*\}', cleaned)
+            if m:
+                cleaned = m.group(0)
+            try:
+                data = json.loads(cleaned)
+            except json.JSONDecodeError:
+                _log.error("parse_task_text GLM返回无法解析: %s", raw[:200])
+                return _mock_parse_plan(text)
+
         if "tasks" not in data:
             data = {"tasks": []}
         for t in data.get("tasks", []):

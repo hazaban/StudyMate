@@ -130,11 +130,12 @@
           </view>
         </view>
         </view><!-- .week-body -->
-        <view class="current-time-line" v-if="viewMode === 'week'" :style="currentTimeLineStyle"></view>
-        <view class="week-hint">
-          <text class="week-hint-text">点击任务查看详情，长按格子编辑/添加任务</text>
-        </view>
       </view>
+    </view>
+
+    <!-- 周视图操作提示（标题下方小字） -->
+    <view class="week-tip-bar" v-if="viewMode === 'week'">
+      <text class="week-tip-text">💡 点击单元格展开全文 · 长按编辑或添加任务</text>
     </view>
 
     <!-- 周视图右键菜单 -->
@@ -1562,11 +1563,11 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 .week-cell {
   min-height: 64px; border-bottom: 1px solid #f5f5f5; position: relative; padding: 2px;
-  overflow: hidden; transition: min-height 0.2s;
+  overflow: hidden;
   &:nth-child(odd) { background: rgba(248,250,248,0.5); }
   &.expanded {
-    min-height: auto; height: auto; overflow: visible; background: rgba(47,125,79,0.04);
-    z-index: 3; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    min-height: auto; height: auto; overflow: visible; background: rgba(47,125,79,0.06);
+    z-index: 3; box-shadow: 0 2px 10px rgba(0,0,0,0.12); border-radius: 4px;
     .week-task { white-space: normal; }
     .week-task-content { -webkit-line-clamp: unset; display: block; }
   }
@@ -1607,16 +1608,11 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .wta-btn { font-size: 11px; padding: 2px 8px; border-radius: 6px; background: rgba(0,0,0,0.08); color: #555;
   &.danger { color: #c62828; background: rgba(198,40,40,0.1); } }
 
-.week-hint {
-  position: absolute;
-  bottom: 12px; left: 50%;
-  transform: translateX(-50%);
-  padding: 6px 12px;
-  background: rgba(0,0,0,0.55);
-  border-radius: 12px;
-  pointer-events: none;
+.week-tip-bar {
+  padding: 6px 12px; background: #f0f7ff; border-radius: 8px;
+  text-align: center; margin: 10px 0 0;
 }
-.week-hint-text { font-size: 11px; color: #fff; }
+.week-tip-text { font-size: 11px; color: #888; }
 
 .tabs { display: flex; margin-bottom: 16px; background: #f5f7f5; border-radius: 12px; padding: 4px; }
 .tab { flex: 1; text-align: center; padding: 10px; border-radius: 10px; transition: all 0.2s;
