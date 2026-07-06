@@ -635,7 +635,13 @@ const activeSubject = ref('')
 const activeTags = ref([])
 const tagLogic = ref('or') // 'or' = any tag match, 'and' = all tags must match
 
-const allSubjects = computed(() => subjectsStore.mergedSubjects)
+const allSubjects = computed(() => {
+  // 合并三个来源：当前计划的知识卡片科目 + 错题科目 + subjectsStore(计划subjects+用户自定义)
+  const set = new Set(subjectsStore.mergedSubjects)
+  cards.value.forEach(c => { if (c.subject) set.add(c.subject) })
+  mistakes.value.forEach(m => { if (m.subject) set.add(m.subject) })
+  return [...set]
+})
 
 async function loadSubjects() {
   if (!userStore.isLoggedIn) return
