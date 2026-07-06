@@ -11,6 +11,9 @@
           </view>
         </view>
         <scroll-view scroll-y class="modal-body">
+          <view class="delete-hint" v-if="isEdit">
+            <text class="delete-hint-text">💡 长按或右键任务卡片可删除任务</text>
+          </view>
 
           <view v-if="showAIMode && addMode === 'ai' && !isEdit" class="ai-section">
             <view class="ai-hint-box">
@@ -165,7 +168,6 @@
           </view>
         </scroll-view>
         <view class="modal-footer">
-          <view class="delete-btn" v-if="isEdit" @click="confirmDelete">删除</view>
           <view class="cancel-btn" @click="close">取消</view>
           <view class="submit-btn" @click="submitForm">{{ isEdit ? '保存' : '添加' }}</view>
         </view>
@@ -410,25 +412,6 @@ async function submitForm() {
   } finally {
     uni.hideLoading()
   }
-}
-
-function confirmDelete() {
-  if (!props.task) return
-  uni.showModal({
-    title: '删除任务',
-    content: `确定要删除「${props.task.content}」吗？`,
-    success: async (res) => {
-      if (!res.confirm) return
-      try {
-        await taskStore.deleteTask(props.task.id)
-        emit('deleted', { taskId: props.task.id })
-        close()
-        uni.showToast({ title: '已删除', icon: 'success' })
-      } catch (e) {
-        uni.showToast({ title: '删除失败', icon: 'none' })
-      }
-    }
-  })
 }
 
 async function parseWithAI() {

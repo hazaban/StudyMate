@@ -127,7 +127,7 @@
                       @touchend.prevent="onWeekCellTouchEnd"
                       @mousedown="onWeekCellMouseDown(day.dateStr, hour, $event)"
                       @mouseup="onWeekCellMouseUp">
-                      <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed', [getSubjectClass(task.subject)]: true }">
+                      <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed', [getSubjectClass(task.subject)]: true }" @click.stop="editTask(task)" @contextmenu.prevent.stop="confirmDeleteTask(task)" @touchstart.stop="onTaskTouchStart(task)" @touchend.stop="onTaskTouchEnd" @touchmove.stop="onTaskTouchEnd">
                         <view class="task-importance-dot" :class="getImportanceClass(task.importance)" v-if="task.importance && enableQuadrant"></view>
                         <text class="week-task-content">{{ task.content }}</text>
                         <text class="week-task-duration">{{ task.duration }}min</text>
@@ -205,9 +205,6 @@
         </view>
         <view class="task-pomodoro" @click="startPomodoro(task)">
           <text class="pomodoro-icon">🍅</text>
-        </view>
-        <view class="task-delete" @click.stop="confirmDeleteTask(task)">
-          <text class="delete-icon">🗑</text>
         </view>
       </view>
     </view>
@@ -850,6 +847,18 @@ function confirmDeleteTask(task) {
       }
     }
   })
+}
+
+// Long-press to delete task (mobile)
+let taskLongPressTimer = null
+function onTaskTouchStart(task) {
+  taskLongPressTimer = setTimeout(() => {
+    taskLongPressTimer = null
+    confirmDeleteTask(task)
+  }, 600)
+}
+function onTaskTouchEnd() {
+  if (taskLongPressTimer) { clearTimeout(taskLongPressTimer); taskLongPressTimer = null }
 }
 
 async function switchView(mode) {
