@@ -280,7 +280,23 @@ const editingSubject = computed(() => {
   return null
 })
 
-const subjects = computed(() => planStore.currentPlan?.subjects || [])
+const subjects = computed(() => {
+  const s = planStore.currentPlan?.subjects || []
+  // 如果subjects为空但target_scores有数据，自动从target_scores生成
+  if (s.length === 0) {
+    const scores = planStore.currentPlan?.target_scores || {}
+    const keys = Object.keys(scores)
+    if (keys.length > 0) {
+      return keys.map(name => ({
+        name,
+        target_score: String(scores[name] || ''),
+        chapters: [],
+        phases: []
+      }))
+    }
+  }
+  return s
+})
 
 const totalWeeks = computed(() => {
   if (!planStore.currentPlan) return 0
