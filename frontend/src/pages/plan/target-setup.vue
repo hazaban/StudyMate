@@ -175,11 +175,11 @@ onMounted(async () => {
 .subject-item { background: #f5f7f5; border-radius: 12px; padding: 12px; position: relative; z-index: 1; }
 .subject-row { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
 .subject-input {
-  flex: 1; padding: 14px 16px; border: 1.5px solid #e8ece9; border-radius: 12px; font-size: 16px; background: #fff !important; color: #1a1a2e; min-width: 0;
+  flex: 1; border: 1.5px solid #e8ece9; border-radius: 12px; background: #fff !important; min-width: 0;
   pointer-events: auto; cursor: text; z-index: 10;
   &.score { flex: 0 0 120px; }
 }
-.subject-input :deep(.uni-input-wrapper) { background: transparent !important; width: 100%; }
+.subject-input :deep(.uni-input-wrapper) { background: transparent !important; width: 100%; padding: 12px 14px; }
 .subject-input :deep(.uni-input-input) { color: #1a1a2e !important; font-size: 16px; background: transparent !important; }
 .subject-input :deep(.uni-input-placeholder) { color: #999; font-size: 14px; }
 .subject-remove { font-size: 18px; color: #ef5350; padding: 6px; flex-shrink: 0; }
