@@ -114,14 +114,8 @@
 
             <view class="form-row">
               <view class="form-group half">
-                <text class="form-label">预计时间（分钟）</text>
-                <view class="input-wrapper">
-                  <input class="input-field" v-model="form.duration" type="number" placeholder="25" />
-                </view>
-              </view>
-              <view class="form-group half">
                 <text class="form-label">开始时间</text>
-                <view class="time-picker-row">
+                <view class="input-wrapper time-input-wrapper">
                   <picker mode="selector" :range="hourOptions" @change="onStartHourChange">
                     <view class="time-picker-value">{{ padZero(form.start_hour) }}</view>
                   </picker>
@@ -129,6 +123,12 @@
                   <picker mode="selector" :range="minuteOptions" @change="onStartMinuteChange">
                     <view class="time-picker-value">{{ padZero(form.start_minute) }}</view>
                   </picker>
+                </view>
+              </view>
+              <view class="form-group half">
+                <text class="form-label">预计时间（分钟）</text>
+                <view class="input-wrapper">
+                  <input class="input-field" v-model="form.duration" type="number" placeholder="25" />
                 </view>
               </view>
             </view>
@@ -251,7 +251,7 @@ const aiParseInput = ref('')
 const aiParseResult = ref([])
 const aiImageBase64 = ref('')
 const hourOptions = Array.from({ length: 18 }, (_, i) => String(i + 6))
-const minuteOptions = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55']
+const minuteOptions = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
 
 function padZero(n) {
   return String(n).padStart(2, '0')
@@ -573,17 +573,19 @@ async function addParsedTasks() {
 .delete-hint-text { font-size: 12px; color: #9a7b00; }
 .form-group { margin-bottom: 16px; &.half { flex: 1; } }
 .form-row { display: flex; gap: 12px; }
+.time-input-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
 .time-picker-row {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  border: 1.5px solid #e8ece9;
-  border-radius: 14px;
-  padding: 12px 16px;
-  background: #fafafa;
-  &:focus-within { border-color: #2f7d4f; }
 }
+.time-separator { font-size: 15px; color: #ccc; }
 .time-picker-value {
   font-size: 15px;
   color: #1a1a2e;

@@ -127,11 +127,12 @@
                       @touchend.prevent="onWeekCellTouchEnd"
                       @mousedown="onWeekCellMouseDown(day.dateStr, hour, $event)"
                       @mouseup="onWeekCellMouseUp">
-                      <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed', [getSubjectClass(task.subject)]: true }" @click.stop="editTask(task)" @contextmenu.prevent.stop="confirmDeleteTask(task)" @touchstart.stop="onTaskTouchStart(task)" @touchend.stop="onTaskTouchEnd" @touchmove.stop="onTaskTouchEnd">
+                      <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed', [getSubjectClass(task.subject)]: true }">
                         <view class="task-importance-dot" :class="getImportanceClass(task.importance)" v-if="task.importance && enableQuadrant"></view>
                         <text class="week-task-content">{{ task.content }}</text>
                         <text class="week-task-time">{{ formatTaskTime(task) }}</text>
                         <text class="week-task-duration">{{ task.duration }}min</text>
+                        <view class="week-task-del" @click.stop="confirmDeleteTask(task)">🗑</view>
                       </view>
                     </view>
                   </view>
@@ -494,15 +495,8 @@ const currentTimeLineStyle = computed(() => {
 })
 
 function getTasksAt(dateStr, hour) {
-  return taskStore.weekTasks.filter(t => {
-    if (t.date !== dateStr) return false
-    const taskHour = t.start_hour || 9
-    const taskMinute = t.start_minute || 0
-    if (taskMinute >= 30) {
-      return taskHour === hour || taskHour + 0.5 === hour
-    }
-    return taskHour === hour
-  })
+  // 任务按其 start_hour 归入对应小时的格子
+  return taskStore.weekTasks.filter(t => t.date === dateStr && (t.start_hour || 9) === hour)
 }
 
 function formatTimelineHour(hour) {
@@ -1278,6 +1272,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   font-weight: 500; line-height: 1.4;
 }
 .week-task-duration { font-size: 10px; color: #999; margin-top: 2px; }
+.week-task-del { font-size: 12px; color: #ef5350; opacity: 0.5; padding: 2px 4px; flex-shrink: 0; margin-left: auto; }
 .week-task-time { font-size: 10px; color: #2f7d4f; font-weight: 500; margin-right: 4px; }
 .week-task-actions { display: flex; gap: 4px; margin-top: 4px; width: 100%; }
 .wta-btn { font-size: 11px; padding: 2px 8px; border-radius: 6px; background: rgba(0,0,0,0.08); color: #555;
