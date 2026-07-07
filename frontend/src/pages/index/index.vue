@@ -419,9 +419,9 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
     .date { font-size: 12px; }
     .motivation-text { font-size: 12px; }
     .motivation-card { padding: 6px 10px; }
-    .action-card { padding: 12px 4px; }
-    .action-icon { font-size: 24px; }
-    .action-text { font-size: 11px; white-space: nowrap; }
+    .action-card { padding: 10px 2px; }
+    .action-icon { font-size: 22px; }
+    .action-text { font-size: 10px; }
     .quick-actions { gap: 6px; }
   }
   
