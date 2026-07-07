@@ -24,10 +24,21 @@
                 <text class="ai-field">⏱ 时长</text>
                 <text class="ai-field">🕘 时间</text>
                 <text class="ai-field">📅 日期</text>
+                <text class="ai-field">📷 图片</text>
               </view>
-              <text class="ai-hint-example">💡 试试：明天上午9点复习数据结构二叉树章节，45分钟；下午2点做英语阅读理解30分钟</text>
+              <text class="ai-hint-example">💡 试试：明天上午9点复习数据结构二叉树章节，45分钟；或上传手写计划/课程表图片</text>
             </view>
             <textarea class="ai-textarea-large" v-model="aiParseInput" placeholder="请描述你的学习安排，包含科目、内容、时间等信息..." />
+            <view class="ai-image-upload" @click="selectImage">
+              <view class="ai-image-preview" v-if="aiImageBase64">
+                <image :src="aiImageBase64" mode="aspectFit" class="ai-image-preview-img" />
+                <view class="ai-image-remove" @click.stop="removeImage">✕</view>
+              </view>
+              <view class="ai-image-upload-btn" v-else>
+                <text class="upload-icon">📷</text>
+                <text class="upload-text">拍照或上传图片</text>
+              </view>
+            </view>
             <view class="ai-parse-btn-primary" @click="parseWithAI">
               <text class="btn-icon">🔍</text>
               <text class="btn-text">开始解析</text>
@@ -238,6 +249,7 @@ const customSubject = ref('')
 const addMode = ref('manual')
 const aiParseInput = ref('')
 const aiParseResult = ref([])
+const aiImageBase64 = ref('')
 const hourOptions = Array.from({ length: 18 }, (_, i) => String(i + 6))
 const minuteOptions = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55']
 
@@ -431,15 +443,64 @@ async function submitForm() {
   }
 }
 
+function selectImage() {
+  uni.showActionSheet({
+    itemList: ['拍照', '从相册选择'],
+    success: (res) => {
+      const sourceType = res.tapIndex === 0 ? ['camera'] : ['album']
+      uni.chooseImage({
+        count: 1,
+        sizeType: ['compressed'],
+        sourceType: sourceType,
+        success: async (res) => {
+          const tempFilePath = res.tempFilePaths[0]
+          aiImageBase64.value = tempFilePath
+        },
+        fail: () => {
+          uni.showToast({ title: '选择图片失败', icon: 'none' })
+        }
+      })
+    }
+  })
+}
+
+function removeImage() {
+  aiImageBase64.value = ''
+}
+
+async function imageToBase64(filePath) {
+  return new Promise((resolve, reject) => {
+    uni.getFileSystemManager().readFile({
+      filePath: filePath,
+      encoding: 'base64',
+      success: (res) => {
+        resolve(`data:image/jpeg;base64,${res.data}`)
+      },
+      fail: (err) => {
+        reject(err)
+      }
+    })
+  })
+}
+
 async function parseWithAI() {
-  if (!aiParseInput.value.trim()) {
-    uni.showToast({ title: '请输入文字计划', icon: 'none' })
+  if (!aiParseInput.value.trim() && !aiImageBase64.value) {
+    uni.showToast({ title: '请输入文字计划或上传图片', icon: 'none' })
     return
   }
   uni.showLoading({ title: 'AI解析中...' })
   try {
+    let imageData = ''
+    if (aiImageBase64.value) {
+      try {
+        imageData = await imageToBase64(aiImageBase64.value)
+      } catch (e) {
+        console.error('图片转换失败:', e)
+      }
+    }
     const result = await api.aiParseTask({
-      text: aiParseInput.value.trim()
+      text: aiParseInput.value.trim(),
+      image: imageData
     })
     aiParseResult.value = (result.tasks || []).map(t => ({ ...t, selected: true }))
   } catch (e) {
@@ -617,6 +678,53 @@ async function addParsedTasks() {
     border: 1px solid #e8ece9; border-radius: 12px;
     font-size: 14px; color: #333; background: #fafafa;
     margin-bottom: 12px;
+  }
+  .ai-image-upload {
+    margin-bottom: 12px;
+  }
+  .ai-image-preview {
+    position: relative;
+    border: 1px solid #e8ece9;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fafafa;
+    .ai-image-preview-img {
+      width: 100%;
+      height: 180px;
+    }
+    .ai-image-remove {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 28px;
+      height: 28px;
+      background: rgba(0,0,0,0.5);
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      &:active {
+        background: rgba(0,0,0,0.7);
+      }
+    }
+  }
+  .ai-image-upload-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px;
+    border: 2px dashed #d0d5d2;
+    border-radius: 12px;
+    background: #fafafa;
+    .upload-icon { font-size: 24px; }
+    .upload-text { font-size: 14px; color: #999; }
+    &:active {
+      background: #f0f0f0;
+      border-color: #2f7d4f;
+    }
   }
   .ai-parse-btn-primary {
     display: flex; align-items: center; justify-content: center; gap: 8px;

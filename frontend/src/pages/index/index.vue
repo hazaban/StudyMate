@@ -634,7 +634,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
       font-size: 12px;
       color: $muted;
     }
-    .task-time { color: $primary; font-weight: 500; }
+    .task-time { color: $accent; font-weight: 500; }
   }
 }
 
