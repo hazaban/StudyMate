@@ -23,6 +23,19 @@
       </view>
     </view>
 
+    <!-- 引导式规划进度条 -->
+    <view class="plan-progress" v-if="planStep.stage > 0">
+      <view class="step-item" v-for="s in planSteps" :key="s.stage"
+        :class="{ active: s.stage === planStep.stage, done: s.stage < planStep.stage }">
+        <view class="step-dot">
+          <text v-if="s.stage < planStep.stage">✓</text>
+          <text v-else>{{ s.stage }}</text>
+        </view>
+        <text class="step-label">{{ s.label }}</text>
+        <text class="step-sub" v-if="s.stage === planStep.stage && planStep.subject">{{ planStep.subject }}</text>
+      </view>
+    </view>
+
     <scroll-view scroll-y class="chat-messages" :scroll-into-view="scrollToMsg">
       <view v-for="(msg, idx) in displayMessages" :key="idx" :id="'msg-' + idx">
         <!-- AI 消息 -->
@@ -182,6 +195,33 @@ const displayMessages = computed(() => {
     }
   }
   return result
+})
+
+// 引导式规划进度：解析 AI 消息中的阶段标记 ◆N/4 标签
+const planSteps = [
+  { stage: 1, label: '基本信息' },
+  { stage: 2, label: '科目设置' },
+  { stage: 3, label: '章节确认' },
+  { stage: 4, label: '汇总生成' },
+]
+const planStep = computed(() => {
+  // 从后往前扫描 AI 消息，找到最近的阶段标记
+  const aiMsgs = messages.value
+  let stage = 0, subject = ''
+  for (let i = aiMsgs.length - 1; i >= 0; i--) {
+    const text = aiMsgs[i].text || ''
+    const m = text.match(/◆(\d)\/4\s*(\S*)/)
+    if (m) {
+      stage = parseInt(m[1])
+      subject = m[2] || ''
+      break
+    }
+  }
+  // 如果 AI 已经调用了 tool=plan，标记为阶段4完成
+  if (stage === 0 && aiMsgs.some(m => m.type === 'plan')) {
+    stage = 4
+  }
+  return { stage, subject }
 })
 
 const conversationList = ref([])
@@ -542,6 +582,33 @@ onUnmounted(() => {
   .page-title { font-size: 20px; font-weight: 600; color: $ink; }
   .header-placeholder { width: 40px; }
 }
+
+/* 引导式规划进度条 */
+.plan-progress {
+  display: flex; justify-content: center; gap: 0;
+  padding: 10px 16px; background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+}
+.step-item {
+  display: flex; flex-direction: column; align-items: center; flex: 1; max-width: 90px;
+  position: relative;
+  &:not(:last-child)::after {
+    content: ''; position: absolute; top: 14px; left: 55%; width: 100%; height: 2px;
+    background: #e0e0e0; z-index: 0;
+  }
+  &.done::after { background: #2f7d4f; }
+  &.done .step-dot { background: #2f7d4f; border-color: #2f7d4f; color: #fff; }
+  &.active .step-dot { background: #fff; border-color: #2f7d4f; color: #2f7d4f; font-weight: 700; }
+  &.active .step-label { color: #2f7d4f; font-weight: 600; }
+}
+.step-dot {
+  width: 28px; height: 28px; border-radius: 50%; border: 2px solid #e0e0e0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: #bbb; background: #fff; z-index: 1;
+  transition: all 0.2s;
+}
+.step-label { font-size: 11px; color: #bbb; margin-top: 4px; transition: all 0.2s; }
+.step-sub { font-size: 10px; color: #2f7d4f; margin-top: 1px; max-width: 80px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .chat-messages {
   flex: 1;
