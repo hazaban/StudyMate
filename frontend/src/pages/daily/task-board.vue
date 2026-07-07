@@ -20,8 +20,10 @@
             </view>
           </view>
         </view>
-        <text class="title">{{ headerTitle }}</text>
-        <text class="date">{{ currentDate }}</text>
+        <view class="title-row">
+          <text class="title">{{ headerTitle }}</text>
+          <text class="date">{{ currentDate }}</text>
+        </view>
       </view>
       <view class="progress-summary">
         <view class="progress-item">
@@ -398,7 +400,10 @@ const currentDate = computed(() => {
     end.setDate(end.getDate() + 6)
     return `${weekStartDate.value.getMonth() + 1}/${weekStartDate.value.getDate()} - ${end.getMonth() + 1}/${end.getDate()}`
   }
-  return formatDateLabel(new Date(selectedDate.value))
+  // 月视图：显示年月
+  const y = calendarMonth.value.getFullYear()
+  const m = calendarMonth.value.getMonth() + 1
+  return `${y}年${m}月`
 })
 
 const headerTitle = computed(() => {
@@ -1115,13 +1120,15 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .header {
   padding: 44px 0 14px;
   background: linear-gradient(135deg, var(--color-header-green-start, #2f7d4f) 0%, var(--color-header-green-end, #3d9a62) 100%);
-  border-radius: 20px;
-  margin-bottom: 24px;
+  border-radius: 0 0 24px 24px;
+  margin: 0 -20px 24px;
+  padding-left: 20px; padding-right: 20px;
 }
 
 .header-top {
-  margin-bottom: 20px;
-  .title { display: block; font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+  margin-bottom: 14px;
+  .title-row { display: flex; justify-content: space-between; align-items: baseline; }
+  .title { font-size: 26px; font-weight: 700; color: #fff; }
   .date { font-size: 14px; color: rgba(255,255,255,0.8); }
   @media (max-width: 767px) {
     .title { font-size: 20px; }
@@ -1186,10 +1193,10 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .fab { position: fixed; right: 20px; bottom: 60px; z-index: 50; width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,0.35); background: #2f7d4f; &:active { transform: scale(0.92); } .fab-icon { font-size: 28px; color: #fff; font-weight: 300; } }
 
 .progress-summary {
-  display: flex; align-items: center; background: rgba(255,255,255,0.1); border-radius: 12px; padding: 10px;
+  display: flex; align-items: center; background: rgba(255,255,255,0.1); border-radius: 10px; padding: 8px;
 }
-.progress-item { flex: 1; text-align: center; .progress-num { display: block; font-size: 18px; font-weight: 700; color: #fff; } .progress-label { font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 1px; } }
-.progress-divider { width: 1px; height: 24px; background: rgba(255,255,255,0.2); }
+.progress-item { flex: 1; text-align: center; .progress-num { display: block; font-size: 17px; font-weight: 700; color: #fff; } .progress-label { font-size: 11px; color: rgba(255,255,255,0.7); } }
+.progress-divider { width: 1px; height: 20px; background: rgba(255,255,255,0.2); }
 
 .calendar {
   background: #fff;

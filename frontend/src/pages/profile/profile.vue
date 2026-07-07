@@ -253,16 +253,15 @@ onShow(async () => {
 .stat-item {
   flex: 1;
   text-align: center;
-  padding: 10px 8px;
+  padding: 8px 6px;
   background: $soft;
   border-radius: 10px;
 
   .stat-value {
     display: block;
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 700;
     color: $accent;
-    margin-bottom: 2px;
   }
 
   .stat-label {

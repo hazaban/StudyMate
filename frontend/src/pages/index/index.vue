@@ -25,6 +25,42 @@
       </view>
     </view>
 
+    <!-- 通知页面 -->
+    <view class="reminder-page" v-if="showReminders">
+      <view class="reminder-back" @click="showReminders = false">
+        <text class="reminder-back-icon">←</text>
+        <text class="reminder-back-title">🔔 任务提醒</text>
+      </view>
+      <view class="reminder-body">
+        <view class="reminder-section" v-if="upcomingTasks.length > 0">
+          <text class="reminder-section-title">⏰ 即将开始的任务</text>
+          <view class="reminder-task" v-for="t in upcomingTasks" :key="t.id">
+            <view class="rm-task-left">
+              <text class="rm-task-time">{{ formatTaskTime(t) }}</text>
+              <text class="rm-task-name">{{ t.content }}</text>
+            </view>
+            <text class="rm-task-subj">{{ t.subject }}</text>
+          </view>
+        </view>
+        <view class="reminder-section" v-if="recentPomodoros.length > 0">
+          <text class="reminder-section-title">🍅 今天已计时结束的番茄钟</text>
+          <view class="reminder-task" v-for="(r, i) in recentPomodoros" :key="i">
+            <view class="rm-task-left">
+              <text class="rm-task-time">{{ r.time }}</text>
+              <text class="rm-task-name">{{ r.taskName }}</text>
+            </view>
+            <text class="rm-task-dur">{{ r.duration }}分钟</text>
+          </view>
+        </view>
+        <view class="reminder-empty" v-if="upcomingTasks.length === 0 && recentPomodoros.length === 0">
+          <text class="reminder-empty-icon">📭</text>
+          <text class="reminder-empty-text">暂无提醒</text>
+          <text class="reminder-empty-hint">任务快到时间或番茄钟完成时会在这里显示</text>
+        </view>
+      </view>
+    </view>
+
+    <view v-if="!showReminders">
     <view class="stats-section">
       <view class="stat-card">
         <text class="stat-value">{{ taskStore.completedCount }}</text>
@@ -99,42 +135,7 @@
       </view>
     </view>
 
-    <!-- 任务提醒弹窗 -->
-    <view class="modal-overlay" v-if="showReminders" @click="showReminders = false">
-      <view class="reminder-panel" @click.stop>
-        <view class="reminder-header">
-          <text class="reminder-title">🔔 任务提醒</text>
-          <view class="modal-close" @click="showReminders = false">✕</view>
-        </view>
-        <view class="reminder-body">
-          <view class="reminder-section" v-if="upcomingTasks.length > 0">
-            <text class="reminder-section-title">⏰ 即将开始的任务</text>
-            <view class="reminder-task" v-for="t in upcomingTasks" :key="t.id">
-              <view class="rm-task-left">
-                <text class="rm-task-time">{{ formatTaskTime(t) }}</text>
-                <text class="rm-task-name">{{ t.content }}</text>
-              </view>
-              <text class="rm-task-subj">{{ t.subject }}</text>
-            </view>
-          </view>
-          <view class="reminder-section" v-if="recentPomodoros.length > 0">
-            <text class="reminder-section-title">🍅 今天已计时结束的番茄钟</text>
-            <view class="reminder-task" v-for="(r, i) in recentPomodoros" :key="i">
-              <view class="rm-task-left">
-                <text class="rm-task-time">{{ r.time }}</text>
-                <text class="rm-task-name">{{ r.taskName }}</text>
-              </view>
-              <text class="rm-task-dur">{{ r.duration }}分钟</text>
-            </view>
-          </view>
-          <view class="reminder-empty" v-if="upcomingTasks.length === 0 && recentPomodoros.length === 0">
-            <text class="reminder-empty-icon">📭</text>
-            <text class="reminder-empty-text">暂无提醒</text>
-            <text class="reminder-empty-hint">任务快到时间或番茄钟完成时会在这里显示</text>
-          </view>
-        </view>
-      </view>
-    </view>
+    </view><!-- end v-if="!showReminders" -->
 
     <!-- Shared Task Form Modal -->
     <TaskFormModal
@@ -404,8 +405,9 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .header {
   padding: 44px 0 16px;
   background: linear-gradient(135deg, var(--color-header-green-start, #2f7d4f) 0%, var(--color-header-green-end, #3d9a62) 100%);
-  border-radius: 20px;
-  margin-bottom: 20px;
+  border-radius: 0 0 24px 24px;
+  margin: 0 -20px 20px;
+  padding-left: 20px; padding-right: 20px;
 }
 
 .header-content {
@@ -428,6 +430,10 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
     .date { font-size: 12px; }
     .motivation-text { font-size: 12px; }
     .motivation-card { padding: 6px 10px; }
+    .action-card { padding: 14px 8px; }
+    .action-icon { font-size: 26px; }
+    .action-text { font-size: 12px; }
+    .quick-actions { gap: 8px; }
   }
   
   .date {
@@ -518,18 +524,16 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .stat-card {
   flex: 1;
   background: $bg2;
-  border-radius: 12px;
-  padding: 10px 8px;
+  border-radius: 10px;
+  padding: 8px 6px;
   text-align: center;
   border: 1px solid $rule;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
 
   .stat-value {
     display: block;
     font-size: 18px;
     font-weight: 700;
     color: $ink;
-    margin-bottom: 1px;
   }
 
   .stat-label {
@@ -558,27 +562,25 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 
 .plan-card {
   background: linear-gradient(135deg, #f0f7f4 0%, $bg2 100%);
-  border-radius: 18px;
-  padding: 20px;
+  border-radius: 14px;
+  padding: 14px 18px;
   border: 1px solid $rule;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-  margin-bottom: 20px;
-  
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  margin-bottom: 18px;
+
   .plan-name {
     display: block;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     color: $ink;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
   }
-  
+
   .plan-date {
     display: block;
-    font-size: 14px;
+    font-size: 13px;
     color: $muted;
-    margin-bottom: 14px;
   }
-  
 }
 
 .quick-actions {
@@ -716,6 +718,25 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
     color: #c62828;
   }
 }
+
+/* 通知页面 */
+.reminder-page { padding: 0 0 20px; }
+.reminder-back { display: flex; align-items: center; gap: 10px; padding: 10px 0 16px; }
+.reminder-back-icon { font-size: 22px; color: #17332a; font-weight: 600; }
+.reminder-back-title { font-size: 18px; font-weight: 700; color: #17332a; }
+.reminder-body { padding: 0; }
+.reminder-section { padding: 8px 0; }
+.reminder-section-title { display: block; font-size: 13px; color: #999; font-weight: 600; padding: 4px 0 10px; }
+.reminder-task { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; gap: 12px; border-bottom: 1px solid #f0f0f0; }
+.rm-task-left { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
+.rm-task-time { font-size: 13px; color: #2f7d4f; font-weight: 600; white-space: nowrap; min-width: 44px; }
+.rm-task-name { font-size: 14px; color: #1a1a2e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rm-task-subj { font-size: 11px; color: #999; padding: 2px 6px; background: #f5f7f5; border-radius: 6px; white-space: nowrap; }
+.rm-task-dur { font-size: 12px; color: #ef5350; font-weight: 600; white-space: nowrap; }
+.reminder-empty { display: flex; flex-direction: column; align-items: center; padding: 40px 20px; }
+.reminder-empty-icon { font-size: 40px; margin-bottom: 10px; }
+.reminder-empty-text { font-size: 15px; color: #999; margin-bottom: 6px; }
+.reminder-empty-hint { font-size: 12px; color: #bbb; text-align: center; }
 
 .bottom-space {
   height: 100px;
