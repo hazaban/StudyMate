@@ -12,7 +12,29 @@ _log = logging.getLogger(__name__)
 _GLM_DISABLED = False
 _GLM_DISABLE_REASON = ""
 
-SYSTEM_PROMPT = """你是 StudyMate 学习星球的 AI 备考助手。你是专业、耐心、有洞察力的学习导师。
+# ── System prompts: 每个 AI 接口独立设定 ──
+
+SYSTEM_PROMPT_TASK_PARSE = """你是一个严格的 JSON 输出器。
+- 只输出合法 JSON，不输出任何额外文字、解释、markdown 代码块标记。
+- 不要说"好的"、"以下是..."之类的话，直接输出 JSON 对象。
+- 如果无法解析输入，输出 {"tasks":[]}。"""
+
+SYSTEM_PROMPT_PLAN = """你是 StudyMate 学习星球的 AI 备考规划导师，专业、耐心、有洞察力。
+你的工作方式：
+1. 先以自然语言与用户沟通，理解其考试目标、时间、薄弱点等信息；
+2. 最终输出结构化的学习计划 JSON，供系统写入数据库。
+输出要求：
+- 规划内容要科学合理，符合艾宾浩斯遗忘曲线和阶段复习规律；
+- 时间分配要考虑用户每日可用时长，避免过度安排；
+- 严格返回 JSON，不含 markdown 代码块标记。"""
+
+SYSTEM_PROMPT_SYLLABUS = """你是教材目录分析专家，擅长从教材目录图片中提取章节结构。
+- 准确识别图片中的每一章、每一节标题；
+- 根据章节内容量和难度，合理估算每日学习时长和预计天数；
+- 最终输出结构化 JSON，供用户确认后添加到学习计划中。
+输出要求：严格返回 JSON，不含 markdown 代码块标记和额外解释。"""
+
+SYSTEM_PROMPT_DEFAULT = """你是 StudyMate 学习星球的 AI 助手。专业、简洁、有帮助。
 输出格式要求：严格返回 JSON，不含 markdown 代码块标记。"""
 
 _QUOTA_EXHAUSTED_CODES = {402, 429, 403}
@@ -88,7 +110,7 @@ async def generate_study_plan(params):
 薄弱点：{', '.join(params.get('weak_points', []))}
 
 请生成包含学习阶段划分、每周目标、每日时间分配、复习策略的完整计划。返回JSON格式。"""
-    result = await _call_glm([{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}])
+    result = await _call_glm([{"role": "system", "content": SYSTEM_PROMPT_PLAN}, {"role": "user", "content": prompt}])
     return json.loads(result)
 
 
@@ -106,7 +128,7 @@ async def generate_daily_tasks(params):
 可用时间：{params.get('available_time', 480)}分钟
 
 请生成合理的新学、复习和错题回顾任务，总时长不超过可用时间。返回JSON格式，包含tasks数组。"""
-    result = await _call_glm([{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}])
+    result = await _call_glm([{"role": "system", "content": SYSTEM_PROMPT_PLAN}, {"role": "user", "content": prompt}])
     return json.loads(result)
 
 
@@ -121,7 +143,7 @@ async def generate_flash_cards(content, subject="通用"):
 内容：{content}
 
 每个卡片包含 question 和 answer 字段，返回JSON格式。"""
-    result = await _call_glm([{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}])
+    result = await _call_glm([{"role": "system", "content": SYSTEM_PROMPT_DEFAULT}, {"role": "user", "content": prompt}])
     return json.loads(result)
 
 
@@ -134,9 +156,7 @@ async def parse_task_text(text, plan_id=""):
     today = dt_date.today().isoformat()
     tomorrow = (dt_date.today() + timedelta(days=1)).isoformat()
 
-    prompt = f"""你是 Strict JSON 输出器。只输出合法 JSON。
-
-当前日期：{today}，明天：{tomorrow}
+    prompt = f"""当前日期：{today}，明天：{tomorrow}
 
 用户输入：
 {text}
@@ -155,7 +175,7 @@ async def parse_task_text(text, plan_id=""):
 返回JSON：{{"tasks":[{{"content":"复习二叉树","subject":"数据结构","chapter":"二叉树","duration":45,"type":"review","date":"{today}","start_hour":9,"repeat_type":"none","selected":true}}]}}"""
 
     result = await _call_glm(
-        [{"role": "system", "content": "你是 Strict JSON 输出器。"}, {"role": "user", "content": prompt}],
+        [{"role": "system", "content": SYSTEM_PROMPT_TASK_PARSE}, {"role": "user", "content": prompt}],
         temperature=0.1
     )
     cleaned = re.sub(r'```(?:json)?\s*\n?', '', result).strip()
@@ -188,7 +208,7 @@ async def generate_daily_review(planned_tasks, completed_tasks, planned_time, ac
 实际学习时间：{actual_time}分钟
 
 请生成包含总结、亮点、改进建议、明日重点和情绪关怀的复盘内容。返回JSON格式。"""
-    result = await _call_glm([{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}])
+    result = await _call_glm([{"role": "system", "content": SYSTEM_PROMPT_DEFAULT}, {"role": "user", "content": prompt}])
     return json.loads(result)
 
 
@@ -209,10 +229,13 @@ async def analyze_syllabus_image(image_data_url, subject="", description=""):
 提取每章名称和建议学习时间（分钟/天）及预计天数。返回JSON：
 {{"subject":"科目名","chapters":[{{"name":"章名","daily_duration":30,"estimated_days":2}}],"total_days":N,"suggestion":"建议"}}"""
 
-    messages = [{"role": "user", "content": [
-        {"type": "image_url", "image_url": {"url": image_data_url}},
-        {"type": "text", "text": prompt}
-    ]}]
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT_SYLLABUS},
+        {"role": "user", "content": [
+            {"type": "image_url", "image_url": {"url": image_data_url}},
+            {"type": "text", "text": prompt}
+        ]}
+    ]
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
@@ -264,7 +287,7 @@ async def generate_subject_phases(plan_info):
 返回JSON：{{"phases":{{"科目名":[{{"name":"基础阶段","start_week":1,"end_week":4,"color":"#4caf50"}}]}}}}"""
 
     try:
-        result = await _call_glm([{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}], temperature=0.3)
+        result = await _call_glm([{"role": "system", "content": SYSTEM_PROMPT_PLAN}, {"role": "user", "content": prompt}], temperature=0.3)
         return json.loads(result)
     except Exception:
         raise
