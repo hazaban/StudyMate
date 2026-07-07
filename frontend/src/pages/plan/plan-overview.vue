@@ -190,21 +190,21 @@
                 <view class="ch-date-block planned">
                   <text class="ch-date-tag">📋 计划</text>
                   <picker mode="date" :value="ch.planned_start" @change="onChapterDateChange($event, ch, 'planned_start')">
-                    <view class="ch-picker">{{ ch.planned_start || '开始日期' }}</view>
+                    <view class="ch-picker"><text class="ch-picker-text">{{ ch.planned_start || '开始日期' }}</text></view>
                   </picker>
                   <text class="ch-date-arrow">→</text>
                   <picker mode="date" :value="ch.planned_end" @change="onChapterDateChange($event, ch, 'planned_end')">
-                    <view class="ch-picker">{{ ch.planned_end || '结束日期' }}</view>
+                    <view class="ch-picker"><text class="ch-picker-text">{{ ch.planned_end || '结束日期' }}</text></view>
                   </picker>
                 </view>
                 <view class="ch-date-block actual">
                   <text class="ch-date-tag">✅ 实际</text>
                   <picker mode="date" :value="ch.actual_start" @change="onChapterDateChange($event, ch, 'actual_start')">
-                    <view class="ch-picker">{{ ch.actual_start || '开始日期' }}</view>
+                    <view class="ch-picker"><text class="ch-picker-text">{{ ch.actual_start || '开始日期' }}</text></view>
                   </picker>
                   <text class="ch-date-arrow">→</text>
                   <picker mode="date" :value="ch.actual_end" @change="onChapterDateChange($event, ch, 'actual_end')">
-                    <view class="ch-picker">{{ ch.actual_end || '结束日期' }}</view>
+                    <view class="ch-picker"><text class="ch-picker-text">{{ ch.actual_end || '结束日期' }}</text></view>
                   </picker>
                 </view>
               </view>
@@ -659,13 +659,13 @@ onMounted(async () => {
   box-shadow: 0 1px 3px rgba(0,0,0,0.03);
 }
 .ch-top-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-.ch-name { flex: 1; padding: 14px 16px; border: 1.5px solid #d0d5d2; border-radius: 12px; font-size: 17px; background: #fff; color: #1a1a2e; min-width: 0; position: relative; z-index: 5;
+.ch-name { flex: 1; padding: 12px 14px; border: 1.5px solid #d0d5d2; border-radius: 12px; font-size: 16px; background: #fff; color: #1a1a2e; min-width: 0;
   &:active, &:focus { border-color: $accent; } }
-.ch-dur-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; position: relative; z-index: 5; }
-.ch-dur-label { font-size: 11px; color: #888; white-space: nowrap; }
-.ch-dur { width: 64px; padding: 14px 8px; border: 1.5px solid #d0d5d2; border-radius: 12px; font-size: 17px; background: #fff; color: #1a1a2e; text-align: center; position: relative; z-index: 5;
+.ch-dur-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.ch-dur-label { font-size: 12px; color: #888; white-space: nowrap; }
+.ch-dur { width: 56px; padding: 12px 6px; border: 1.5px solid #d0d5d2; border-radius: 12px; font-size: 16px; background: #fff; color: #1a1a2e; text-align: center;
   &:focus { border-color: $accent; } }
-.ch-remove { font-size: 22px; color: #ef5350; padding: 6px 4px; flex-shrink: 0; }
+.ch-remove { font-size: 22px; color: #ef5350; padding: 6px 4px; flex-shrink: 0; cursor: pointer; }
 
 .ch-dates-row { display: flex; flex-direction: column; gap: 8px; }
 .ch-date-block { display: flex; align-items: center; gap: 4px; }
@@ -678,7 +678,10 @@ onMounted(async () => {
   flex: 1; padding: 10px 6px; border: 1.5px solid #d0d5d2; border-radius: 10px;
   font-size: 14px; background: #fafafa; color: #1a1a2e; text-align: center; min-width: 72px;
   overflow: hidden; position: relative;
-  :deep(input), :deep(.uni-input-input) { display: none; }
+}
+.ch-picker-text {
+  position: relative; z-index: 1; background: inherit;
+  display: block; width: 100%; text-align: center;
 }
 
 .add-chapter-btn { padding: 16px; text-align: center; border: 2px dashed #d0d5d2; border-radius: 14px; font-size: 16px; color: $accent; font-weight: 500; margin-top: 10px; }
