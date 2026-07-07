@@ -300,16 +300,19 @@ const taskDates = ref(new Set())
 const dateFocusRecords = ref([])
 
 const timelineHours = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
-// 列宽：桌面端宽屏(>1000px)均分7列，手机端最小100px可滑动
-// 页面全局 max-width=1080px，桌面端 windowWidth 可能远超此值，
-// 导致 colWidth 偏大 → 7列总宽超出实际容器宽度 → 只能看到约4-5天
+// 列宽：桌面端(≥768px)均分7列但封顶115px，手机端最小75px可横向滑动
+// 页面全局 max-width=1080px，桌面端 windowWidth 可能远超此值
 const PAGE_MAX_WIDTH = 1080
 const colWidth = computed(() => {
   try {
     const raw = uni.getSystemInfoSync().windowWidth || 375
     const w = Math.min(raw, PAGE_MAX_WIDTH)
-    if (w > 1000) return Math.floor((w - 100) / 7)
-    return Math.max(100, Math.floor((w - 60) / 7))
+    if (w >= 768) {
+      // 桌面/平板：7列均匀分布，单列封顶115px避免过宽
+      return Math.min(115, Math.floor((w - 100) / 7))
+    }
+    // 手机端：最小75px，7列=525px可横向滑动
+    return Math.max(75, Math.floor((w - 50) / 7))
   } catch (e) { return 100 }
 })
 const CELL_H = 72
