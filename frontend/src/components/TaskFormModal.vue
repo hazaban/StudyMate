@@ -609,7 +609,8 @@ async function addParsedTasks() {
   align-items: center;
   justify-content: center;
   gap: 0;
-  padding: 6px 10px;
+  padding: 0 10px;
+  min-height: 46px;
 }
 .time-separator {
   font-size: 17px; color: #2f7d4f; font-weight: 600; flex-shrink: 0;
@@ -617,12 +618,13 @@ async function addParsedTasks() {
 }
 .time-picker-value {
   font-size: 16px; color: #1a1a2e; font-weight: 700;
-  padding: 8px 4px; border-radius: 6px; min-width: 30px; text-align: center;
-  cursor: pointer;
+  padding: 10px 4px; border-radius: 6px; min-width: 30px; text-align: center;
+  cursor: pointer; line-height: 1;
   &:active { background: #e8f0eb; }
 }
 .time-duration-input {
   text-align: center; font-weight: 700; font-size: 16px; flex: 1; min-width: 0;
+  height: 26px; line-height: 26px; padding: 0;
 }
 .duration-suffix {
   font-size: 13px; color: #888; flex-shrink: 0; font-weight: 500;

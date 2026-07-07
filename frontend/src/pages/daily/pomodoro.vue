@@ -420,7 +420,17 @@ async function completeSession() {
     if (currentTaskId.value) {
       try {
         const t = taskStore.todayTasks.find(t => t.id === currentTaskId.value)
-        if (t) await taskStore.updateTask(currentTaskId.value, { actual_duration: (t.actual_duration || 0) + dur })
+        if (t) {
+          const newActual = (t.actual_duration || 0) + dur
+          const updateData = { actual_duration: newActual }
+          // 任务未设置开始时间时，用番茄钟自动填充
+          if (!t.start_hour || (t.start_hour === 9 && !t.start_minute && !t.actual_duration)) {
+            const start = new Date(new Date().getTime() - dur * 60 * 1000)
+            updateData.start_hour = start.getHours()
+            updateData.start_minute = start.getMinutes()
+          }
+          await taskStore.updateTask(currentTaskId.value, updateData)
+        }
       } catch (e) { /* */ }
     }
 

@@ -23,7 +23,7 @@
             <text class="quadrant-count">{{ getTaskCount('important_urgent') }}</text>
           </view>
           <view class="quadrant-body">
-            <view class="task-item" v-for="task in getTasks('important_urgent')" :key="task.id" :class="{ completed: task.status === 'completed' }" @click="editTask(task)" @contextmenu.prevent="confirmDeleteTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
+            <view class="task-item" v-for="task in getTasks('important_urgent')" :key="task.id" :class="{ completed: task.status === 'completed' }" @contextmenu.prevent="editTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
               <view class="task-subject">{{ task.subject }}</view>
               <text class="task-content">{{ task.content }}</text>
               <text class="task-time">{{ formatTaskTime(task) }} · {{ task.duration }}min</text>
@@ -42,7 +42,7 @@
             <text class="quadrant-count">{{ getTaskCount('important_not_urgent') }}</text>
           </view>
           <view class="quadrant-body">
-            <view class="task-item" v-for="task in getTasks('important_not_urgent')" :key="task.id" :class="{ completed: task.status === 'completed' }" @click="editTask(task)" @contextmenu.prevent="confirmDeleteTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
+            <view class="task-item" v-for="task in getTasks('important_not_urgent')" :key="task.id" :class="{ completed: task.status === 'completed' }" @contextmenu.prevent="editTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
               <view class="task-subject">{{ task.subject }}</view>
               <text class="task-content">{{ task.content }}</text>
               <text class="task-time">{{ formatTaskTime(task) }} · {{ task.duration }}min</text>
@@ -61,7 +61,7 @@
             <text class="quadrant-count">{{ getTaskCount('urgent_not_important') }}</text>
           </view>
           <view class="quadrant-body">
-            <view class="task-item" v-for="task in getTasks('urgent_not_important')" :key="task.id" :class="{ completed: task.status === 'completed' }" @click="editTask(task)" @contextmenu.prevent="confirmDeleteTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
+            <view class="task-item" v-for="task in getTasks('urgent_not_important')" :key="task.id" :class="{ completed: task.status === 'completed' }" @contextmenu.prevent="editTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
               <view class="task-subject">{{ task.subject }}</view>
               <text class="task-content">{{ task.content }}</text>
               <text class="task-time">{{ formatTaskTime(task) }} · {{ task.duration }}min</text>
@@ -80,7 +80,7 @@
             <text class="quadrant-count">{{ getTaskCount('not_important_not_urgent') }}</text>
           </view>
           <view class="quadrant-body">
-            <view class="task-item" v-for="task in getTasks('not_important_not_urgent')" :key="task.id" :class="{ completed: task.status === 'completed' }" @click="editTask(task)" @contextmenu.prevent="confirmDeleteTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
+            <view class="task-item" v-for="task in getTasks('not_important_not_urgent')" :key="task.id" :class="{ completed: task.status === 'completed' }" @contextmenu.prevent="editTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
               <view class="task-subject">{{ task.subject }}</view>
               <text class="task-content">{{ task.content }}</text>
               <text class="task-time">{{ formatTaskTime(task) }} · {{ task.duration }}min</text>
@@ -93,7 +93,7 @@
         </view>
       </view>
       <view class="delete-tip">
-        <text class="delete-tip-text">💡 单击任务编辑 · 长按或右键任务删除</text>
+        <text class="delete-tip-text">💡 单击 / 长按 / 右键任务均可编辑，弹窗内可删除</text>
       </view>
     </scroll-view>
 
@@ -192,7 +192,7 @@ let taskLongPressTimer = null
 function onTaskTouchStart(task) {
   taskLongPressTimer = setTimeout(() => {
     taskLongPressTimer = null
-    confirmDeleteTask(task)
+    editTask(task)
   }, 600)
 }
 function onTaskTouchEnd() {

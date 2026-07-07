@@ -2,26 +2,26 @@
   <view class="page" @click="closeCalMenu">
     <view class="header">
       <view class="header-top">
-        <view class="header-left">
+        <view class="header-row">
           <view class="view-toggle">
             <view class="toggle-btn" :class="{ active: viewMode === 'today' }" @click="switchView('today')">今日</view>
             <view class="toggle-btn" :class="{ active: viewMode === 'week' }" @click="switchView('week')">周视图</view>
             <view class="toggle-btn" :class="{ active: viewMode === 'month' }" @click="switchView('month')">月视图</view>
           </view>
-          <text class="title">{{ headerTitle }}</text>
-          <text class="date">{{ currentDate }}</text>
-        </view>
-        <view class="header-right">
-          <view class="quadrant-switch" @click="toggleQuadrant">
-            <view class="switch-track" :class="{ active: enableQuadrant }">
-              <view class="switch-thumb"></view>
+          <view class="quadrant-group">
+            <view class="quadrant-switch" @click="toggleQuadrant">
+              <view class="switch-track" :class="{ active: enableQuadrant }">
+                <view class="switch-thumb"></view>
+              </view>
+              <text class="switch-label">四象限</text>
             </view>
-            <text class="switch-label">四象限</text>
-          </view>
-          <view class="quadrant-entry-btn" v-if="enableQuadrant" @click="goToQuadrant">
-            <text class="quadrant-entry-icon">◻️</text>
+            <view class="quadrant-entry-btn" v-if="enableQuadrant" @click="goToQuadrant">
+              <text class="quadrant-entry-icon">▦</text>
+            </view>
           </view>
         </view>
+        <text class="title">{{ headerTitle }}</text>
+        <text class="date">{{ currentDate }}</text>
       </view>
       <view class="progress-summary">
         <view class="progress-item">
@@ -219,7 +219,7 @@
     <view class="empty" v-if="viewMode !== 'week' && filteredTasks.length === 0">
       <text class="empty-icon">📋</text>
       <text class="empty-text">暂无任务</text>
-      <text class="empty-hint">点击上方「添加任务」按钮手动创建任务</text>
+      <text class="empty-hint">点击右下角 + 按钮手动创建任务</text>
     </view>
 
     <view class="focus-records-section" v-if="viewMode !== 'week' && dateFocusRecords.length > 0">
@@ -1124,15 +1124,16 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 
 .header-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
   margin-bottom: 20px;
+  .title { display: block; font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+  .date { font-size: 14px; color: rgba(255,255,255,0.8); }
 }
 
-.header-left {
-  .title { display: block; font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 4px; }
-  .date { font-size: 14px; color: rgba(255,255,255,0.8); }
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 .view-toggle {
@@ -1140,7 +1141,6 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   background: rgba(255,255,255,0.2);
   border-radius: 20px;
   padding: 3px;
-  margin-bottom: 10px;
   gap: 2px;
 }
 .toggle-btn {
@@ -1158,8 +1158,8 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   &:active { transform: scale(0.96); }
 }
 
-.header-right {
-  display: flex; gap: 8px; align-items: center; flex-shrink: 0;
+.quadrant-group {
+  display: flex; gap: 6px; align-items: center; flex-shrink: 0;
 }
 
 .quadrant-switch {
