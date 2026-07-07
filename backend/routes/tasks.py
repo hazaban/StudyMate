@@ -51,7 +51,12 @@ def create_task(data: TaskCreate, user_id: UUID = Depends(_get_user_id), db: Ses
     plan = db.query(StudyPlan).filter(StudyPlan.id == data.plan_id, StudyPlan.user_id == user_id).first()
     if not plan:
         raise HTTPException(status_code=404, detail="计划不存在")
-    task = DailyTask(**data.model_dump())
+    task_data = data.model_dump()
+    try:
+        task = DailyTask(**task_data)
+    except TypeError:
+        task_data.pop('start_minute', None)
+        task = DailyTask(**task_data)
     db.add(task)
     db.commit()
     db.refresh(task)
