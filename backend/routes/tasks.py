@@ -52,13 +52,22 @@ def create_task(data: TaskCreate, user_id: UUID = Depends(_get_user_id), db: Ses
     if not plan:
         raise HTTPException(status_code=404, detail="计划不存在")
     task_data = data.model_dump()
-    try:
-        task = DailyTask(**task_data)
-    except TypeError:
-        task_data.pop('start_minute', None)
-        task = DailyTask(**task_data)
+    task = DailyTask()
+    for key, value in task_data.items():
+        if hasattr(task, key):
+            setattr(task, key, value)
     db.add(task)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        task_data.pop('start_minute', None)
+        task = DailyTask()
+        for key, value in task_data.items():
+            if hasattr(task, key):
+                setattr(task, key, value)
+        db.add(task)
+        db.commit()
     db.refresh(task)
     return TaskResponse.model_validate(task)
 
