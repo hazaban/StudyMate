@@ -178,7 +178,8 @@ export default {
             ...history,
             { role: 'user', content: body.prompt || body.text || '你好' },
           ];
-          const raw = await callGLM(glmKey, messages, model, 0.3);
+          maxTokens = 4096; // plan 生成需要更多 token 空间
+          const raw = await callGLM(glmKey, messages, model, 0.3, maxTokens);
           const data = extractJSON(raw);
           return new Response(JSON.stringify(data), {
             status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },

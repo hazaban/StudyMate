@@ -501,8 +501,31 @@ async function confirmSyllabus(data) {
         }
         dayOffset += days
       }
+
+      // 同步更新计划中的 subjects 数组，使章节在计划总览中可见
+      try {
+        const currentSubjects = planStore.currentPlan.subjects || []
+        const existingIdx = currentSubjects.findIndex(s => s.name === subject)
+        const chapters = data.chapters.map(ch => ({
+          name: ch.name,
+          duration: ch.daily_duration || 30,
+          planned_start: '', planned_end: '', actual_start: '', actual_end: ''
+        }))
+        if (existingIdx >= 0) {
+          // 合并章节（去重）
+          const oldChapters = currentSubjects[existingIdx].chapters || []
+          const merged = [...oldChapters]
+          chapters.forEach(ch => {
+            if (!merged.some(m => m.name === ch.name)) merged.push(ch)
+          })
+          currentSubjects[existingIdx] = { ...currentSubjects[existingIdx], chapters: merged }
+        } else {
+          currentSubjects.push({ name: subject, target_score: '', chapters })
+        }
+        await planStore.updatePlan(planStore.currentPlan.id, { subjects: currentSubjects })
+      } catch (e) { /* 计划更新失败不影响任务写入 */ }
     }
-    uni.showToast({ title: `已写入 ${data.total_days} 天任务`, icon: 'success' })
+    uni.showToast({ title: `已写入 ${data.total_days} 天任务，章节已同步到计划`, icon: 'success' })
   } catch (e) {
     uni.showToast({ title: '写入失败', icon: 'none' })
   } finally {
