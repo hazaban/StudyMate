@@ -333,6 +333,15 @@ onMounted(() => {
   .account-btn-text { color: #c62828; }
   &:active { background: #ffcdd2; }
 }
+html.dark-mode .switch-btn {
+  background: var(--color-bg2);
+  border-color: var(--color-rule);
+  .account-btn-text { color: var(--color-ink); }
+}
+html.dark-mode .logout-btn {
+  background: rgba(198,40,40,0.2);
+  .account-btn-text { color: #ef5350; }
+}
 
 .bottom-space {
   height: 100px;

@@ -1236,6 +1236,9 @@ watch(() => planStore.currentPlan?.id, async (n, o) => { if (n && n !== o) { awa
 .mastery-badge { font-size: 11px; padding: 3px 10px; border-radius: 12px; font-weight: 500; &.badge-red { background: #ffebee; color: #c62828; } &.badge-orange { background: #fff3e0; color: #e65100; } &.badge-green { background: #e8f5e9; color: #2e7d32; } }
 .section-label { display: block; font-size: 12px; color: #6b4ce6; margin-bottom: 6px; font-weight: 500; }
 .card-question-text { font-size: 15px; color: #1a1a2e; line-height: 1.6; display: block; }
+html.dark-mode .card-question-text,
+html.dark-mode .card-answer-text { color: var(--color-ink) !important; }
+html.dark-mode .card-meta-item, html.dark-mode .card-subject { color: var(--color-muted) !important; }
 .card-item-footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; .review-count { font-size: 12px; color: #999; } .review-date { font-size: 12px; color: #6b4ce6; } .review-date.due-today { color: #ef5350; font-weight: 600; } .card-item-actions { display: flex; gap: 8px; margin-left: auto; } }
 .action-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; background: #f5f5f5; color: #999; }
 .edit-btn { background: #f3f0ff; color: #6b4ce6; &:active { background: #e8e0ff; } }

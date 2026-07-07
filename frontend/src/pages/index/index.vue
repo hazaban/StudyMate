@@ -61,29 +61,18 @@
     </view>
 
     <view v-if="!showReminders">
-    <view class="stats-section">
-      <view class="stat-card">
-        <text class="stat-value">{{ taskStore.completedCount }}</text>
-        <text class="stat-label">今日完成</text>
-      </view>
-      <view class="stat-card">
-        <text class="stat-value">{{ daysRemaining }}</text>
-        <text class="stat-label">剩余天数</text>
-      </view>
-      <view class="stat-card">
-        <text class="stat-value">{{ farmStore.level }}</text>
-        <text class="stat-label">农场等级</text>
-      </view>
-    </view>
-
     <view class="plan-section" v-if="planStore.currentPlan">
       <view class="section-header">
         <text class="section-title">当前计划</text>
         <text class="section-link" @click="goToPlan">查看详情</text>
       </view>
-      <view class="plan-card" @click="goToPlan">
+      <view class="plan-card">
         <text class="plan-name">{{ planStore.currentPlan.exam_name }}</text>
-        <text class="plan-date">{{ planStore.currentPlan.exam_date }}</text>
+        <view class="plan-stats">
+          <view class="plan-stat-item"><text class="plan-stat-lbl">今日完成任务</text><text class="plan-stat-val">{{ taskStore.completedCount }}</text></view>
+          <view class="plan-stat-item"><text class="plan-stat-lbl">剩余天数</text><text class="plan-stat-val">{{ daysRemaining }}</text></view>
+          <view class="plan-stat-item"><text class="plan-stat-lbl">农场等级</text><text class="plan-stat-val">{{ farmStore.level }}</text></view>
+        </view>
       </view>
     </view>
 
@@ -430,10 +419,10 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
     .date { font-size: 12px; }
     .motivation-text { font-size: 12px; }
     .motivation-card { padding: 6px 10px; }
-    .action-card { padding: 14px 8px; }
-    .action-icon { font-size: 26px; }
-    .action-text { font-size: 12px; }
-    .quick-actions { gap: 8px; }
+    .action-card { padding: 12px 4px; }
+    .action-icon { font-size: 24px; }
+    .action-text { font-size: 11px; white-space: nowrap; }
+    .quick-actions { gap: 6px; }
   }
   
   .date {
@@ -490,7 +479,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   .motivation-text {
     font-size: 13px;
     color: rgba(255, 255, 255, 0.9);
-    font-style: italic;
+    font-weight: 300; letter-spacing: 0.5px;
     flex: 1; min-width: 0;
     line-height: 1.4;
   }
@@ -515,33 +504,6 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   }
 }
 
-.stats-section {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 18px;
-}
-
-.stat-card {
-  flex: 1;
-  background: $bg2;
-  border-radius: 10px;
-  padding: 8px 6px;
-  text-align: center;
-  border: 1px solid $rule;
-
-  .stat-value {
-    display: block;
-    font-size: 18px;
-    font-weight: 700;
-    color: $ink;
-  }
-
-  .stat-label {
-    font-size: 11px;
-    color: $muted;
-  }
-}
-
 .section-header {
   display: flex;
   justify-content: space-between;
@@ -563,23 +525,29 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .plan-card {
   background: linear-gradient(135deg, #f0f7f4 0%, $bg2 100%);
   border-radius: 14px;
-  padding: 14px 18px;
+  padding: 14px 18px 12px;
   border: 1px solid $rule;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 
   .plan-name {
     display: block;
-    font-size: 18px;
-    font-weight: 700;
-    color: $ink;
-    margin-bottom: 2px;
+    font-size: 17px; font-weight: 700; color: $ink;
+    margin-bottom: 10px;
+    text-align: center;
   }
 
-  .plan-date {
-    display: block;
-    font-size: 13px;
-    color: $muted;
+  .plan-stats {
+    display: flex; gap: 0;
+  }
+  .plan-stat-item {
+    flex: 1; text-align: center;
+  }
+  .plan-stat-lbl {
+    display: block; font-size: 10px; color: $muted; margin-bottom: 2px;
+  }
+  .plan-stat-val {
+    display: block; font-size: 20px; font-weight: 700; color: $ink;
   }
 }
 

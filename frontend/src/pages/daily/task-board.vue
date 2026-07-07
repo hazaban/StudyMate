@@ -1129,7 +1129,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   margin-bottom: 14px;
   .title-row { display: flex; justify-content: space-between; align-items: baseline; }
   .title { font-size: 26px; font-weight: 700; color: #fff; }
-  .date { font-size: 14px; color: rgba(255,255,255,0.8); }
+  .date { font-size: 15px; color: rgba(255,255,255,0.8); font-weight: 500; }
   @media (max-width: 767px) {
     .title { font-size: 20px; }
     .date { font-size: 12px; }
