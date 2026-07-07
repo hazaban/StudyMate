@@ -5,7 +5,7 @@
         <text class="back-icon">←</text>
       </view>
       <text class="page-title">AI 智能规划</text>
-      <view class="header-placeholder"></view>
+      <view class="sidebar-toggle" @click="showSidebar = !showSidebar"><text class="sidebar-icon">{{ showSidebar ? '✕' : '☰' }}</text></view>
     </view>
 
     <scroll-view scroll-y class="chat-messages" :scroll-into-view="scrollToMsg">
@@ -141,6 +141,22 @@ const messages = ref([
   { text: '你好！我是 AI 学习规划助手。你可以告诉我你的考试目标、添加学习任务、上传教材目录图片分析框架，或者让我帮你做每日复盘。', type: 'intro', content: null }
 ])
 const userMessages = ref([])
+const conversationList = ref([])
+const showSidebar = ref(false)
+const CONV_KEY = 'studymate_ai_conversations'
+function loadConversationList() { try { conversationList.value = JSON.parse(uni.getStorageSync(CONV_KEY) || '[]') } catch(e) { conversationList.value = [] } }
+function saveCurrentConversation() {
+  if (messages.value.length <= 1) return
+  const title = userMessages.value[0]?.text?.substring(0, 30) || '新会话'
+  const conv = { title, date: new Date().toLocaleDateString(), messages: [...messages.value], userMessages: [...userMessages.value] }
+  const list = conversationList.value.filter(c => c.title !== title)
+  list.unshift(conv)
+  if (list.length > 20) list.length = 20
+  conversationList.value = list
+  uni.setStorageSync(CONV_KEY, JSON.stringify(list))
+}
+function startNewConversation() { saveCurrentConversation(); messages.value = [{text:'你好！我是 AI 学习规划助手。有什么可以帮你的？',type:'intro',content:null}]; userMessages.value = []; showSidebar.value = false }
+function loadConversation(idx) { saveCurrentConversation(); const c = conversationList.value[idx]; if(!c) return; messages.value = c.messages; userMessages.value = c.userMessages||[]; showSidebar.value = false }
 const inputText = ref('')
 const loading = ref(false)
 const scrollToMsg = ref('')
@@ -209,17 +225,18 @@ async function sendMessage() {
   userMessages.value.push({ text: userText || '[图片]', image: currentImage.value })
   inputText.value = ''
   loading.value = true
-
   await scrollToBottom()
-
   try {
-    const data = {
-      text: userText,
-      image: currentImageBase64.value,
-      plan_id: planStore.currentPlan?.id || null
+    const data = { text: userText, image: currentImageBase64.value, plan_id: planStore.currentPlan?.id || null }
+    // 构造最近6轮对话上下文
+    const history = []
+    const ru = userMessages.value.slice(-7, -1)
+    const ra = messages.value.filter(m => m.type !== 'intro' && m.type !== 'error').slice(-6)
+    for (let i = 0; i < Math.max(ru.length, ra.length); i++) {
+      if (ru[i]) history.push({ role: 'user', content: ru[i].text })
+      if (ra[i]) history.push({ role: 'assistant', content: ra[i].text || '' })
     }
-
-    const result = await api.aiChat(data)
+    const result = await api.aiChat({ ...data, history })
 
     messages.value.push({
       text: result.summary,
@@ -344,6 +361,7 @@ async function scrollToBottom() {
 }
 
 onMounted(async () => {
+  loadConversationList()
   await subjectsStore.load()
 })
 </script>
@@ -720,4 +738,17 @@ onMounted(async () => {
 }
 
 .bottom-space { height: 20px; }
+/* Sidebar */
+.sidebar-toggle { width: 40px; height: 40px; background: $bg2; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.sidebar-icon { font-size: 18px; color: $ink; }
+.sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; display: flex; justify-content: flex-end; }
+.sidebar-panel { background: #fff; width: 280px; max-width: 80vw; height: 100%; display: flex; flex-direction: column; }
+.sidebar-title { font-size: 17px; font-weight: 700; color: $ink; padding: 20px 16px 12px; border-bottom: 1px solid #f0f0f0; }
+.sidebar-list { flex: 1; padding: 8px; }
+.sidebar-item { padding: 12px; border-radius: 10px; margin-bottom: 4px; &:active { background: #f5f7f5; } }
+.sidebar-item-title { display: block; font-size: 14px; color: $ink; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-item-date { font-size: 11px; color: $muted; }
+.sidebar-empty { text-align: center; font-size: 14px; color: $muted; padding: 40px 0; display: block; }
+.sidebar-new-btn { margin: 12px; padding: 14px; text-align: center; background: $accent; color: #fff; border-radius: 12px; font-size: 15px; font-weight: 600; }
+
 </style>
