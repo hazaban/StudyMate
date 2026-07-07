@@ -416,7 +416,7 @@ async function submitForm() {
         uni.hideLoading()
         return
       }
-      await taskStore.createTask({
+      const result = await taskStore.createTask({
         plan_id: planStore.currentPlan.id,
         date: taskDate,
         type: form.value.type,
@@ -429,7 +429,11 @@ async function submitForm() {
         start_hour: form.value.start_hour || 9,
         start_minute: form.value.start_minute || 0
       })
-      emit('saved', { task: null, isEdit: false })
+      if (!result.success) {
+        uni.showToast({ title: '创建失败: ' + (result.error || '未知错误'), icon: 'none' })
+        return
+      }
+      emit('saved', { task: result.task, isEdit: false })
     }
     if (planStore.currentPlan) {
       await taskStore.getAllTasks(planStore.currentPlan.id)
