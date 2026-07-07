@@ -210,10 +210,10 @@ async def parse_task_text(text, plan_id=""):
 - content: 20字以内的简洁摘要
 - subject: 科目名
 - chapter: 章节名（提到了就提取，没提填空字符串""）
-- duration: 分钟数整数（默认30）
+- duration: 分钟数整数（默认30），**⚠️用户说"小时"必须换算成分钟：2小时=120、1.5小时=90、半小时=30**
 - type: "new_study"/"review"/"mistake"
 - date: YYYY-MM-DD
-- start_hour: 0-23（默认9）
+- start_hour: 0-23（默认9），**上午=8~12、下午=13~17、晚上=18~22**
 - repeat_type: "none"
 - selected: true
 
@@ -371,10 +371,10 @@ class TaskAgent:
 - content: 20字以内的简洁摘要
 - subject: 科目名
 - chapter: 章节名（提到了就提取，没提填空字符串""）
-- duration: 分钟数整数（默认30）
+- duration: 分钟数整数（默认30），**⚠️用户说"小时"必须换算成分钟：2小时=120、1.5小时=90、半小时=30**
 - type: "new_study"/"review"/"mistake"
 - date: YYYY-MM-DD（明天={tomorrow}，今天或无时间词={today}）
-- start_hour: 0-23整数（默认9）
+- start_hour: 0-23整数（默认9），**上午=8~12、下午=13~17、晚上=18~22**
 - repeat_type: "none"
 - selected: true
 

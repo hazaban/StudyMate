@@ -148,7 +148,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { usePlanStore } from '@/stores/plan'
 import { useSubjectsStore } from '@/stores/subjects'
 import * as api from '@/api/client'
@@ -187,6 +187,7 @@ const displayMessages = computed(() => {
 const conversationList = ref([])
 const showSidebar = ref(false)
 const CONV_KEY = 'studymate_ai_conversations'
+const LAST_CONV_KEY = 'studymate_ai_last_conv'
 function loadConversationList() { try { conversationList.value = JSON.parse(uni.getStorageSync(CONV_KEY) || '[]') } catch(e) { conversationList.value = [] } }
 function saveCurrentConversation() {
   const aiMsgs = messages.value
@@ -198,9 +199,22 @@ function saveCurrentConversation() {
   if (list.length > 20) list.length = 20
   conversationList.value = list
   uni.setStorageSync(CONV_KEY, JSON.stringify(list))
+  // 同时保存为"最近会话"，切换页面后自动恢复
+  uni.setStorageSync(LAST_CONV_KEY, JSON.stringify(conv))
 }
-function startNewConversation() { saveCurrentConversation(); messages.value = [{text:'你好！我是 AI 学习规划助手。有什么可以帮你的？',type:'intro',content:null}]; userMessages.value = []; showSidebar.value = false }
-function loadConversation(idx) { saveCurrentConversation(); const c = conversationList.value[idx]; if(!c) return; messages.value = c.messages; userMessages.value = c.userMessages||[]; showSidebar.value = false }
+function restoreLastConversation() {
+  try {
+    const saved = JSON.parse(uni.getStorageSync(LAST_CONV_KEY) || 'null')
+    if (saved && saved.messages?.length > 1) {
+      messages.value = saved.messages
+      userMessages.value = saved.userMessages || []
+      return true
+    }
+  } catch(e) { /* ignore */ }
+  return false
+}
+function startNewConversation() { saveCurrentConversation(); messages.value = [{text:'你好！我是 AI 学习规划助手。有什么可以帮你的？',type:'intro',content:null}]; userMessages.value = []; showSidebar.value = false; uni.removeStorageSync(LAST_CONV_KEY) }
+function loadConversation(idx) { saveCurrentConversation(); const c = conversationList.value[idx]; if(!c) return; messages.value = c.messages; userMessages.value = c.userMessages||[]; showSidebar.value = false; uni.setStorageSync(LAST_CONV_KEY, JSON.stringify(c)) }
 const inputText = ref('')
 const loading = ref(false)
 const scrollToMsg = ref('')
@@ -292,13 +306,22 @@ async function sendMessage() {
     if (result.tool === 'task' && result.data?.tasks?.length > 0) {
       if (planStore.currentPlan) {
         try {
-          await confirmTasksSilent(result.data.tasks)
-          newMsg._autoAdded = true
+          const { added, failed } = await confirmTasksSilent(result.data.tasks)
+          if (added > 0 && failed === 0) {
+            // 全部成功 → 标记为已自动添加
+            newMsg._autoAdded = true
+          } else if (added > 0) {
+            // 部分成功 → 更新 summary 告知用户
+            newMsg.text = `${result.summary}（${added}个已添加，${failed}个失败，可点击下方按钮手动添加）`
+          }
+          // 全部失败时 _autoAdded 为 false → 显示确认按钮让用户手动操作
         } catch (e) { /* 自动写入失败不影响对话展示 */ }
       }
     }
 
     messages.value.push(newMsg)
+    // 每次 AI 回复后自动保存对话历史
+    saveCurrentConversation()
 
     currentImage.value = ''
     currentImageBase64.value = ''
@@ -314,24 +337,50 @@ async function sendMessage() {
   }
 }
 
+// 数据清洗：GLM 返回的字段可能不符合后端 Pydantic schema
+// duration 可能是浮点数(1.5)、type 可能是中文、repeat_type 可能是 "once"
+function sanitizeTask(task) {
+  const today = new Date().toISOString().split('T')[0]
+  // type 标准化：中文/英文 → new_study / review / mistake
+  const typeMap = {
+    '新学': 'new_study', 'new_study': 'new_study', '学习': 'new_study', 'study': 'new_study',
+    '复习': 'review', 'review': 'review',
+    '错题': 'mistake', 'mistake': 'mistake', '做题': 'new_study', '刷题': 'new_study',
+    '练习': 'new_study', '背诵': 'new_study', '阅读': 'new_study',
+  }
+  // repeat_type 标准化
+  const repeatMap = { 'none': 'none', '不循环': 'none', 'once': 'none', '一次': 'none', 'daily': 'daily', '每天': 'daily', 'weekday': 'weekday', '工作日': 'weekday' }
+  return {
+    content: task.content || '学习任务',
+    subject: task.subject || '未分类',
+    chapter: task.chapter || '',
+    duration: Math.round(Number(task.duration)) || 30,  // 浮点→整数，兜底30
+    type: typeMap[task.type] || 'new_study',
+    date: (task.date && /^\d{4}-\d{2}-\d{2}$/.test(task.date)) ? task.date : today,
+    start_hour: Math.round(Number(task.start_hour)) || 9,
+    start_minute: Math.round(Number(task.start_minute)) || 0,
+    repeat_type: repeatMap[task.repeat_type] || 'none'
+  }
+}
+
 async function confirmTasks(tasks) {
   if (!tasks || tasks.length === 0) return
   uni.showLoading({ title: '添加任务中...' })
   try {
     for (const task of tasks) {
       if (planStore.currentPlan) {
+        const t = sanitizeTask(task)
         await api.createTask({
           plan_id: planStore.currentPlan.id,
-          content: task.content,
-          subject: task.subject,
-          chapter: task.chapter || '',
-          duration: task.duration || 30,
-          type: task.type || 'new_study',
-          date: task.date,
-          start_hour: task.start_hour || 9,
-          start_minute: task.start_minute || 0,
-          repeat_type: task.repeat_type || 'none',
-          selected: true
+          content: t.content,
+          subject: t.subject,
+          chapter: t.chapter,
+          duration: t.duration,
+          type: t.type,
+          date: t.date,
+          start_hour: t.start_hour,
+          start_minute: t.start_minute,
+          repeat_type: t.repeat_type
         })
       }
     }
@@ -344,23 +393,32 @@ async function confirmTasks(tasks) {
 }
 
 // 静默写入任务（不显示 toast，用于 AI 自动创建）
+// 返回 { added: number, failed: number } 供调用方决定是否显示确认按钮
 async function confirmTasksSilent(tasks) {
-  if (!tasks || tasks.length === 0 || !planStore.currentPlan) return
+  if (!tasks || tasks.length === 0 || !planStore.currentPlan) return { added: 0, failed: 0 }
+  let added = 0, failed = 0
   for (const task of tasks) {
-    await api.createTask({
-      plan_id: planStore.currentPlan.id,
-      content: task.content,
-      subject: task.subject,
-      chapter: task.chapter || '',
-      duration: task.duration || 30,
-      type: task.type || 'new_study',
-      date: task.date,
-      start_hour: task.start_hour || 9,
-      start_minute: task.start_minute || 0,
-      repeat_type: task.repeat_type || 'none',
-      selected: true
-    })
+    try {
+      const t = sanitizeTask(task)
+      await api.createTask({
+        plan_id: planStore.currentPlan.id,
+        content: t.content,
+        subject: t.subject,
+        chapter: t.chapter,
+        duration: t.duration,
+        type: t.type,
+        date: t.date,
+        start_hour: t.start_hour,
+        start_minute: t.start_minute,
+        repeat_type: t.repeat_type
+      })
+      added++
+    } catch (e) {
+      console.error('[confirmTasksSilent] 写入失败:', task.content, e)
+      failed++
+    }
   }
+  return { added, failed }
 }
 
 async function confirmSyllabus(data) {
@@ -437,7 +495,21 @@ async function scrollToBottom() {
 
 onMounted(async () => {
   loadConversationList()
+  // 自动恢复上次未结束的会话（切换页面回来后不丢失对话）
+  if (!restoreLastConversation()) {
+    // 没有历史会话时，尝试从对话列表中恢复最近一条
+    if (conversationList.value.length > 0) {
+      const c = conversationList.value[0]
+      messages.value = c.messages
+      userMessages.value = c.userMessages || []
+    }
+  }
   await subjectsStore.load()
+})
+
+// 离开页面时自动保存当前对话
+onUnmounted(() => {
+  saveCurrentConversation()
 })
 </script>
 

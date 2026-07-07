@@ -114,7 +114,7 @@
         <!-- 右侧日期区域（横向滚动） -->
         <view class="week-dates-container">
           <scroll-view scroll-x class="week-dates-hscroll" @touchstart="onWeekHScrollTouchStart" @touchmove="onWeekHScrollTouchMove" @touchend="onWeekHScrollTouchEnd">
-            <view class="week-dates-table" :style="{ minWidth: 7 * colWidth + 'px' }">
+            <view class="week-dates-table" :style="tableStyle">
               <!-- 日期头行 -->
               <view class="week-days-header">
                 <view class="week-day-header" v-for="(day, idx) in weekDays" :key="idx" :class="{ today: day.isToday, weekend: day.isWeekend }" :style="{ width: colWidth + 'px' }">
@@ -311,10 +311,18 @@ const colWidth = computed(() => {
       // 桌面/平板：7列均匀分布，单列封顶115px避免过宽
       return Math.min(115, Math.floor((w - 100) / 7))
     }
-    // 手机端：最小75px，7列=525px可横向滑动
-    return Math.max(75, Math.floor((w - 50) / 7))
+    // 手机端：时间轴36px，最小75px，7列=525px可横向滑动
+    return Math.max(75, Math.floor((w - 40) / 7))
   } catch (e) { return 100 }
 })
+// 桌面端表格居中，手机端左对齐（靠横向滑动）
+const isDesktop = computed(() => {
+  try { return (uni.getSystemInfoSync().windowWidth || 375) >= 768 } catch (e) { return false }
+})
+const tableStyle = computed(() => ({
+  minWidth: 7 * colWidth.value + 'px',
+  margin: isDesktop.value ? '0 auto' : '0'
+}))
 const CELL_H = 72
 const weekScrollTop = ref(0)
 
@@ -1334,6 +1342,21 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 .week-timeline {
   width: 50px;
+}
+/* 手机端：时间轴收窄 */
+@media (max-width: 767px) {
+  .week-timeline-container {
+    width: 36px;
+  }
+  .week-timeline {
+    width: 36px;
+  }
+  .week-timeline-header {
+    font-size: 10px;
+  }
+  .time-label {
+    font-size: 9px; padding-right: 3px;
+  }
 }
 
 /* 右侧日期区域 */
