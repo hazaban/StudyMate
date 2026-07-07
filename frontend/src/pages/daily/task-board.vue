@@ -119,8 +119,7 @@
               <scroll-view scroll-y class="week-dates-scroll" :scroll-top="weekScrollTop" scroll-with-animation @scroll="onWeekScroll">
                 <view class="week-grid">
                   <view class="week-column" v-for="(day, colIdx) in weekDays" :key="colIdx" :data-col="colIdx" :class="{ weekend: day.isWeekend }" :style="{ width: colWidth + 'px' }">
-                    <!-- 底层格子 -->
-                    <view class="week-cell" v-for="(hour, hourIdx) in timelineHours" :key="hourIdx" :data-hour="hour" :data-date="day.dateStr" :class="{ expanded: expandedCell === day.dateStr + '-' + hour }"
+                    <view class="week-cell" v-for="(hour, hourIdx) in timelineHours" :key="hourIdx" :data-hour="hour" :data-date="day.dateStr"
                       @click.stop="onWeekCellClick(day.dateStr, hour)"
                       @contextmenu.prevent="handleWeekCellRightClick(day.dateStr, hour, $event)"
                       @touchstart="onWeekCellTouchStart(day.dateStr, hour, $event)"
@@ -128,8 +127,7 @@
                       @touchend.prevent="onWeekCellTouchEnd"
                       @mousedown="onWeekCellMouseDown(day.dateStr, hour, $event)"
                       @mouseup="onWeekCellMouseUp" />
-                    <!-- 任务浮层 -->
-                    <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed', [getSubjectClass(task.subject)]: true }"
+                    <view class="week-task" v-for="task in getDayTasks(day.dateStr)" :key="task.id" :class="{ completed: task.status === 'completed', [getSubjectClass(task.subject)]: true }"
                       :style="getTaskStyle(task)">
                       <view class="task-importance-dot" :class="getImportanceClass(task.importance)" v-if="task.importance && enableQuadrant"></view>
                       <text class="week-task-content">{{ task.content }}</text>
@@ -495,8 +493,10 @@ const currentTimeLineStyle = computed(() => {
   }
 })
 
+function getDayTasks(dateStr) {
+  return taskStore.weekTasks.filter(t => t.date === dateStr)
+}
 function getTasksAt(dateStr, hour) {
-  // 任务按其 start_hour 归入对应小时的格子
   return taskStore.weekTasks.filter(t => t.date === dateStr && (t.start_hour || 9) === hour)
 }
 
