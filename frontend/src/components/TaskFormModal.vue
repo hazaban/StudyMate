@@ -327,13 +327,19 @@ function close() {
   emit('update:visible', false)
 }
 
-function confirmDelete() {
+async function confirmDelete() {
   if (!props.task) return
   uni.showModal({
     title: '删除任务',
     content: `确定要删除「${props.task.content}」吗？`,
-    success: (res) => {
+    success: async (res) => {
       if (res.confirm) {
+        try {
+          await taskStore.deleteTask(props.task.id)
+          uni.showToast({ title: '已删除', icon: 'success' })
+        } catch (e) {
+          uni.showToast({ title: '删除失败', icon: 'none' })
+        }
         emit('deleted', props.task)
         close()
       }
