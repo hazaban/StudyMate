@@ -113,18 +113,19 @@
                 <text class="form-label">开始时间</text>
                 <view class="input-wrapper time-input-wrapper">
                   <picker mode="selector" :range="hourOptions" @change="onStartHourChange">
-                    <view class="time-picker-value">{{ padZero(form.start_hour) }}</view>
+                    <text class="time-picker-value">{{ padZero(form.start_hour) }}</text>
                   </picker>
                   <text class="time-separator">:</text>
                   <picker mode="selector" :range="minuteOptions" @change="onStartMinuteChange">
-                    <view class="time-picker-value">{{ padZero(form.start_minute) }}</view>
+                    <text class="time-picker-value">{{ padZero(form.start_minute) }}</text>
                   </picker>
                 </view>
               </view>
               <view class="form-group half">
-                <text class="form-label">预计时间（分钟）</text>
-                <view class="input-wrapper">
-                  <input class="input-field" v-model="form.duration" type="number" placeholder="25" />
+                <text class="form-label">预计时间</text>
+                <view class="input-wrapper time-input-wrapper">
+                  <input class="input-field time-duration-input" v-model="form.duration" type="number" placeholder="25" />
+                  <text class="duration-suffix">分钟</text>
                 </view>
               </view>
             </view>
@@ -599,27 +600,20 @@ async function addParsedTasks() {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 2px;
+  padding: 0 8px !important;
 }
-.time-picker-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-.time-separator { font-size: 15px; color: #ccc; }
+.time-separator { font-size: 16px; color: #2f7d4f; font-weight: 600; flex-shrink: 0; }
 .time-picker-value {
-  font-size: 15px;
-  color: #1a1a2e;
-  font-weight: 500;
-  padding: 4px 8px;
-  border-radius: 8px;
+  font-size: 15px; color: #1a1a2e; font-weight: 600;
+  padding: 10px 6px; border-radius: 8px; min-width: 32px; text-align: center;
   &:active { background: #f0f0f0; }
 }
-.time-separator {
-  font-size: 18px;
-  color: #2f7d4f;
-  font-weight: 600;
+.time-duration-input {
+  text-align: center; font-weight: 600; font-size: 15px;
+}
+.duration-suffix {
+  font-size: 13px; color: #999; flex-shrink: 0; font-weight: 500;
 }
 .form-label { display: block; font-size: 14px; font-weight: 600; color: #1a1a2e; margin-bottom: 8px; }
 .input-wrapper { border: 1.5px solid #e8ece9; border-radius: 14px; padding: 12px 16px; background: #fafafa; &:focus-within { border-color: #2f7d4f; } }
