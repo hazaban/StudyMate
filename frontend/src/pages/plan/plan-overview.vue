@@ -179,37 +179,40 @@
           <view class="chapter-list">
             <view class="chapter-item" v-for="(ch, ci) in editingChapters" :key="ci">
               <view class="ch-top-row">
-                <input class="ch-name" v-model="ch.name" placeholder="章节名" />
+                <view class="ch-name-wrap">
+                  <input class="ch-name-input" v-model="ch.name" placeholder="章节名" />
+                </view>
                 <view class="ch-dur-wrap">
                   <text class="ch-dur-label">分钟/天</text>
-                  <input class="ch-dur" v-model.number="ch.duration" type="number" placeholder="30" />
+                  <view class="ch-dur-box">
+                    <input class="ch-dur-input" v-model.number="ch.duration" type="number" placeholder="30" />
+                  </view>
                 </view>
                 <view class="ch-remove" @click="editingChapters.splice(ci, 1)">✕</view>
               </view>
-              <view class="ch-dates-row">
-                <view class="ch-date-block planned">
-                  <text class="ch-date-tag">📋 计划</text>
-                  <picker mode="date" :value="ch.planned_start" @change="onChapterDateChange($event, ch, 'planned_start')">
-                    <view class="ch-picker"><text class="ch-picker-text">{{ ch.planned_start || '开始日期' }}</text></view>
-                  </picker>
-                  <text class="ch-date-arrow">→</text>
-                  <picker mode="date" :value="ch.planned_end" @change="onChapterDateChange($event, ch, 'planned_end')">
-                    <view class="ch-picker"><text class="ch-picker-text">{{ ch.planned_end || '结束日期' }}</text></view>
-                  </picker>
-                </view>
-                <view class="ch-date-block actual">
-                  <text class="ch-date-tag">✅ 实际</text>
-                  <picker mode="date" :value="ch.actual_start" @change="onChapterDateChange($event, ch, 'actual_start')">
-                    <view class="ch-picker"><text class="ch-picker-text">{{ ch.actual_start || '开始日期' }}</text></view>
-                  </picker>
-                  <text class="ch-date-arrow">→</text>
-                  <picker mode="date" :value="ch.actual_end" @change="onChapterDateChange($event, ch, 'actual_end')">
-                    <view class="ch-picker"><text class="ch-picker-text">{{ ch.actual_end || '结束日期' }}</text></view>
-                  </picker>
-                </view>
+              <view class="ch-date-row">
+                <text class="ch-date-tag planned-tag">📋 计划</text>
+                <picker mode="date" :value="ch.planned_start" @change="onChapterDateChange($event, ch, 'planned_start')">
+                  <view class="ch-picker">{{ ch.planned_start || '开始日期' }}</view>
+                </picker>
+                <text class="ch-date-arrow">→</text>
+                <picker mode="date" :value="ch.planned_end" @change="onChapterDateChange($event, ch, 'planned_end')">
+                  <view class="ch-picker">{{ ch.planned_end || '结束日期' }}</view>
+                </picker>
+              </view>
+              <view class="ch-date-row">
+                <text class="ch-date-tag actual-tag">✅ 实际</text>
+                <picker mode="date" :value="ch.actual_start" @change="onChapterDateChange($event, ch, 'actual_start')">
+                  <view class="ch-picker">{{ ch.actual_start || '开始日期' }}</view>
+                </picker>
+                <text class="ch-date-arrow">→</text>
+                <picker mode="date" :value="ch.actual_end" @change="onChapterDateChange($event, ch, 'actual_end')">
+                  <view class="ch-picker">{{ ch.actual_end || '结束日期' }}</view>
+                </picker>
               </view>
             </view>
           </view>
+
           <view class="add-chapter-btn" @click="editingChapters.push({ name:'', duration:30, planned_start:'', planned_end:'', actual_start:'', actual_end:'' })">+ 添加章节</view>
         </view>
         <view class="modal-footer">
@@ -659,30 +662,29 @@ onMounted(async () => {
   box-shadow: 0 1px 3px rgba(0,0,0,0.03);
 }
 .ch-top-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-.ch-name { flex: 1; padding: 12px 14px; border: 1.5px solid #d0d5d2; border-radius: 12px; font-size: 16px; background: #fff; color: #1a1a2e; min-width: 0; :deep(.uni-input-input) { height: 24px; line-height: 24px; } :deep(.uni-input-wrapper) { min-height: 24px; }
-  &:active, &:focus { border-color: $accent; } }
+/* 章节名输入框：样式在wrapper上，input内透明 */
+.ch-name-wrap { flex: 1; padding: 11px 14px; border: 1.5px solid #d0d5d2; border-radius: 12px; background: #fff; min-width: 0;
+  &:focus-within { border-color: $accent; } }
+.ch-name-input { width: 100%; font-size: 15px; color: #1a1a2e; border: none; outline: none; background: transparent; line-height: 1.6; }
+/* 分钟/天 */
 .ch-dur-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .ch-dur-label { font-size: 12px; color: #888; white-space: nowrap; }
-.ch-dur { width: 56px; padding: 12px 6px; border: 1.5px solid #d0d5d2; border-radius: 12px; font-size: 16px; background: #fff; color: #1a1a2e; text-align: center; :deep(.uni-input-input) { height: 24px; line-height: 24px; } :deep(.uni-input-wrapper) { min-height: 24px; }
-  &:focus { border-color: $accent; } }
-.ch-remove { font-size: 22px; color: #ef5350; padding: 6px 4px; flex-shrink: 0; cursor: pointer; }
-
-.ch-dates-row { display: flex; flex-direction: column; gap: 8px; }
-.ch-date-block { display: flex; align-items: center; gap: 4px; }
+.ch-dur-box { width: 56px; padding: 11px 6px; border: 1.5px solid #d0d5d2; border-radius: 12px; background: #fff;
+  &:focus-within { border-color: $accent; } }
+.ch-dur-input { width: 100%; font-size: 15px; color: #1a1a2e; border: none; outline: none; background: transparent; text-align: center; line-height: 1.6; }
+/* 日期行 */
+.ch-date-row { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
 .ch-date-tag { font-size: 13px; font-weight: 600; min-width: 44px; white-space: nowrap;
-  .ch-date-block.planned & { color: #2f7d4f; }
-  .ch-date-block.actual & { color: #c62828; }
+  &.planned-tag { color: #2f7d4f; }
+  &.actual-tag { color: #c62828; }
 }
-.ch-date-arrow { font-size: 14px; color: #ccc; flex-shrink: 0; }
+.ch-date-arrow { font-size: 13px; color: #ccc; flex-shrink: 0; margin: 0 2px; }
 .ch-picker {
-  flex: 1; padding: 10px 6px; border: 1.5px solid #d0d5d2; border-radius: 10px;
+  flex: 1; padding: 10px 8px; border: 1.5px solid #d0d5d2; border-radius: 10px;
   font-size: 14px; background: #fafafa; color: #1a1a2e; text-align: center; min-width: 72px;
-  overflow: hidden; position: relative;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
-.ch-picker-text {
-  position: relative; z-index: 1; background: inherit;
-  display: block; width: 100%; text-align: center;
-}
+.ch-remove { font-size: 20px; color: #ef5350; padding: 4px 2px; flex-shrink: 0; cursor: pointer; }
 
 .add-chapter-btn { padding: 16px; text-align: center; border: 2px dashed #d0d5d2; border-radius: 14px; font-size: 16px; color: $accent; font-weight: 500; margin-top: 10px; }
 
