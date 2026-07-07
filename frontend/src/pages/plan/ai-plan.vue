@@ -8,189 +8,120 @@
       <view style="width: 40px;"></view>
     </view>
 
-    <!-- Tab 切换 -->
-    <view class="tabs">
-      <view class="tab-item" :class="{ active: activeTab === 'plan' }" @click="activeTab = 'plan'">
-        <text class="tab-text">📋 整体规划对话</text>
-      </view>
-      <view class="tab-item" :class="{ active: activeTab === 'syllabus' }" @click="activeTab = 'syllabus'">
-        <text class="tab-text">📖 科目框架分析</text>
-      </view>
-    </view>
-
-    <!-- 整体规划对话 -->
-    <view class="chat-section" v-if="activeTab === 'plan'">
-      <scroll-view scroll-y class="chat-messages" :scroll-into-view="scrollToMsg">
-        <view class="msg-item ai" v-for="(msg, idx) in planMessages" :key="idx" :id="'msg-' + idx">
-          <view class="msg-avatar ai">🤖</view>
-          <view class="msg-bubble ai">
-            <text class="msg-text">{{ msg.text }}</text>
-            <view class="msg-actions" v-if="msg.type === 'result' && !msg.confirmed">
-              <view class="msg-btn secondary" @click="regeneratePlan">重新生成</view>
-              <view class="msg-btn primary" @click="confirmPlan">确认应用此计划</view>
+    <!-- 聊天区域 -->
+    <scroll-view scroll-y class="chat-messages" :scroll-into-view="scrollToMsg">
+      <view class="msg-item ai" v-for="(msg, idx) in messages" :key="idx" :id="'msg-' + idx">
+        <view class="msg-avatar ai">🤖</view>
+        <view class="msg-bubble ai">
+          <text class="msg-text">{{ msg.text }}</text>
+          <view class="msg-content" v-if="msg.content">
+            <view class="content-section" v-if="msg.type === 'tasks' && msg.content.tasks && msg.content.tasks.length">
+              <text class="section-title">📋 识别到的任务</text>
+              <view class="task-list">
+                <view class="task-item" v-for="(t, tidx) in msg.content.tasks" :key="tidx">
+                  <text class="task-content">{{ t.content }}</text>
+                  <view class="task-meta">
+                    <text class="task-subject">{{ t.subject }}</text>
+                    <text class="task-duration">{{ t.duration }}分钟</text>
+                    <text class="task-date">{{ t.date }}</text>
+                  </view>
+                </view>
+              </view>
+              <view class="msg-btn primary" @click="confirmTasks(msg.content.tasks)">确认添加任务</view>
             </view>
-            <view class="msg-confirmed" v-if="msg.confirmed">
-              <text class="confirmed-text">✓ 已应用到计划</text>
+            <view class="content-section" v-if="msg.type === 'syllabus' && msg.content.chapters && msg.content.chapters.length">
+              <text class="section-title">📖 章节分析结果</text>
+              <view class="chapter-list">
+                <view class="chapter-item" v-for="(ch, cidx) in msg.content.chapters" :key="cidx">
+                  <text class="chapter-name">{{ cidx + 1 }}. {{ ch.name }}</text>
+                  <view class="chapter-meta">
+                    <text>{{ ch.daily_duration || 30 }}分钟/天</text>
+                    <text>预计{{ ch.estimated_days || 1 }}天</text>
+                  </view>
+                </view>
+              </view>
+              <text class="section-total" v-if="msg.content.total_days">总计预计 {{ msg.content.total_days }} 天</text>
+              <view class="msg-btn primary" @click="confirmSyllabus(msg.content)">确认写入计划</view>
+            </view>
+            <view class="content-section" v-if="msg.type === 'plan' && msg.content.phases && msg.content.phases.length">
+              <text class="section-title">📅 生成的学习计划</text>
+              <view class="plan-summary">
+                <text class="plan-overview" v-if="msg.content.overview">{{ msg.content.overview }}</text>
+                <view class="phase-list">
+                  <view class="phase-item" v-for="(p, pidx) in msg.content.phases" :key="pidx">
+                    <text class="phase-name">{{ pidx + 1 }}. {{ p.name }}</text>
+                    <text class="phase-desc">{{ p.description }}</text>
+                  </view>
+                </view>
+              </view>
+              <view class="msg-btn primary" @click="confirmPlan(msg.content)">确认应用此计划</view>
+            </view>
+            <view class="content-section" v-if="msg.type === 'review' && msg.content.summary">
+              <text class="section-title">📊 今日复盘</text>
+              <text class="review-summary">{{ msg.content.summary }}</text>
+              <view class="review-items" v-if="msg.content.achievements && msg.content.achievements.length">
+                <text class="review-label">🎯 成就</text>
+                <text class="review-item" v-for="(a, aidx) in msg.content.achievements" :key="aidx">✓ {{ a }}</text>
+              </view>
+              <view class="review-items" v-if="msg.content.suggestions && msg.content.suggestions.length">
+                <text class="review-label">💡 建议</text>
+                <text class="review-item" v-for="(s, sidx) in msg.content.suggestions" :key="sidx">• {{ s }}</text>
+              </view>
+              <text class="review-encourage" v-if="msg.content.encouragement">{{ msg.content.encouragement }}</text>
             </view>
           </view>
         </view>
-        <view class="msg-item user" v-for="(msg, idx) in userPlanMessages" :key="'u-' + idx">
-          <view class="msg-bubble user">
-            <text class="msg-text">{{ msg.text }}</text>
-          </view>
-          <view class="msg-avatar user">👤</view>
+      </view>
+      <view class="msg-item user" v-for="(msg, idx) in userMessages" :key="'u-' + idx">
+        <view class="msg-bubble user">
+          <text class="msg-text">{{ msg.text }}</text>
+          <image v-if="msg.image" :src="msg.image" mode="widthFix" class="msg-image" />
         </view>
-        <view class="msg-item ai" v-if="planLoading">
-          <view class="msg-avatar ai">🤖</view>
-          <view class="msg-bubble ai loading">
-            <text class="msg-text">AI 正在思考中...</text>
-          </view>
-        </view>
-      </scroll-view>
-
-      <view class="chat-input-area">
-        <view class="chat-hint" v-if="planMessages.length <= 1">
-          <view class="chat-hint-header" @click="toggleHint">
-            <text class="chat-hint-title">💡 请尽量包含以下信息，AI规划更精准：</text>
-            <text class="hint-toggle">{{ showHintDetail ? '▼' : '▶' }}</text>
-          </view>
-          <view class="chat-hint-tags" v-if="showHintDetail">
-            <text class="hint-tag">考试名称（如：考研408）</text>
-            <text class="hint-tag">考试日期（如：2026年12月）</text>
-            <text class="hint-tag">目标分数（如：数学130分）</text>
-            <text class="hint-tag">每天可用时间（如：每天8小时）</text>
-            <text class="hint-tag">薄弱科目（如：算法题较弱）</text>
-          </view>
-        </view>
-        <view class="quick-tips" v-if="planMessages.length <= 1">
-          <view class="tip-item" @click="quickFill('考研408计算机，还有150天，每天8小时')">
-            <text>考研408，150天，每天8小时</text>
-          </view>
-          <view class="tip-item" @click="quickFill('考公行测申论，还有90天，每天6小时')">
-            <text>考公，90天，每天6小时</text>
-          </view>
-        </view>
-        <view class="input-row">
-          <input class="chat-input" v-model="planInput" placeholder="比如：我要备战考研408，考试在2026年12月，每天能学8小时..." @confirm="sendPlanMessage" />
-          <view class="send-btn" :class="{ disabled: !planInput.trim() || planLoading }" @click="sendPlanMessage">
-            <text class="send-icon">➤</text>
-          </view>
+        <view class="msg-avatar user">👤</view>
+      </view>
+      <view class="msg-item ai" v-if="loading">
+        <view class="msg-avatar ai">🤖</view>
+        <view class="msg-bubble ai loading">
+          <text class="msg-text">AI 正在思考中...</text>
         </view>
       </view>
-    </view>
+    </scroll-view>
 
-    <!-- 科目框架分析 -->
-    <view class="syllabus-section" v-if="activeTab === 'syllabus'">
-      <view class="subject-selector">
-        <text class="selector-label">选择科目</text>
-        <view class="subject-options">
-          <view
-            class="subject-option"
-            :class="{ active: currentSubject === subj }"
-            v-for="subj in subjectList"
-            :key="subj"
-            @click="currentSubject = subj"
-          >
-            <text>{{ subj }}</text>
-          </view>
-          <view class="subject-option add" @click="showAddSubject = true">
-            <text>+ 添加</text>
-          </view>
+    <!-- 输入区域 -->
+    <view class="chat-input-area">
+      <view class="chat-hint" v-if="messages.length <= 1">
+        <view class="chat-hint-header" @click="toggleHint">
+          <text class="chat-hint-title">💡 我可以帮你做这些事：</text>
+          <text class="hint-toggle">{{ showHintDetail ? '▼' : '▶' }}</text>
+        </view>
+        <view class="chat-hint-tags" v-if="showHintDetail">
+          <text class="hint-tag">📋 规划学习计划（如：考研408，150天，每天8小时）</text>
+          <text class="hint-tag">✅ 添加任务（如：明天上午9点复习数据结构）</text>
+          <text class="hint-tag">📖 分析教材目录（上传图片或输入章节列表）</text>
+          <text class="hint-tag">📊 每日复盘（如：今天学了什么，给我复盘一下）</text>
         </view>
       </view>
-
-      <!-- 上传区域 -->
-      <view class="upload-area">
-        <view class="image-upload-box" v-if="!syllabusImage" @click="chooseSyllabusImage">
+      <view class="quick-tips" v-if="messages.length <= 1">
+        <view class="tip-item" @click="quickFill('考研408计算机，还有150天，每天8小时')">
+          <text>考研408，150天，每天8小时</text>
+        </view>
+        <view class="tip-item" @click="quickFill('明天上午复习数据结构，下午做英语阅读')">
+          <text>添加任务：明天复习数据结构</text>
+        </view>
+        <view class="tip-item" @click="triggerUpload">
+          <text>上传教材目录图片</text>
+        </view>
+      </view>
+      <view class="input-row">
+        <view class="upload-btn" @click="chooseImage">
           <text class="upload-icon">📷</text>
-          <text class="upload-text">上传科目大纲/目录图片</text>
-          <text class="upload-hint">AI 将自动解析章节结构</text>
         </view>
-        <view class="image-preview" v-else>
-          <image :src="syllabusImage" mode="aspectFit" class="preview-image" />
-          <view class="image-actions">
-            <view class="action-btn" @click="chooseSyllabusImage">
-              <text>重新上传</text>
-            </view>
-            <view class="action-btn danger" @click="removeSyllabusImage">
-              <text>删除</text>
-            </view>
-          </view>
+        <input class="chat-input" v-model="inputText" placeholder="输入你的需求，或上传图片..." @confirm="sendMessage" />
+        <view class="send-btn" :class="{ disabled: !inputText.trim() && !currentImageBase64 || loading }" @click="sendMessage">
+          <text class="send-icon">➤</text>
         </view>
       </view>
-
-      <!-- 分析按钮 -->
-      <view class="analyze-btn" :class="{ disabled: !syllabusImage || syllabusLoading }" @click="analyzeSyllabus">
-        <text v-if="!syllabusLoading">🔍 AI 解析科目框架</text>
-        <text v-else>AI 解析中...</text>
-      </view>
-
-      <!-- 分析结果 & 对话 -->
-      <view class="syllabus-chat" v-if="syllabusResult">
-        <view class="result-card">
-          <view class="result-header">
-            <text class="result-title">📊 章节分析结果</text>
-            <text class="result-subject">{{ currentSubject }}</text>
-          </view>
-          <view class="chapter-list">
-            <view class="chapter-item" v-for="(ch, idx) in syllabusChapters" :key="idx">
-              <view class="chapter-info">
-                <text class="chapter-name">{{ idx + 1 }}. {{ ch.name }}</text>
-                <text class="chapter-desc" v-if="ch.description">{{ ch.description }}</text>
-              </view>
-              <view class="chapter-duration">
-                <text class="duration-value">{{ ch.daily_duration || 30 }}</text>
-                <text class="duration-unit">分钟/天</text>
-              </view>
-            </view>
-          </view>
-        </view>
-
-        <!-- 对话区域 -->
-        <scroll-view scroll-y class="chat-area">
-          <view class="chat-msg ai" v-for="(msg, idx) in syllabusMessages" :key="idx">
-            <text class="msg-role">🤖 AI</text>
-            <text class="msg-content">{{ msg.text }}</text>
-          </view>
-          <view class="chat-msg ai" v-if="syllabusChatLoading">
-            <text class="msg-role">🤖 AI</text>
-            <text class="msg-content">正在思考中...</text>
-          </view>
-        </scroll-view>
-
-        <view class="chat-input-row">
-          <input class="chat-input" v-model="syllabusInput" placeholder="补充说明：比如哪些章节已掌握、哪些是重点..." @confirm="sendSyllabusMessage" />
-          <view class="send-btn small" :class="{ disabled: !syllabusInput.trim() || syllabusChatLoading }" @click="sendSyllabusMessage">
-            <text>发送</text>
-          </view>
-        </view>
-
-        <!-- 确认按钮 -->
-        <view class="confirm-section">
-          <view class="confirm-btn" @click="confirmSyllabusToTasks">
-            <text>✓ 确认并写入每日任务</text>
-          </view>
-        </view>
-      </view>
-    </view>
-
-    <!-- 添加科目弹窗 -->
-    <view class="modal-overlay" v-if="showAddSubject" @click="showAddSubject = false">
-      <view class="modal-content small" @click.stop>
-        <view class="modal-header">
-          <text class="modal-title">添加科目</text>
-          <view class="modal-close" @click="showAddSubject = false">✕</view>
-        </view>
-        <view class="modal-body">
-          <view class="input-wrapper">
-            <input class="input-field" v-model="newSubjectName" placeholder="输入科目名称" />
-          </view>
-        </view>
-        <view class="modal-footer">
-          <view class="cancel-btn" @click="showAddSubject = false">取消</view>
-          <view class="submit-btn" @click="addSubject">添加</view>
-        </view>
-      </view>
+      <image v-if="currentImage" :src="currentImage" mode="widthFix" class="preview-image-small" />
     </view>
 
     <view class="bottom-space"></view>
@@ -198,187 +129,49 @@
 </template>
 
 <script setup>
-import { ref, nextTick, computed, onMounted } from 'vue'
+import { ref, nextTick, onMounted } from 'vue'
 import { usePlanStore } from '@/stores/plan'
-import { useUserStore } from '@/stores/user'
 import { useSubjectsStore } from '@/stores/subjects'
 import * as api from '@/api/client'
 
 const planStore = usePlanStore()
-const userStore = useUserStore()
 const subjectsStore = useSubjectsStore()
 
-const activeTab = ref('plan')
+const messages = ref([
+  { text: '你好！我是 AI 学习规划助手。你可以告诉我你的考试目标、添加学习任务、上传教材目录图片分析框架，或者让我帮你做每日复盘。', type: 'intro', content: null }
+])
+const userMessages = ref([])
+const inputText = ref('')
+const loading = ref(false)
 const scrollToMsg = ref('')
-const showAddSubject = ref(false)
-const newSubjectName = ref('')
 const showHintDetail = ref(false)
+const currentImage = ref('')
+const currentImageBase64 = ref('')
+
+function goBack() {
+  uni.navigateBack()
+}
 
 function toggleHint() {
   showHintDetail.value = !showHintDetail.value
 }
 
-// ========== 整体规划对话 ==========
-const planInput = ref('')
-const planLoading = ref(false)
-const planConfirmed = ref(false)
-const planMessages = ref([
-  { text: '你好！我是 AI 学习规划助手。告诉我你的考试目标（考试名称、科目、剩余时间、每天学习时间等），我来帮你制定科学的学习计划。', type: 'intro', confirmed: false }
-])
-const userPlanMessages = ref([])
-const currentPlanResult = ref(null)
-
 function quickFill(text) {
-  planInput.value = text
+  inputText.value = text
 }
 
-async function sendPlanMessage() {
-  if (!planInput.value.trim() || planLoading.value) return
-
-  const userText = planInput.value.trim()
-  userPlanMessages.value.push({ text: userText })
-  planInput.value = ''
-  planLoading.value = true
-
-  await scrollToBottom()
-
-  try {
-    const result = await api.aiGeneratePlan({
-      description: userText,
-      subjects: [],
-      daily_study_time: 480,
-      study_phase: '基础阶段',
-      exam_name: '',
-      exam_date: ''
-    })
-
-    currentPlanResult.value = result
-    const planText = formatPlanText(result)
-
-    planMessages.value.push({
-      text: planText,
-      type: 'result',
-      confirmed: false
-    })
-  } catch (e) {
-    planMessages.value.push({
-      text: '抱歉，生成计划失败了，请重试。',
-      type: 'error',
-      confirmed: false
-    })
-  } finally {
-    planLoading.value = false
-    await scrollToBottom()
-  }
+function triggerUpload() {
+  chooseImage()
 }
 
-function formatPlanText(result) {
-  let text = ''
-  const plan = result.plan || result
-  if (plan.overview) {
-    text += `📋 总体规划：\n${plan.overview}\n\n`
-  }
-  if (plan.phases && plan.phases.length > 0) {
-    text += '📅 阶段安排：\n'
-    plan.phases.forEach((p, i) => {
-      text += `  ${i + 1}. ${p.name}：${p.description}\n`
-    })
-    text += '\n'
-  }
-  if (plan.daily_plan) {
-    text += `⏰ 每日安排：\n${plan.daily_plan}\n\n`
-  }
-  if (plan.tips) {
-    text += `💡 学习建议：\n${plan.tips}`
-  }
-  if (!text) {
-    text = JSON.stringify(result, null, 2)
-  }
-  text += '\n\n你觉得这个计划怎么样？可以继续和我对话调整细节，或者确认应用此计划。'
-  return text
-}
-
-function regeneratePlan() {
-  if (userPlanMessages.value.length > 0) {
-    planMessages.value = planMessages.value.slice(0, 1)
-    userPlanMessages.value = []
-    currentPlanResult.value = null
-  }
-}
-
-async function confirmPlan() {
-  uni.showLoading({ title: '创建计划中...' })
-  try {
-    const data = {
-      exam_name: 'AI 生成计划',
-      exam_date: new Date(Date.now() + 150 * 24 * 3600 * 1000).toISOString().split('T')[0],
-      daily_study_time: 480,
-      weak_points: [],
-      notes: '',
-      ai_plan: currentPlanResult.value,
-      subjects: [],
-      subject_phases: {}
-    }
-    const result = await planStore.createPlan(data)
-    if (result.success) {
-      planMessages.value[planMessages.value.length - 1].confirmed = true
-      planConfirmed.value = true
-      uni.showToast({ title: '计划创建成功！', icon: 'success' })
-      setTimeout(() => {
-        uni.switchTab({ url: '/pages/index/index' })
-      }, 1500)
-    }
-  } catch (e) {
-    uni.showToast({ title: '创建失败', icon: 'none' })
-  } finally {
-    uni.hideLoading()
-  }
-}
-
-async function scrollToBottom() {
-  await nextTick()
-  const total = planMessages.value.length + userPlanMessages.value.length
-  scrollToMsg.value = 'msg-' + (total - 1)
-}
-
-// ========== 科目框架分析 ==========
-const subjectList = computed(() => subjectsStore.mergedSubjects)
-const currentSubject = ref('')
-const syllabusImage = ref('')
-const syllabusImageBase64 = ref('')
-const syllabusLoading = ref(false)
-const syllabusChatLoading = ref(false)
-const syllabusResult = ref(null)
-const syllabusChapters = ref([])
-const syllabusInput = ref('')
-const syllabusMessages = ref([])
-
-function addSubject() {
-  if (!newSubjectName.value.trim()) return
-  subjectsStore.add(newSubjectName.value.trim())
-  currentSubject.value = newSubjectName.value.trim()
-  newSubjectName.value = ''
-  showAddSubject.value = false
-}
-
-onMounted(async () => {
-  await subjectsStore.load()
-  if (!currentSubject.value && subjectList.value.length) {
-    currentSubject.value = subjectList.value[0]
-  }
-})
-
-function chooseSyllabusImage() {
+function chooseImage() {
   uni.chooseImage({
     count: 1,
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
     success: (res) => {
       const tempPath = res.tempFilePaths[0]
-      syllabusImage.value = tempPath
-      syllabusResult.value = null
-      syllabusChapters.value = []
-      syllabusMessages.value = []
+      currentImage.value = tempPath
       // #ifdef H5
       const img = new Image()
       img.crossOrigin = 'anonymous'
@@ -395,7 +188,7 @@ function chooseSyllabusImage() {
         canvas.height = height
         const ctx = canvas.getContext('2d')
         ctx.drawImage(img, 0, 0, width, height)
-        syllabusImageBase64.value = canvas.toDataURL('image/jpeg', 0.8)
+        currentImageBase64.value = canvas.toDataURL('image/jpeg', 0.8)
       }
       img.src = tempPath
       // #endif
@@ -404,7 +197,7 @@ function chooseSyllabusImage() {
         filePath: tempPath,
         encoding: 'base64',
         success: (data) => {
-          syllabusImageBase64.value = `data:image/jpeg;base64,${data.data}`
+          currentImageBase64.value = `data:image/jpeg;base64,${data.data}`
         }
       })
       // #endif
@@ -412,126 +205,154 @@ function chooseSyllabusImage() {
   })
 }
 
-function removeSyllabusImage() {
-  syllabusImage.value = ''
-  syllabusImageBase64.value = ''
-  syllabusResult.value = null
-  syllabusChapters.value = []
-  syllabusMessages.value = []
-}
+async function sendMessage() {
+  if ((!inputText.value.trim() && !currentImageBase64.value) || loading.value) return
 
-async function analyzeSyllabus() {
-  if (!syllabusImage.value || syllabusLoading.value) return
-  if (!syllabusImageBase64.value) {
-    uni.showToast({ title: '图片处理中，请稍等', icon: 'none' })
-    return
-  }
+  const userText = inputText.value.trim()
+  userMessages.value.push({ text: userText || '[图片]', image: currentImage.value })
+  inputText.value = ''
+  loading.value = true
 
-  syllabusLoading.value = true
-  uni.showLoading({ title: 'AI 解析中...' })
+  await scrollToBottom()
 
   try {
-    const result = await api.aiAnalyzeSyllabus(syllabusImageBase64.value, currentSubject.value)
-    syllabusResult.value = result
-    if (result.chapters) {
-      syllabusChapters.value = result.chapters.map(c => ({
-        name: c.name,
-        description: c.description || '',
-        daily_duration: c.daily_duration || c.estimated_days * 30 || 30
-      }))
+    const data = {
+      text: userText,
+      image: currentImageBase64.value,
+      plan_id: planStore.currentPlan?.id || null
     }
-    syllabusMessages.value = [{
-      text: `我已解析完「${currentSubject.value}」的大纲，共识别出 ${syllabusChapters.value.length} 个章节，并为每个章节规划了每日学习时长。你觉得这个安排合理吗？有任何问题都可以问我，比如调整某章节的时长、增加/删除章节等。`
-    }]
-    uni.showToast({ title: '解析完成', icon: 'success' })
+
+    const result = await api.aiChat(data)
+
+    messages.value.push({
+      text: result.summary,
+      type: result.tool,
+      content: result.data
+    })
+
+    currentImage.value = ''
+    currentImageBase64.value = ''
   } catch (e) {
-    uni.showToast({ title: e.message || '解析失败', icon: 'none' })
+    messages.value.push({
+      text: '抱歉，处理失败了，请重试。',
+      type: 'error',
+      content: null
+    })
   } finally {
-    syllabusLoading.value = false
+    loading.value = false
+    await scrollToBottom()
+  }
+}
+
+async function confirmTasks(tasks) {
+  if (!tasks || tasks.length === 0) return
+  uni.showLoading({ title: '添加任务中...' })
+  try {
+    for (const task of tasks) {
+      if (planStore.currentPlan) {
+        await api.createTask({
+          plan_id: planStore.currentPlan.id,
+          content: task.content,
+          subject: task.subject,
+          chapter: task.chapter || '',
+          duration: task.duration || 30,
+          type: task.type || 'new_study',
+          date: task.date,
+          start_hour: task.start_hour || 9,
+          repeat_type: task.repeat_type || 'none',
+          selected: true
+        })
+      }
+    }
+    uni.showToast({ title: `已添加 ${tasks.length} 个任务`, icon: 'success' })
+  } catch (e) {
+    uni.showToast({ title: '添加失败', icon: 'none' })
+  } finally {
     uni.hideLoading()
   }
 }
 
-async function sendSyllabusMessage() {
-  if (!syllabusInput.value.trim() || syllabusChatLoading.value) return
-  const userText = syllabusInput.value.trim()
-  syllabusInput.value = ''
-  syllabusChatLoading.value = true
-
+async function confirmSyllabus(data) {
+  if (!data || !data.chapters || data.chapters.length === 0) return
+  uni.showLoading({ title: '写入计划中...' })
   try {
-    const result = await api.aiAnalyzeSubjectPhase(
-      `${userText}\n\n当前章节安排：${syllabusChapters.value.map(c => c.name + '(' + c.daily_duration + '分钟/天)').join('，')}`,
-      currentSubject.value
-    )
+    const subject = data.subject || '未知科目'
+    subjectsStore.add(subject)
 
-    if (result.chapters) {
-      syllabusChapters.value = result.chapters.map(c => ({
-        name: c.name,
-        description: c.description || '',
-        daily_duration: c.daily_duration || 30
-      }))
-    }
-
-    syllabusMessages.value.push({
-      text: result.description || '好的，我已经根据你的建议调整了章节安排。你看看还有什么需要调整的吗？'
-    })
-  } catch (e) {
-    syllabusMessages.value.push({
-      text: '抱歉，处理失败了，请重试。'
-    })
-  } finally {
-    syllabusChatLoading.value = false
-  }
-}
-
-async function confirmSyllabusToTasks() {
-  if (!planStore.currentPlan) {
-    uni.showToast({ title: '请先创建学习计划', icon: 'none' })
-    return
-  }
-  if (syllabusChapters.value.length === 0) {
-    uni.showToast({ title: '没有章节可添加', icon: 'none' })
-    return
-  }
-
-  uni.showModal({
-    title: '确认添加',
-    content: `将「${currentSubject.value}」的 ${syllabusChapters.value.length} 个章节添加到今日任务？`,
-    success: async (res) => {
-      if (res.confirm) {
-        uni.showLoading({ title: '添加中...' })
-        const today = new Date().toISOString().split('T')[0]
-        let added = 0
-        for (const ch of syllabusChapters.value) {
-          try {
-            await api.createTask({
-              plan_id: planStore.currentPlan.id,
-              date: today,
-              type: 'new_study',
-              subject: currentSubject.value,
-              content: ch.name,
-              duration: ch.daily_duration || 30,
-              status: 'pending'
-            })
-            added++
-          } catch (e) { /* skip */ }
+    if (planStore.currentPlan) {
+      let dayOffset = 0
+      for (const chapter of data.chapters) {
+        const days = chapter.estimated_days || 1
+        const duration = chapter.daily_duration || 30
+        for (let i = 0; i < days; i++) {
+          const date = new Date()
+          date.setDate(date.getDate() + dayOffset + i)
+          await api.createTask({
+            plan_id: planStore.currentPlan.id,
+            content: `学习 ${chapter.name}`,
+            subject: subject,
+            chapter: chapter.name,
+            duration: duration,
+            type: 'new_study',
+            date: date.toISOString().split('T')[0],
+            start_hour: 9,
+            repeat_type: 'none',
+            selected: true
+          })
         }
-        uni.hideLoading()
-        uni.showToast({ title: `已添加 ${added} 个任务`, icon: 'success' })
+        dayOffset += days
       }
     }
-  })
+    uni.showToast({ title: `已写入 ${data.total_days} 天任务`, icon: 'success' })
+  } catch (e) {
+    uni.showToast({ title: '写入失败', icon: 'none' })
+  } finally {
+    uni.hideLoading()
+  }
 }
-function goBack() {
-  const pages = getCurrentPages()
-  if (pages.length > 1) { uni.navigateBack() } else { uni.switchTab({ url: '/pages/index/index' }) }
+
+async function confirmPlan(data) {
+  uni.showLoading({ title: '创建计划中...' })
+  try {
+    const planData = {
+      exam_name: 'AI 生成计划',
+      exam_date: new Date(Date.now() + 150 * 24 * 3600 * 1000).toISOString().split('T')[0],
+      daily_study_time: 480,
+      weak_points: [],
+      notes: '',
+      ai_plan: data,
+      subjects: [],
+      subject_phases: {}
+    }
+    const result = await planStore.createPlan(planData)
+    if (result.success) {
+      uni.showToast({ title: '计划创建成功！', icon: 'success' })
+      setTimeout(() => {
+        uni.switchTab({ url: '/pages/index/index' })
+      }, 1500)
+    }
+  } catch (e) {
+    uni.showToast({ title: '创建失败', icon: 'none' })
+  } finally {
+    uni.hideLoading()
+  }
 }
+
+async function scrollToBottom() {
+  await nextTick()
+  const total = messages.value.length + userMessages.value.length
+  scrollToMsg.value = 'msg-' + (total - 1)
+}
+
+onMounted(async () => {
+  await subjectsStore.load()
+})
 </script>
 
-<style lang="scss" scoped>
+<style lang="scss">
 .page {
   min-height: 100vh;
-  background: $bg2;
+  background: #f5f5f5;
   display: flex;
   flex-direction: column;
 }
@@ -540,619 +361,387 @@ function goBack() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 60px 20px 16px;
-  background: $bg2;
-
-  .back-btn {
-    width: 40px;
-    height: 40px;
-    background: #fff;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    .back-icon {
-      font-size: 20px;
-      color: $ink;
-    }
-  }
-
-  .page-title {
-    font-size: 20px;
-    font-weight: 600;
-    color: $ink;
-  }
+  padding: 20px;
+  background: linear-gradient(135deg, #6b4ce6 0%, #8b5cf6 100%);
+  color: #fff;
 }
 
-// Tabs
-.tabs {
+.back-btn {
+  width: 40px;
+  height: 40px;
   display: flex;
-  padding: 0 16px 12px;
-  gap: 8px;
-
-  .tab-item {
-    flex: 1;
-    padding: 12px;
-    background: #fff;
-    border-radius: 12px;
-    text-align: center;
-    border: 2px solid transparent;
-    transition: all 0.2s;
-
-    &.active {
-      background: $accent;
-      border-color: $accent;
-
-      .tab-text {
-        color: #fff;
-        font-weight: 600;
-      }
-    }
-
-    .tab-text {
-      font-size: 14px;
-      color: $muted;
-    }
-  }
+  align-items: center;
+  justify-content: center;
 }
 
-// ===== 整体规划对话 =====
-.chat-section {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 0 16px;
-  min-height: 0;
+.back-icon {
+  font-size: 24px;
+}
+
+.page-title {
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .chat-messages {
   flex: 1;
-  height: 0;
-  padding: 8px 0;
+  padding: 15px;
   overflow-y: auto;
 }
 
 .msg-item {
   display: flex;
-  gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 15px;
   align-items: flex-start;
-
-  &.user {
-    flex-direction: row-reverse;
-  }
-
-  .msg-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    flex-shrink: 0;
-
-    &.ai {
-      background: #e8f5e9;
-    }
-
-    &.user {
-      background: #e3f2fd;
-    }
-  }
-
-  .msg-bubble {
-    max-width: 75%;
-    padding: 12px 16px;
-    border-radius: 14px;
-    line-height: 1.6;
-
-    &.ai {
-      background: #fff;
-      border-top-left-radius: 4px;
-
-      .msg-text {
-        font-size: 14px;
-        color: $ink;
-        white-space: pre-wrap;
-      }
-
-      &.loading {
-        .msg-text {
-          color: $muted;
-          font-style: italic;
-        }
-      }
-    }
-
-    &.user {
-      background: $accent;
-      border-top-right-radius: 4px;
-
-      .msg-text {
-        font-size: 14px;
-        color: #fff;
-      }
-    }
-
-    .msg-actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid $rule;
-    }
-
-    .msg-btn {
-      flex: 1;
-      padding: 8px;
-      text-align: center;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 500;
-
-      &.primary {
-        background: $accent;
-        color: #fff;
-      }
-
-      &.secondary {
-        background: $soft;
-        color: $ink;
-      }
-    }
-
-    .msg-confirmed {
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid $rule;
-
-      .confirmed-text {
-        font-size: 13px;
-        color: $accent;
-        font-weight: 500;
-      }
-    }
-  }
 }
 
-.chat-input-area {
-  padding: 12px 0 20px;
-  background: $bg2;
+.msg-item.ai {
+  flex-direction: row;
 }
 
-.chat-hint {
-  background: #f0f7ff; border-radius: 12px; padding: 10px 14px; margin-bottom: 10px;
-  border: 1px solid #bbdefb;
-}
-.chat-hint-header {
-  display: flex; align-items: center; justify-content: space-between;
-}
-.chat-hint-title { font-size: 13px; color: #1565c0; font-weight: 600; }
-.hint-toggle { font-size: 12px; color: #1565c0; }
-.chat-hint-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.hint-tag { font-size: 11px; padding: 3px 10px; background: #fff; color: #555; border-radius: 10px; border: 1px solid #e0e0e0; }
-
-.quick-tips {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
-  overflow-x: auto;
-
-  .tip-item {
-    flex-shrink: 0;
-    padding: 6px 12px;
-    background: #fff;
-    border-radius: 20px;
-    font-size: 12px;
-    color: $accent;
-    border: 1px solid $accent;
-  }
+.msg-item.user {
+  flex-direction: row-reverse;
 }
 
-.input-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  background: #fff;
-  border-radius: 24px;
-  padding: 6px 6px 6px 16px;
-}
-
-.chat-input {
-  flex: 1;
-  font-size: 15px;
-  color: $ink;
-  border: none;
-  outline: none;
-  background: transparent;
-  height: 40px;
-}
-
-.send-btn {
+.msg-avatar {
   width: 40px;
   height: 40px;
-  background: $accent;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-
-  &.disabled {
-    opacity: 0.5;
-  }
-
-  .send-icon {
-    color: #fff;
-    font-size: 16px;
-  }
-
-  &.small {
-    width: auto;
-    padding: 0 16px;
-    border-radius: 20px;
-    font-size: 14px;
-    color: #fff;
-  }
+  font-size: 20px;
+  flex-shrink: 0;
 }
 
-// ===== 科目框架分析 =====
-.syllabus-section {
-  flex: 1;
-  padding: 0 16px 16px;
-  display: flex;
-  flex-direction: column;
+.msg-avatar.ai {
+  background: linear-gradient(135deg, #6b4ce6 0%, #8b5cf6 100%);
 }
 
-.subject-selector {
-  margin-bottom: 16px;
-
-  .selector-label {
-    display: block;
-    font-size: 14px;
-    font-weight: 600;
-    color: $ink;
-    margin-bottom: 10px;
-  }
-
-  .subject-options {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-
-    .subject-option {
-      padding: 8px 14px;
-      background: #fff;
-      border-radius: 20px;
-      font-size: 13px;
-      color: $muted;
-      border: 1px solid $rule;
-
-      &.active {
-        background: $accent;
-        color: #fff;
-        border-color: $accent;
-      }
-
-      &.add {
-        border-style: dashed;
-        color: $accent;
-      }
-    }
-  }
+.msg-avatar.user {
+  background: #ddd;
 }
 
-.upload-area {
-  margin-bottom: 16px;
-
-  .image-upload-box {
-    background: #fff;
-    border: 2px dashed $accent;
-    border-radius: 16px;
-    padding: 40px 20px;
-    text-align: center;
-
-    .upload-icon {
-      display: block;
-      font-size: 48px;
-      margin-bottom: 12px;
-    }
-
-    .upload-text {
-      display: block;
-      font-size: 16px;
-      font-weight: 600;
-      color: $accent;
-      margin-bottom: 4px;
-    }
-
-    .upload-hint {
-      font-size: 13px;
-      color: $muted;
-    }
-  }
-
-  .image-preview {
-    background: #fff;
-    border-radius: 16px;
-    padding: 12px;
-
-    .preview-image {
-      width: 100%;
-      height: 200px;
-      border-radius: 12px;
-      margin-bottom: 12px;
-    }
-
-    .image-actions {
-      display: flex;
-      gap: 10px;
-
-      .action-btn {
-        flex: 1;
-        padding: 10px;
-        text-align: center;
-        border-radius: 10px;
-        background: $soft;
-        font-size: 13px;
-        color: $ink;
-
-        &.danger {
-          color: #ef5350;
-        }
-      }
-    }
-  }
+.msg-bubble {
+  max-width: 75%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  position: relative;
 }
 
-.analyze-btn {
-  padding: 14px;
-  background: $accent;
-  border-radius: 14px;
-  text-align: center;
-  font-size: 15px;
+.msg-bubble.ai {
+  background: #fff;
+  margin-left: 10px;
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.msg-bubble.user {
+  background: linear-gradient(135deg, #6b4ce6 0%, #8b5cf6 100%);
+  margin-right: 10px;
+  border-bottom-right-radius: 4px;
+}
+
+.msg-bubble.loading {
+  opacity: 0.6;
+}
+
+.msg-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+}
+
+.msg-bubble.user .msg-text {
   color: #fff;
-  font-weight: 600;
-  margin-bottom: 16px;
-
-  &.disabled {
-    opacity: 0.5;
-  }
 }
 
-.syllabus-chat {
-  flex: 1;
+.msg-image {
+  max-width: 100%;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.msg-content {
+  margin-top: 12px;
+}
+
+.content-section {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 10px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b4ce6;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.task-list {
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  gap: 8px;
 }
 
-.result-card {
+.task-item {
   background: #fff;
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 12px;
-
-  .result-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-
-    .result-title {
-      font-size: 15px;
-      font-weight: 600;
-      color: $ink;
-    }
-
-    .result-subject {
-      font-size: 12px;
-      padding: 4px 10px;
-      background: $soft;
-      color: $accent;
-      border-radius: 12px;
-    }
-  }
-
-  .chapter-list {
-    max-height: 200px;
-    overflow-y: auto;
-
-    .chapter-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid $rule;
-
-      &:last-child {
-        border-bottom: none;
-      }
-
-      .chapter-info {
-        flex: 1;
-
-        .chapter-name {
-          display: block;
-          font-size: 14px;
-          font-weight: 500;
-          color: $ink;
-          margin-bottom: 2px;
-        }
-
-        .chapter-desc {
-          font-size: 12px;
-          color: $muted;
-        }
-      }
-
-      .chapter-duration {
-        text-align: right;
-        margin-left: 12px;
-
-        .duration-value {
-          display: block;
-          font-size: 18px;
-          font-weight: 700;
-          color: $accent;
-        }
-
-        .duration-unit {
-          font-size: 11px;
-          color: $muted;
-        }
-      }
-    }
-  }
+  padding: 10px;
+  border-radius: 8px;
 }
 
-.chat-area {
-  flex: 1;
-  height: 0;
+.task-content {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  display: block;
+}
+
+.task-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.task-subject, .task-duration, .task-date {
+  font-size: 11px;
+  color: #999;
+}
+
+.chapter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chapter-item {
   background: #fff;
-  border-radius: 16px;
-  padding: 12px;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.chapter-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  display: block;
+}
+
+.chapter-meta {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #999;
+}
+
+.section-total {
+  font-size: 12px;
+  color: #6b4ce6;
+  margin-top: 8px;
+  display: block;
+}
+
+.plan-summary {
+  background: #fff;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.plan-overview {
+  font-size: 13px;
+  color: #333;
+  line-height: 1.6;
+  display: block;
   margin-bottom: 10px;
 }
 
-.chat-msg {
-  margin-bottom: 12px;
-
-  .msg-role {
-    display: block;
-    font-size: 12px;
-    color: $accent;
-    font-weight: 500;
-    margin-bottom: 4px;
-  }
-
-  .msg-content {
-    font-size: 13px;
-    color: $ink;
-    line-height: 1.6;
-    background: $soft;
-    padding: 10px 12px;
-    border-radius: 10px;
-    display: inline-block;
-  }
-}
-
-.chat-input-row {
+.phase-list {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  align-items: center;
-  margin-bottom: 12px;
-
-  .chat-input {
-    flex: 1;
-    height: 40px;
-    padding: 0 16px;
-    background: #fff;
-    border-radius: 20px;
-    font-size: 14px;
-    color: $ink;
-    border: 1px solid $rule;
-  }
 }
 
-.confirm-section {
-  .confirm-btn {
-    padding: 14px;
-    background: #4caf50;
-    border-radius: 14px;
-    text-align: center;
-    font-size: 15px;
-    color: #fff;
-    font-weight: 600;
-  }
+.phase-item {
+  padding: 8px;
+  background: #f0f4ff;
+  border-radius: 6px;
 }
 
-// Modal
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.phase-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b4ce6;
+  display: block;
 }
 
-.modal-content {
-  background: #fff;
-  border-radius: 20px;
-  width: 85%;
-  max-width: 400px;
-
-  &.small {
-    width: 80%;
-  }
+.phase-desc {
+  font-size: 12px;
+  color: #666;
+  margin-top: 2px;
+  display: block;
 }
 
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px 16px;
-  border-bottom: 1px solid $rule;
+.review-summary {
+  font-size: 13px;
+  color: #333;
+  line-height: 1.6;
+  display: block;
+  margin-bottom: 10px;
 }
 
-.modal-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: $ink;
+.review-items {
+  margin-bottom: 8px;
 }
 
-.modal-close {
-  font-size: 20px;
-  color: $muted;
-  padding: 4px;
+.review-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b4ce6;
+  display: block;
+  margin-bottom: 4px;
 }
 
-.modal-body {
-  padding: 20px 24px;
+.review-item {
+  font-size: 12px;
+  color: #666;
+  display: block;
+  margin-bottom: 2px;
 }
 
-.modal-footer {
-  display: flex;
-  gap: 12px;
-  padding: 16px 24px 24px;
-}
-
-.cancel-btn, .submit-btn {
-  flex: 1;
-  padding: 14px;
-  text-align: center;
-  border-radius: 12px;
-  font-size: 15px;
+.review-encourage {
+  font-size: 13px;
+  color: #4caf50;
   font-weight: 500;
+  margin-top: 10px;
+  display: block;
 }
 
-.cancel-btn {
-  background: $soft;
-  color: $ink;
+.msg-btn {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 12px;
+  text-align: center;
 }
 
-.submit-btn {
-  background: $accent;
+.msg-btn.primary {
+  background: linear-gradient(135deg, #6b4ce6 0%, #8b5cf6 100%);
   color: #fff;
 }
 
-.input-wrapper {
-  border: 1.5px solid $rule;
-  border-radius: 12px;
-  padding: 10px 14px;
-  background: $soft;
+.chat-input-area {
+  padding: 15px;
+  background: #fff;
+  border-top: 1px solid #eee;
 }
 
-.input-field {
-  width: 100%;
-  font-size: 15px;
-  color: $ink;
-  border: none;
-  outline: none;
-  background: transparent;
+.chat-hint {
+  margin-bottom: 10px;
+}
+
+.chat-hint-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chat-hint-title {
+  font-size: 13px;
+  color: #999;
+}
+
+.hint-toggle {
+  font-size: 12px;
+  color: #999;
+}
+
+.chat-hint-tags {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hint-tag {
+  font-size: 12px;
+  color: #666;
+  padding: 4px 8px;
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.quick-tips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.tip-item {
+  padding: 6px 12px;
+  background: #f0f4ff;
+  border-radius: 16px;
+  font-size: 12px;
+  color: #6b4ce6;
+}
+
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.upload-btn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border-radius: 12px;
+}
+
+.upload-icon {
+  font-size: 20px;
+}
+
+.chat-input {
+  flex: 1;
+  height: 44px;
+  padding: 0 15px;
+  background: #f5f5f5;
+  border-radius: 22px;
+  font-size: 14px;
+}
+
+.send-btn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #6b4ce6 0%, #8b5cf6 100%);
+  border-radius: 12px;
+}
+
+.send-btn.disabled {
+  opacity: 0.5;
+}
+
+.send-icon {
+  font-size: 18px;
+  color: #fff;
+}
+
+.preview-image-small {
+  max-width: 200px;
+  border-radius: 8px;
+  margin-top: 10px;
 }
 
 .bottom-space {

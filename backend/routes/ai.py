@@ -12,7 +12,8 @@ from config import SECRET_KEY, ALGORITHM
 from services.ai_service import (
     generate_study_plan, generate_daily_tasks,
     generate_flash_cards, generate_daily_review,
-    analyze_syllabus_image
+    analyze_syllabus_image,
+    PlanAgent, TaskAgent, SyllabusAgent
 )
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
@@ -90,4 +91,22 @@ async def analyze_syllabus(request: Request, user_id: UUID = Depends(_get_user_i
         data.get("subject", ""),
         data.get("description", "")
     )
+    return result
+
+
+@router.post("/chat")
+async def ai_chat(request: Request, user_id: UUID = Depends(_get_user_id)):
+    """Unified AI chat endpoint. PlanAgent analyzes intent and coordinates TaskAgent/SyllabusAgent."""
+    import json as _json
+    body = await request.body()
+    data = _json.loads(body) if body else {}
+
+    text = data.get("text", "")
+    image_url = data.get("image", "")
+    plan_id = data.get("plan_id", None)
+
+    if not text and not image_url:
+        raise HTTPException(status_code=400, detail="请提供文本或图片输入")
+
+    result = await PlanAgent.run(text, image_url, plan_id)
     return result

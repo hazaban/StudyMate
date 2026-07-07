@@ -189,6 +189,10 @@ ${data.text}
   return aiRequest('/parse-tasks', { prompt, temperature: 0.1 })
 }
 
+export async function aiChat(data) {
+  return request('/ai/chat', { method: 'POST', data })
+}
+
 // ==================== Cards ====================
 
 export async function createCard(data) {
