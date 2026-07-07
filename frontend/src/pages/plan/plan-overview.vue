@@ -668,15 +668,15 @@ onMounted(async () => {
 .ch-remove { font-size: 22px; color: #ef5350; padding: 6px 4px; flex-shrink: 0; }
 
 .ch-dates-row { display: flex; flex-direction: column; gap: 8px; }
-.ch-date-block { display: flex; align-items: center; gap: 8px; }
-.ch-date-tag { font-size: 13px; font-weight: 600; min-width: 56px; white-space: nowrap;
+.ch-date-block { display: flex; align-items: center; gap: 4px; }
+.ch-date-tag { font-size: 13px; font-weight: 600; min-width: 44px; white-space: nowrap;
   .ch-date-block.planned & { color: #2f7d4f; }
   .ch-date-block.actual & { color: #c62828; }
 }
-.ch-date-arrow { font-size: 16px; color: #ccc; }
+.ch-date-arrow { font-size: 14px; color: #ccc; flex-shrink: 0; }
 .ch-picker {
-  flex: 1; padding: 12px 14px; border: 1.5px solid #d0d5d2; border-radius: 10px;
-  font-size: 16px; background: #fafafa; color: #1a1a2e; text-align: center; min-width: 100px;
+  flex: 1; padding: 10px 6px; border: 1.5px solid #d0d5d2; border-radius: 10px;
+  font-size: 14px; background: #fafafa; color: #1a1a2e; text-align: center; min-width: 72px;
   overflow: hidden; position: relative;
   :deep(input), :deep(.uni-input-input) { display: none; }
 }
