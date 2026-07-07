@@ -85,6 +85,10 @@
     </view>
 
     <view class="week-view" v-if="viewMode === 'week'" id="weekViewContainer">
+      <!-- 周视图操作提示 -->
+      <view class="week-tip-bar">
+        <text class="week-tip-text">💡 点击格子展开 · 长按编辑或添加 · 请在电脑端下载完整周计划</text>
+      </view>
       <view class="week-header">
         <view class="week-arrow" @click="switchWeek(-1)">‹</view>
         <text class="week-title">{{ weekTitle }}</text>
@@ -152,10 +156,6 @@
       </view>
     </view>
 
-    <!-- 周视图操作提示（标题下方小字） -->
-    <view class="week-tip-bar" v-if="viewMode === 'week'">
-      <text class="week-tip-text">💡 点击格子展开 · 长按编辑或添加 · 请在首页或任务页面删除</text>
-    </view>
 
     <!-- 周视图右键菜单 -->
     <view class="cal-menu" v-if="showWeekMenu" :style="{ left: weekMenuX + 'px', top: weekMenuY + 'px' }" @click.stop>
@@ -301,9 +301,13 @@ const dateFocusRecords = ref([])
 
 const timelineHours = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
 // 列宽：桌面端宽屏(>1000px)均分7列，手机端最小100px可滑动
+// 页面全局 max-width=1080px，桌面端 windowWidth 可能远超此值，
+// 导致 colWidth 偏大 → 7列总宽超出实际容器宽度 → 只能看到约4-5天
+const PAGE_MAX_WIDTH = 1080
 const colWidth = computed(() => {
   try {
-    const w = uni.getSystemInfoSync().windowWidth || 375
+    const raw = uni.getSystemInfoSync().windowWidth || 375
+    const w = Math.min(raw, PAGE_MAX_WIDTH)
     if (w > 1000) return Math.floor((w - 100) / 7)
     return Math.max(100, Math.floor((w - 60) / 7))
   } catch (e) { return 100 }
@@ -1420,10 +1424,9 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   &.danger { color: #c62828; background: rgba(198,40,40,0.1); } }
 
 .week-tip-bar {
-  padding: 6px 12px; background: #f0f7ff; border-radius: 8px;
-  text-align: center; margin: 10px 0 0;
+  padding: 4px 0 8px; text-align: center; margin: 0;
 }
-.week-tip-text { font-size: 11px; color: #888; }
+.week-tip-text { font-size: 11px; color: #999; }
 
 .tabs { display: flex; margin-bottom: 16px; background: #f5f7f5; border-radius: 12px; padding: 4px; }
 .tab { flex: 1; text-align: center; padding: 10px; border-radius: 10px; transition: all 0.2s;
