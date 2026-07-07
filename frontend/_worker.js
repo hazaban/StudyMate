@@ -200,7 +200,28 @@ export default {
         }
 
         const rawResult = await callGLM(glmKey, messages, model, body.temperature);
-        const data = extractJSON(rawResult);
+        let data = extractJSON(rawResult);
+
+        // 格式归一化：确保输出匹配前端预期格式
+        if (route === '/api/ai/parse-tasks') {
+          if (!data.tasks) {
+            // GLM 返回了单个对象或非标准格式 → 包裹为 tasks 数组
+            if (Array.isArray(data)) {
+              data = { tasks: data };
+            } else if (data.content || data.title) {
+              data = { tasks: [data] };
+            } else {
+              data = { tasks: [] };
+            }
+          }
+        } else if (route === '/api/ai/generate-plan' || route === '/api/ai/generate-tasks') {
+          if (!data.phases && !data.tasks && data.text) {
+            // GLM 返回纯文本 → 包裹
+            data = route.includes('plan') ? { phases: [], overview: data.text } : { tasks: [], summary: data.text };
+          }
+        } else if (route === '/api/ai/generate-cards') {
+          if (!data.cards) data = { cards: Array.isArray(data) ? data : [] };
+        }
         return new Response(JSON.stringify(data), {
           status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
         });
