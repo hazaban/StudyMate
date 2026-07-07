@@ -507,7 +507,7 @@ onShow(() => {
 <style lang="scss" scoped>
 .header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 60px 20px 20px;
+  padding: 44px 0 14px;
   .back-btn { width: 40px; height: 40px; background: $bg2; border-radius: 50%; display: flex; align-items: center; justify-content: center; .back-icon { font-size: 20px; color: $ink; } }
   .page-title { font-size: 20px; font-weight: 600; color: $ink; }
   .placeholder { width: 40px; }

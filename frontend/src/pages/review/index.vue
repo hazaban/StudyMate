@@ -1187,15 +1187,15 @@ watch(() => planStore.currentPlan?.id, async (n, o) => { if (n && n !== o) { awa
 
 <style lang="scss" scoped>
 /* ===== Header ===== */
-.header { padding: 60px 0 20px; border-radius: 0 0 32px 32px; margin: 0 -20px 16px; padding-left: 20px; padding-right: 20px; }
+.header { padding: 44px 0 14px; border-radius: 20px; margin-bottom: 16px; }
 .header-purple { background: linear-gradient(135deg, var(--color-header-purple-start, #6b4ce6) 0%, var(--color-header-purple-end, #8b6ef5) 100%); }
 .header-red { background: linear-gradient(135deg, var(--color-header-red-start, #ef5350) 0%, var(--color-header-red-end, #f27573) 100%); }
-.header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-.header-left { .title { display: block; font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 4px; } .subtitle { font-size: 14px; color: rgba(255,255,255,0.8); } }
+.header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.header-left { .title { display: block; font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 2px; } .subtitle { font-size: 14px; color: rgba(255,255,255,0.75); } @media (max-width: 767px) { .title { font-size: 20px; } .subtitle { font-size: 12px; } } }
 .header-right { position: relative; }
 .export-btn { display: flex; align-items: center; gap: 4px; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); &:active { background: rgba(255,255,255,0.35); } .export-icon { font-size: 14px; } .export-text { font-size: 13px; color: #fff; font-weight: 500; } }
-.stats-row { display: flex; background: rgba(255,255,255,0.12); border-radius: 16px; padding: 16px; border: 1px solid rgba(255,255,255,0.15); }
-.stat-item { flex: 1; text-align: center; .stat-num { display: block; font-size: 22px; font-weight: 700; color: #fff; } .stat-label { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 2px; } }
+.stats-row { display: flex; background: rgba(255,255,255,0.1); border-radius: 10px; padding: 10px; }
+.stat-item { flex: 1; text-align: center; .stat-num { display: block; font-size: 18px; font-weight: 700; color: #fff; } .stat-label { font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 1px; } }
 
 /* ===== Sub Nav ===== */
 .sub-nav { display: flex; margin-bottom: 14px; background: #f5f7f5; border-radius: 12px; padding: 4px; }

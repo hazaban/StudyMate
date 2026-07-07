@@ -1,14 +1,5 @@
 <template>
   <view class="page">
-    <view class="header">
-      <view class="header-top">
-        <text class="page-title">个人中心</text>
-        <view class="settings-btn" @click="goToSettings">
-          <text class="settings-icon">⚙</text>
-        </view>
-      </view>
-    </view>
-
     <view class="profile-card" v-if="userStore.user">
       <view class="avatar-section">
         <view class="avatar">
@@ -17,6 +8,9 @@
         <view class="user-info">
           <text class="username">{{ userStore.user.user_metadata?.nickname || '用户' }}</text>
           <text class="user-email">{{ userStore.user.email }}</text>
+        </view>
+        <view class="settings-btn" @click="goToSettings">
+          <text class="settings-icon">⚙</text>
         </view>
       </view>
 
@@ -85,12 +79,6 @@
           <text class="menu-text">设置</text>
           <text class="menu-arrow">›</text>
         </view>
-      </view>
-    </view>
-
-    <view class="logout-section" v-if="userStore.isLoggedIn">
-      <view class="logout-btn" @click="handleLogout">
-        <text class="logout-text">退出登录</text>
       </view>
     </view>
 
@@ -181,23 +169,6 @@ function goToSettings() {
   uni.navigateTo({ url: '/pages/profile/settings' })
 }
 
-async function handleLogout() {
-  uni.showModal({
-    title: '退出登录',
-    content: '确定要退出登录吗？',
-    success: async (res) => {
-      if (res.confirm) {
-        const result = await userStore.logout()
-        if (result.success) {
-          uni.showToast({ title: '退出成功', icon: 'success' })
-          planCount.value = 0
-          cardCount.value = 0
-        }
-      }
-    }
-  })
-}
-
 onMounted(async () => {
   await loadData()
 })
@@ -208,40 +179,7 @@ onShow(async () => {
 </script>
 
 <style lang="scss" scoped>
-.header {
-  padding: 60px 0 20px;
-  background: linear-gradient(135deg, var(--color-header-green-start, #2f7d4f) 0%, var(--color-header-green-end, #4a9d6a) 100%);
-  border-radius: 0 0 30px 30px;
-  margin-bottom: 20px;
-  
-  .header-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  .page-title {
-    font-size: 28px;
-    font-weight: 700;
-    color: #fff;
-  }
-  
-  .settings-btn {
-    width: 40px;
-    height: 40px;
-    background: rgba(255,255,255,0.2);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    .settings-icon {
-      font-size: 20px;
-      color: #fff;
-    }
-  }
-}
-
+.page { padding-top: 44px; }
 .profile-card {
   background: $bg2;
   border-radius: 20px;
@@ -255,6 +193,25 @@ onShow(async () => {
   align-items: center;
   gap: 16px;
   margin-bottom: 20px;
+}
+
+.settings-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f5f7f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: auto;
+
+  .settings-icon {
+    font-size: 20px;
+    color: #65746d;
+  }
+
+  &:active { background: #e8ece9; }
 }
 
 .avatar {
@@ -290,26 +247,26 @@ onShow(async () => {
 
 .stats-row {
   display: flex;
-  gap: 12px;
+  gap: 8px;
 }
 
 .stat-item {
   flex: 1;
   text-align: center;
-  padding: 12px;
+  padding: 10px 8px;
   background: $soft;
-  border-radius: 12px;
-  
+  border-radius: 10px;
+
   .stat-value {
     display: block;
-    font-size: 24px;
+    font-size: 18px;
     font-weight: 700;
     color: $accent;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
   }
-  
+
   .stat-label {
-    font-size: 12px;
+    font-size: 11px;
     color: $muted;
   }
 }
@@ -422,23 +379,6 @@ onShow(async () => {
         left: 22px;
       }
     }
-  }
-}
-
-.logout-section {
-  padding: 0 20px;
-}
-
-.logout-btn {
-  padding: 16px;
-  background: #ffebee;
-  border-radius: 12px;
-  text-align: center;
-  
-  .logout-text {
-    font-size: 16px;
-    color: #c62828;
-    font-weight: 500;
   }
 }
 

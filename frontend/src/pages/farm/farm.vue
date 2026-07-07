@@ -352,12 +352,8 @@ onShow(async () => {
 .header {
   padding: 60px 0 20px;
   background: linear-gradient(135deg, #e8a838 0%, #f0c060 100%);
-  border-radius: 0 0 32px 32px;
+  border-radius: 20px;
   margin-bottom: 24px;
-  margin-left: -20px;
-  margin-right: -20px;
-  padding-left: 20px;
-  padding-right: 20px;
 }
 
 .header-top {

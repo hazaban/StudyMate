@@ -1113,20 +1113,20 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 
 <style lang="scss" scoped>
 .header {
-  padding: 60px 0 20px;
+  padding: 44px 0 14px;
   background: linear-gradient(135deg, var(--color-header-green-start, #2f7d4f) 0%, var(--color-header-green-end, #3d9a62) 100%);
-  border-radius: 0 0 32px 32px;
+  border-radius: 20px;
   margin-bottom: 24px;
-  margin-left: -20px;
-  margin-right: -20px;
-  padding-left: 20px;
-  padding-right: 20px;
 }
 
 .header-top {
   margin-bottom: 20px;
   .title { display: block; font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 2px; }
   .date { font-size: 14px; color: rgba(255,255,255,0.8); }
+  @media (max-width: 767px) {
+    .title { font-size: 20px; }
+    .date { font-size: 12px; }
+  }
 }
 
 .header-row {
@@ -1139,14 +1139,14 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .view-toggle {
   display: inline-flex;
   background: rgba(255,255,255,0.2);
-  border-radius: 20px;
+  border-radius: 22px;
   padding: 3px;
   gap: 2px;
 }
 .toggle-btn {
-  padding: 5px 14px;
-  border-radius: 17px;
-  font-size: 12px;
+  padding: 7px 16px;
+  border-radius: 19px;
+  font-size: 13px;
   color: rgba(255,255,255,0.85);
   font-weight: 500;
   transition: all 0.2s;
@@ -1165,14 +1165,14 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .quadrant-switch {
   display: flex; align-items: center; gap: 6px;
   .switch-track {
-    width: 36px; height: 20px; border-radius: 10px; background: rgba(255,255,255,0.3); transition: all 0.3s; position: relative;
+    width: 40px; height: 22px; border-radius: 11px; background: rgba(255,255,255,0.3); transition: all 0.3s; position: relative;
     &.active { background: #fff; }
     .switch-thumb {
-      width: 16px; height: 16px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: all 0.3s;
+      width: 18px; height: 18px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: all 0.3s;
     }
-    &.active .switch-thumb { left: 18px; background: #2f7d4f; }
+    &.active .switch-thumb { left: 20px; background: #2f7d4f; }
   }
-  .switch-label { font-size: 12px; color: rgba(255,255,255,0.85); }
+  .switch-label { font-size: 13px; color: rgba(255,255,255,0.85); }
 }
 .quadrant-entry-btn {
   width: 32px; height: 32px; border-radius: 50%;
@@ -1186,10 +1186,10 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .fab { position: fixed; right: 20px; bottom: 60px; z-index: 50; width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,0.35); background: #2f7d4f; &:active { transform: scale(0.92); } .fab-icon { font-size: 28px; color: #fff; font-weight: 300; } }
 
 .progress-summary {
-  display: flex; align-items: center; background: rgba(255,255,255,0.12); border-radius: 16px; padding: 16px; border: 1px solid rgba(255,255,255,0.15);
+  display: flex; align-items: center; background: rgba(255,255,255,0.1); border-radius: 12px; padding: 10px;
 }
-.progress-item { flex: 1; text-align: center; .progress-num { display: block; font-size: 22px; font-weight: 700; color: #fff; } .progress-label { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 2px; } }
-.progress-divider { width: 1px; height: 32px; background: rgba(255,255,255,0.2); }
+.progress-item { flex: 1; text-align: center; .progress-num { display: block; font-size: 18px; font-weight: 700; color: #fff; } .progress-label { font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 1px; } }
+.progress-divider { width: 1px; height: 24px; background: rgba(255,255,255,0.2); }
 
 .calendar {
   background: #fff;

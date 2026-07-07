@@ -7,8 +7,9 @@
           <text class="date">{{ currentDate }}</text>
         </view>
         <view class="header-right">
-          <view class="notification-btn" @click="goToProfile">
+          <view class="notification-btn" @click="showReminders = true">
             <text class="notif-icon">🔔</text>
+            <view class="notif-badge" v-if="upcomingTasks.length > 0">{{ upcomingTasks.length }}</view>
           </view>
           <view class="avatar" @click="goToProfile">
             <text class="avatar-text">{{ userStore.user?.nickname?.charAt(0) || '学' }}</text>
@@ -47,10 +48,6 @@
       <view class="plan-card" @click="goToPlan">
         <text class="plan-name">{{ planStore.currentPlan.exam_name }}</text>
         <text class="plan-date">{{ planStore.currentPlan.exam_date }}</text>
-        <view class="progress-bar">
-          <view class="progress-fill" :style="{ width: progressPercent + '%' }"></view>
-        </view>
-        <text class="progress-text">已完成 {{ progressPercent }}%</text>
       </view>
     </view>
 
@@ -102,6 +99,43 @@
       </view>
     </view>
 
+    <!-- 任务提醒弹窗 -->
+    <view class="modal-overlay" v-if="showReminders" @click="showReminders = false">
+      <view class="reminder-panel" @click.stop>
+        <view class="reminder-header">
+          <text class="reminder-title">🔔 任务提醒</text>
+          <view class="modal-close" @click="showReminders = false">✕</view>
+        </view>
+        <view class="reminder-body">
+          <view class="reminder-section" v-if="upcomingTasks.length > 0">
+            <text class="reminder-section-title">⏰ 即将开始的任务</text>
+            <view class="reminder-task" v-for="t in upcomingTasks" :key="t.id">
+              <view class="rm-task-left">
+                <text class="rm-task-time">{{ formatTaskTime(t) }}</text>
+                <text class="rm-task-name">{{ t.content }}</text>
+              </view>
+              <text class="rm-task-subj">{{ t.subject }}</text>
+            </view>
+          </view>
+          <view class="reminder-section" v-if="recentPomodoros.length > 0">
+            <text class="reminder-section-title">🍅 今天已计时结束的番茄钟</text>
+            <view class="reminder-task" v-for="(r, i) in recentPomodoros" :key="i">
+              <view class="rm-task-left">
+                <text class="rm-task-time">{{ r.time }}</text>
+                <text class="rm-task-name">{{ r.taskName }}</text>
+              </view>
+              <text class="rm-task-dur">{{ r.duration }}分钟</text>
+            </view>
+          </view>
+          <view class="reminder-empty" v-if="upcomingTasks.length === 0 && recentPomodoros.length === 0">
+            <text class="reminder-empty-icon">📭</text>
+            <text class="reminder-empty-text">暂无提醒</text>
+            <text class="reminder-empty-hint">任务快到时间或番茄钟完成时会在这里显示</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
     <!-- Shared Task Form Modal -->
     <TaskFormModal
       v-model:visible="showTaskForm"
@@ -137,7 +171,6 @@ const subjectsStore = useSubjectsStore()
 
 const currentDate = ref('')
 const daysRemaining = ref(0)
-const progressPercent = ref(0)
 const streakDays = ref(0)
 
 async function computeStreak() {
@@ -178,7 +211,27 @@ async function computeStreak() {
 
 const showTaskForm = ref(false)
 const editingTask = ref(null)
+const showReminders = ref(false)
 const todayStr = computed(() => dateUtil.today())
+
+const upcomingTasks = computed(() => {
+  const now = new Date()
+  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const pending = taskStore.todayTasks.filter(t => t.status !== 'completed')
+  return pending.filter(t => {
+    const taskMinutes = (t.start_hour || 9) * 60 + (t.start_minute || 0)
+    const diff = taskMinutes - nowMinutes
+    return diff >= -5 && diff <= 30
+  }).sort((a, b) => ((a.start_hour||9)*60+(a.start_minute||0)) - ((b.start_hour||9)*60+(b.start_minute||0)))
+})
+
+const recentPomodoros = computed(() => {
+  try {
+    const records = JSON.parse(uni.getStorageSync('studymate_pomodoro_records') || '[]')
+    const today = dateUtil.today()
+    return records.filter(r => r.date === today).slice(0, 8)
+  } catch(e) { return [] }
+})
 
 async function loadSubjects() {
   await subjectsStore.load()
@@ -349,21 +402,17 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 
 <style lang="scss" scoped>
 .header {
-  padding: 60px 0 24px;
-  background: linear-gradient(135deg, var(--color-header-green-start, #2f7d4f) 0%, var(--color-header-green-end, #4a9d6a) 100%);
-  border-radius: 0 0 32px 32px;
-  margin-bottom: 24px;
-  margin-left: -20px;
-  margin-right: -20px;
-  padding-left: 20px;
-  padding-right: 20px;
+  padding: 44px 0 16px;
+  background: linear-gradient(135deg, var(--color-header-green-start, #2f7d4f) 0%, var(--color-header-green-end, #3d9a62) 100%);
+  border-radius: 20px;
+  margin-bottom: 20px;
 }
 
 .header-content {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 20px;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 .welcome {
@@ -372,12 +421,18 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
     font-size: 26px;
     font-weight: 700;
     color: #fff;
-    margin-bottom: 6px;
+    margin-bottom: 2px;
+  }
+  @media (max-width: 767px) {
+    .greeting { font-size: 20px; }
+    .date { font-size: 12px; }
+    .motivation-text { font-size: 12px; }
+    .motivation-card { padding: 6px 10px; }
   }
   
   .date {
     font-size: 14px;
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.75);
   }
 }
 
@@ -419,35 +474,34 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 
 .motivation-card {
-  background: rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  padding: 16px 20px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+
   .motivation-text {
-    font-size: 14px;
+    font-size: 13px;
     color: rgba(255, 255, 255, 0.9);
     font-style: italic;
+    flex: 1; min-width: 0;
+    line-height: 1.4;
   }
-  
+
   .streak-badge {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
     background: rgba(255, 255, 255, 0.2);
-    padding: 6px 12px;
-    border-radius: 20px;
-    
-    .streak-icon {
-      font-size: 14px;
-    }
-    
+    padding: 4px 10px;
+    border-radius: 16px;
+    flex-shrink: 0;
+
+    .streak-icon { font-size: 12px; }
+
     .streak-days {
-      font-size: 12px;
+      font-size: 11px;
       color: #fff;
       font-weight: 500;
       white-space: nowrap;
@@ -457,40 +511,29 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 
 .stats-section {
   display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 8px;
+  margin-bottom: 18px;
 }
 
 .stat-card {
   flex: 1;
   background: $bg2;
-  border-radius: 16px;
-  padding: 16px 14px;
+  border-radius: 12px;
+  padding: 10px 8px;
   text-align: center;
   border: 1px solid $rule;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
-  transition: transform 0.2s;
-  
-  &:active {
-    transform: scale(0.97);
-  }
-  
-  .stat-icon {
-    font-size: 24px;
-    display: block;
-    margin-bottom: 4px;
-  }
-  
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+
   .stat-value {
     display: block;
-    font-size: 22px;
+    font-size: 18px;
     font-weight: 700;
     color: $ink;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
   }
-  
+
   .stat-label {
-    font-size: 12px;
+    font-size: 11px;
     color: $muted;
   }
 }

@@ -58,12 +58,25 @@
       </view>
     </view>
 
+    <view class="account-section" v-if="isLoggedIn">
+      <view class="account-btn switch-btn" @click="handleSwitchAccount">
+        <text class="account-btn-text">切换账号</text>
+      </view>
+      <view class="account-btn logout-btn" @click="handleLogout">
+        <text class="account-btn-text">退出登录</text>
+      </view>
+    </view>
+
     <view class="bottom-space"></view>
   </view>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+const isLoggedIn = computed(() => userStore.isLoggedIn)
 
 const darkMode = ref(false)
 const notificationEnabled = ref(false)
@@ -93,25 +106,51 @@ function applyDarkMode() {
 function requestNotificationPermission() {
   // #ifdef H5
   if ('Notification' in window) {
-    Notification.requestPermission()
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        uni.showToast({ title: '通知权限已开启', icon: 'success' })
+      } else if (permission === 'denied') {
+        notificationEnabled.value = false
+        uni.setStorageSync('studymate_reminder_enabled', false)
+        uni.showToast({ title: '通知权限被拒绝，请在浏览器设置中开启', icon: 'none' })
+      }
+    })
   }
   // #endif
 }
 
 function testNotification() {
   // #ifdef H5
-  if ('Notification' in window && Notification.permission === 'granted') {
+  if (!('Notification' in window)) {
+    uni.showToast({ title: '当前浏览器不支持通知', icon: 'none' })
+    return
+  }
+  if (Notification.permission === 'granted') {
     new Notification('StudyMate 学习提醒', {
       body: '这是一条测试通知，番茄钟完成后会收到类似提醒',
       icon: '/static/logo.png'
     })
     uni.showToast({ title: '通知已发送', icon: 'success' })
+  } else if (Notification.permission === 'default') {
+    // 还没问过用户 → 立即请求权限
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        new Notification('StudyMate 学习提醒', {
+          body: '通知权限已开启，番茄钟完成后会收到提醒',
+          icon: '/static/logo.png'
+        })
+        notificationEnabled.value = true
+        uni.setStorageSync('studymate_reminder_enabled', true)
+      } else {
+        uni.showToast({ title: '通知权限被拒绝', icon: 'none' })
+      }
+    })
   } else {
-    uni.showToast({ title: '请先授权通知权限', icon: 'none' })
+    uni.showToast({ title: '通知权限已被拒绝，请在浏览器设置中开启', icon: 'none' })
   }
   // #endif
   // #ifndef H5
-  uni.showToast({ title: '通知功能已就绪', icon: 'success' })
+  uni.showToast({ title: '请在手机设置中开启通知权限', icon: 'none' })
   // #endif
 }
 
@@ -122,6 +161,36 @@ function showAbout() {
     showCancel: false
   })
 }
+
+async function handleLogout() {
+  uni.showModal({
+    title: '退出登录',
+    content: '确定要退出登录吗？',
+    success: async (res) => {
+      if (res.confirm) {
+        const result = await userStore.logout()
+        if (result.success) {
+          uni.showToast({ title: '退出成功', icon: 'success' })
+          setTimeout(() => uni.switchTab({ url: '/pages/index/index' }), 800)
+        }
+      }
+    }
+  })
+}
+
+function handleSwitchAccount() {
+  uni.showModal({
+    title: '切换账号',
+    content: '切换账号将退出当前登录，确定继续吗？',
+    success: async (res) => {
+      if (res.confirm) {
+        await userStore.logout()
+        uni.navigateTo({ url: '/pages/auth/login' })
+      }
+    }
+  })
+}
+
 function goBack() {
   const pages = getCurrentPages()
   if (pages.length > 1) { uni.navigateBack() } else { uni.switchTab({ url: '/pages/profile/profile' }) }
@@ -244,6 +313,25 @@ onMounted(() => {
       }
     }
   }
+}
+
+.account-section {
+  padding: 24px 0 0;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.account-btn {
+  padding: 14px; text-align: center; border-radius: 12px;
+  .account-btn-text { font-size: 15px; font-weight: 500; }
+}
+.switch-btn {
+  background: #f5f7f5; border: 1px solid #e0e0e0;
+  .account-btn-text { color: #1a1a2e; }
+  &:active { background: #e8ece9; }
+}
+.logout-btn {
+  background: #ffebee;
+  .account-btn-text { color: #c62828; }
+  &:active { background: #ffcdd2; }
 }
 
 .bottom-space {

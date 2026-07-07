@@ -318,11 +318,7 @@ html, body {
 .page-header-gradient {
   @extend .page-header;
   background: linear-gradient(135deg, var(--color-header-green-start, #2f7d4f) 0%, var(--color-header-green-end, #4a9d6a) 100%);
-  border-radius: 0 0 32px 32px;
-  padding-left: 20px;
-  padding-right: 20px;
-  margin-left: -20px;
-  margin-right: -20px;
+  border-radius: 20px;
 }
 
 .page-header-title {

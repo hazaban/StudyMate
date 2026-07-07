@@ -626,11 +626,11 @@ function vibrateDevice(type = 'focus') {
 }
 
 function notifyCompletion(title, body, isFocusEnd) {
-  // 1. 播放提示音
+  // 1. 播放提示音（所有平台）
   playCompletionSound(isFocusEnd)
   // 2. 震动（手机端）
   vibrateDevice(isFocusEnd ? 'focus' : 'break')
-  // 3. 弹窗
+  // 3. 弹窗（所有平台都能看到）
   uni.showModal({
     title,
     content: body,
@@ -638,13 +638,9 @@ function notifyCompletion(title, body, isFocusEnd) {
     confirmText: '知道了'
   })
   // #ifdef H5
-  // 4. 浏览器通知（后台时也能收到）
+  // 4. 浏览器桌面通知（仅桌面端，iOS/部分移动端不支持）
   if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification(title, { body, tag: 'pomodoro-complete' })
-  } else if ('Notification' in window && Notification.permission !== 'denied') {
-    Notification.requestPermission().then(p => {
-      if (p === 'granted') new Notification(title, { body, tag: 'pomodoro-complete' })
-    })
+    try { new Notification(title, { body, tag: 'pomodoro-complete' }) } catch(e) { /* iOS等不支持 */ }
   }
   // #endif
 }

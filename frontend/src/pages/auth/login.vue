@@ -33,19 +33,6 @@
         <text class="btn-text">登录</text>
       </view>
 
-      <view class="divider">
-        <view class="divider-line"></view>
-        <text class="divider-text">或</text>
-        <view class="divider-line"></view>
-      </view>
-
-      <view class="social-login">
-        <view class="social-btn">
-          <text class="social-icon">📱</text>
-          <text class="social-text">微信登录</text>
-        </view>
-      </view>
-
       <view class="register-row">
         <text class="register-text">还没有账号？</text>
         <text class="register-link" @click="goToRegister">立即注册</text>
@@ -225,48 +212,6 @@ function goToRegister() {
     font-size: 18px;
     font-weight: 600;
     color: #fff;
-  }
-}
-
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
-  
-  .divider-line {
-    flex: 1;
-    height: 1px;
-    background: $rule;
-  }
-  
-  .divider-text {
-    font-size: 14px;
-    color: $muted;
-  }
-}
-
-.social-login {
-  margin-bottom: 24px;
-  
-  .social-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 14px;
-    background: #07c160;
-    border-radius: 12px;
-    
-    .social-icon {
-      font-size: 18px;
-    }
-    
-    .social-text {
-      font-size: 16px;
-      color: #fff;
-      font-weight: 500;
-    }
   }
 }
 
