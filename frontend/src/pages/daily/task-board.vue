@@ -290,7 +290,7 @@ const calendarDays = ref([])
 const taskDates = ref(new Set())
 const dateFocusRecords = ref([])
 
-const timelineHours = [6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16, 16.5, 17, 17.5, 18, 18.5, 19, 19.5, 20, 20.5, 21, 21.5, 22, 22.5, 23, 23.5]
+const timelineHours = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
 // 列宽：桌面端自适应，手机端最少100px保证可读
 const colWidth = computed(() => {
   try {
@@ -480,7 +480,7 @@ const currentTimeLineStyle = computed(() => {
   const now = new Date()
   const hour = now.getHours()
   const minute = now.getMinutes()
-  const CELL_H = 60
+  const CELL_H = 72
   if (hour < timelineHours[0] || hour > timelineHours[timelineHours.length - 1]) return { display: 'none' }
   const top = (hour - timelineHours[0]) * CELL_H + (minute / 60) * CELL_H
   return {
