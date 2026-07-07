@@ -298,7 +298,11 @@ const timelineHours = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 2
 const colWidth = computed(() => {
   try {
     const w = uni.getSystemInfoSync().windowWidth || 375
-    if (w > 1000) return Math.floor((w - 100) / 7)
+    if (w > 1000) {
+        // 桌面端精确计算：窗口宽度 - 页面padding(40px) - 时间轴(50px) - 列border(7px)
+        const available = w - 40 - 50 - 7
+        return Math.floor(available / 7)
+      }
     return Math.max(100, Math.floor((w - 60) / 7))
   } catch (e) { return 100 }
 })
@@ -1183,6 +1187,9 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   background: #fff; border-radius: 12px; margin-bottom: 16px;
   border: 1px solid #e8ece9; box-shadow: 0 1px 4px rgba(0,0,0,0.03);
   overflow: hidden;
+    @media (min-width: 1000px) {
+      overflow: visible;
+    }
 }
 .week-header {
   display: flex; justify-content: space-between; align-items: center;
@@ -1215,17 +1222,29 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 
 /* 右侧日期区域 */
 .week-dates-container {
-  flex: 1; overflow: hidden;
+  flex: 1; overflow: hidden; display: flex; flex-direction: column;
+    @media (min-width: 1000px) {
+      overflow: visible;
+    }
 }
 .week-dates-hscroll {
-  overflow-x: auto; overflow-y: hidden;
+  overflow-x: auto; overflow-y: hidden; flex: 1;
+  @media (min-width: 1000px) {
+    overflow-x: visible;
+    overflow-y: visible;
+  }
 }
-.week-dates-table { display: flex; flex-direction: column; }
+.week-dates-table {
+  display: flex; flex-direction: column;
+  @media (min-width: 1000px) {
+    min-width: auto;
+  }
+}
 
 /* 日期头行 */
 .week-days-header {
   display: flex; background: #fff; border-bottom: 2px solid #f0f0f0;
-  height: 60px;
+  height: 60px; flex-shrink: 0;
 }
 .week-day-header {
   flex-shrink: 0; text-align: center;
@@ -1247,6 +1266,12 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 /* 格子体纵向滚动 */
 .week-dates-scroll {
   flex: 1;
+  @media (min-width: 1000px) {
+    /* 桌面端：显示完整时间轴（6:00-23:00），不做高度限制，随页面滚动 */
+    max-height: none;
+    flex: none;
+    height: auto;
+  }
 }
 
 /* 时间标签 */
