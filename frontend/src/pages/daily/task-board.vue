@@ -127,9 +127,10 @@
                       @touchend.prevent="onWeekCellTouchEnd"
                       @mousedown="onWeekCellMouseDown(day.dateStr, hour, $event)"
                       @mouseup="onWeekCellMouseUp" />
-                    <view class="week-task" v-for="task in getDayTasks(day.dateStr)" :key="task.id" :class="{ completed: task.status === 'completed', [getSubjectClass(task.subject)]: true }"
+                    <view class="week-task" v-for="task in getDayTasks(day.dateStr)" :key="task.id" :class="{ completed: task.status === 'completed', scrolled: scrollTaskId === task.id, [getSubjectClass(task.subject)]: true }"
                       :style="getTaskStyle(task)"
-                      @click.stop="onWeekCellClick(day.dateStr, task.start_hour || 9)"
+                      @click.stop="scrollTaskId = scrollTaskId === task.id ? '' : task.id"
+                      @contextmenu.prevent.stop="editTask(task)"
                       @touchstart.stop="onTaskCardTouchStart(task)"
                       @touchend="onTaskCardTouchEnd"
                       @touchmove="onTaskCardTouchEnd">
@@ -293,15 +294,15 @@ const taskDates = ref(new Set())
 const dateFocusRecords = ref([])
 
 const timelineHours = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
-// 列宽：桌面端自适应，手机端最少100px保证可读
+// 列宽：桌面端宽屏(>1000px)均分7列，手机端最小100px可滑动
 const colWidth = computed(() => {
   try {
-    const info = uni.getSystemInfoSync()
-    const w = info.windowWidth || 375
-    const usable = Math.max(w - 60, 320)
-    return Math.max(100, Math.floor(usable / 7))
+    const w = uni.getSystemInfoSync().windowWidth || 375
+    if (w > 1000) return Math.floor((w - 100) / 7)
+    return Math.max(100, Math.floor((w - 60) / 7))
   } catch (e) { return 100 }
 })
+const CELL_H = 72
 const weekScrollTop = ref(0)
 
 function onWeekScroll(e) {
@@ -508,14 +509,12 @@ function formatTimelineHour(hour) {
   return `${hour}:00`
 }
 
-const HOUR_HEIGHT = 72  // 每小时格子的高度(px)
-
 function getTaskStyle(task) {
   const h = task.start_hour || 9
   const m = task.start_minute || 0
   const dur = task.duration || 30
-  const top = (h - timelineHours[0]) * HOUR_HEIGHT + (m / 60) * HOUR_HEIGHT
-  const height = Math.max(20, (dur / 60) * HOUR_HEIGHT)
+  const top = (h - timelineHours[0]) * CELL_H + (m / 60) * CELL_H
+  const height = Math.max(20, (dur / 60) * CELL_H)
   return {
     position: 'absolute',
     top: top + 'px',
@@ -722,6 +721,7 @@ function loadTaskDates() {
 
 // 展开格子的 key: "日期-小时"
 const expandedCell = ref('')
+const scrollTaskId = ref('')
 
 function onWeekCellClick(dateStr, hour) {
   if (weekCellDidLong) return
@@ -1270,6 +1270,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   cursor: pointer; box-shadow: 0 1px 3px rgba(47,125,79,0.2);
   overflow: hidden; display: flex; flex-direction: column;
   &:active { filter: brightness(0.93); }
+  &.scrolled { overflow-y: auto; -webkit-overflow-scrolling: touch; }
   &.completed { background: #f0f0f0; box-shadow: none; opacity: 0.7; }
   &.subject-ds { background: #e3f2fd; .week-task-content { color: #1565c0; } }
   &.subject-os { background: #f3e5f5; .week-task-content { color: #7b1fa2; } }

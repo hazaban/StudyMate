@@ -8,6 +8,21 @@
       <view class="sidebar-toggle" @click="showSidebar = !showSidebar"><text class="sidebar-icon">{{ showSidebar ? '✕' : '☰' }}</text></view>
     </view>
 
+    <!-- 会话历史侧边栏 -->
+    <view class="sidebar-overlay" v-if="showSidebar" @click="showSidebar = false">
+      <view class="sidebar-panel" @click.stop>
+        <text class="sidebar-title">历史会话</text>
+        <scroll-view scroll-y class="sidebar-list">
+          <view class="sidebar-item" v-for="(conv, ci) in conversationList" :key="ci" @click="loadConversation(ci)">
+            <text class="sidebar-item-title">{{ conv.title }}</text>
+            <text class="sidebar-item-date">{{ conv.date }}</text>
+          </view>
+          <text class="sidebar-empty" v-if="conversationList.length === 0">暂无历史会话</text>
+        </scroll-view>
+        <view class="sidebar-new-btn" @click="startNewConversation">+ 新会话</view>
+      </view>
+    </view>
+
     <scroll-view scroll-y class="chat-messages" :scroll-into-view="scrollToMsg">
       <view class="msg-item ai" v-for="(msg, idx) in messages" :key="idx" :id="'msg-' + idx">
         <view class="msg-avatar ai">🤖</view>

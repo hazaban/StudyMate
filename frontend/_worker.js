@@ -45,7 +45,7 @@ const CHAT_SYSTEM = `你是 StudyMate 学习星球的 AI 备考规划助手。�
 - 如果用户问"今天学了什么/复盘" → tool=review
 - data 字段在 chat 意图下可以为 null`;
 
-async function callGLM(apiKey, messages, model, temperature) {
+async function callGLM(apiKey, messages, model, temperature, maxTokens = 2048) {
   if (!apiKey) throw new Error('GLM_API_KEY 未配置，请在 Cloudflare Pages 环境变量中设置');
   const resp = await fetch(GLM_URL, {
     method: 'POST',
@@ -54,7 +54,7 @@ async function callGLM(apiKey, messages, model, temperature) {
       model: model || 'glm-4.5-air',
       messages,
       temperature: temperature ?? 0.3,
-      max_tokens: 2048,
+      max_tokens: maxTokens,
     }),
   });
   if (!resp.ok) {
@@ -134,6 +134,7 @@ export default {
         const route = url.pathname;
         let model = 'glm-4.5-air';
         let messages = [];
+        let maxTokens = 2048;
 
         // ── 统一对话接口 ──
         if (route === '/api/ai/chat') {
@@ -153,34 +154,35 @@ export default {
 
         // ── 计划生成 ──
         if (route === '/api/ai/generate-plan') {
+          maxTokens = 3072; // 计划生成需要更多token输出
           messages = [
             { role: 'system', content: PLAN_SYSTEM },
             { role: 'user', content: body.prompt },
           ];
         }
-        // ── 任务生成 ──
         else if (route === '/api/ai/generate-tasks') {
+          maxTokens = 2048;
           messages = [
             { role: 'system', content: PLAN_SYSTEM },
             { role: 'user', content: body.prompt },
           ];
         }
-        // ── 卡片生成 ──
         else if (route === '/api/ai/generate-cards') {
+          maxTokens = 1024;
           messages = [
             { role: 'system', content: PLAN_SYSTEM },
             { role: 'user', content: body.prompt },
           ];
         }
-        // ── 每日复盘 ──
         else if (route === '/api/ai/generate-review') {
+          maxTokens = 1024;
           messages = [
             { role: 'system', content: PLAN_SYSTEM },
             { role: 'user', content: body.prompt },
           ];
         }
-        // ── 解析任务 ──
         else if (route === '/api/ai/parse-tasks') {
+          maxTokens = 1024;
           messages = [
             { role: 'system', content: STRICT_JSON_SYSTEM },
             { role: 'user', content: body.prompt },
@@ -199,7 +201,7 @@ export default {
           });
         }
 
-        const rawResult = await callGLM(glmKey, messages, model, body.temperature);
+        const rawResult = await callGLM(glmKey, messages, model, body.temperature, maxTokens);
         let data = extractJSON(rawResult);
 
         // 格式归一化：确保输出匹配前端预期格式

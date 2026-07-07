@@ -103,7 +103,7 @@ async function aiRequest(url, body) {
     method: 'POST',
     data: body,
     header: headers,
-    timeout: 30000
+    timeout: 60000
   })
 
   if (res.statusCode >= 200 && res.statusCode < 300) {
@@ -190,7 +190,7 @@ ${data.text}
 }
 
 export async function aiChat(data) {
-  return request('/ai/chat', { method: 'POST', data })
+  return aiRequest('/chat', data)
 }
 
 export async function aiParseTask(data) {
