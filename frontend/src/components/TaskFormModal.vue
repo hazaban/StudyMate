@@ -110,9 +110,13 @@
               </view>
               <view class="form-group half">
                 <text class="form-label">开始时间</text>
-                <view class="input-wrapper">
+                <view class="time-picker-row">
                   <picker mode="selector" :range="hourOptions" @change="onStartHourChange">
-                    <view class="picker-value">{{ form.start_hour }}:00</view>
+                    <view class="time-picker-value">{{ padZero(form.start_hour) }}</view>
+                  </picker>
+                  <text class="time-separator">:</text>
+                  <picker mode="selector" :range="minuteOptions" @change="onStartMinuteChange">
+                    <view class="time-picker-value">{{ padZero(form.start_minute) }}</view>
                   </picker>
                 </view>
               </view>
@@ -235,6 +239,11 @@ const addMode = ref('manual')
 const aiParseInput = ref('')
 const aiParseResult = ref([])
 const hourOptions = Array.from({ length: 18 }, (_, i) => String(i + 6))
+const minuteOptions = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55']
+
+function padZero(n) {
+  return String(n).padStart(2, '0')
+}
 
 const defaultForm = {
   subject: '',
@@ -245,7 +254,8 @@ const defaultForm = {
   type: 'new_study',
   repeat_type: 'none',
   importance: '',
-  start_hour: 9
+  start_hour: 9,
+  start_minute: 0
 }
 
 const form = ref({ ...defaultForm })
@@ -273,6 +283,7 @@ function resetForm() {
       repeat_type: props.task.repeat_type || 'none',
       importance: props.task.importance || props.defaultImportance || '',
       start_hour: props.task.start_hour || 9,
+      start_minute: props.task.start_minute || 0,
       date: props.task.date || props.date || ''
     }
   } else {
@@ -346,6 +357,10 @@ function onStartHourChange(e) {
   form.value.start_hour = parseInt(hourOptions[e.detail.value])
 }
 
+function onStartMinuteChange(e) {
+  form.value.start_minute = parseInt(minuteOptions[e.detail.value])
+}
+
 const allSelected = computed(() => {
   if (aiParseResult.value.length === 0) return false
   return aiParseResult.value.every(t => t.selected)
@@ -379,6 +394,7 @@ async function submitForm() {
         repeat_type: form.value.repeat_type,
         importance: form.value.importance,
         start_hour: form.value.start_hour || 9,
+        start_minute: form.value.start_minute || 0,
         actual_duration: parseInt(form.value.actual_duration) || 0
       })
       emit('saved', { task: props.task, isEdit: true })
@@ -398,7 +414,8 @@ async function submitForm() {
         duration: parseInt(form.value.duration) || 25,
         repeat_type: form.value.repeat_type,
         importance: form.value.importance,
-        start_hour: form.value.start_hour || 9
+        start_hour: form.value.start_hour || 9,
+        start_minute: form.value.start_minute || 0
       })
       emit('saved', { task: null, isEdit: false })
     }
@@ -456,6 +473,7 @@ async function addParsedTasks() {
         duration: task.duration || 30,
         repeat_type: task.repeat_type || 'none',
         start_hour: task.start_hour || 9,
+        start_minute: task.start_minute || 0,
         importance: task.importance || ''
       })
       added++
@@ -490,6 +508,30 @@ async function addParsedTasks() {
 .delete-hint-text { font-size: 12px; color: #9a7b00; }
 .form-group { margin-bottom: 16px; &.half { flex: 1; } }
 .form-row { display: flex; gap: 12px; }
+.time-picker-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1.5px solid #e8ece9;
+  border-radius: 14px;
+  padding: 12px 16px;
+  background: #fafafa;
+  &:focus-within { border-color: #2f7d4f; }
+}
+.time-picker-value {
+  font-size: 15px;
+  color: #1a1a2e;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 8px;
+  &:active { background: #f0f0f0; }
+}
+.time-separator {
+  font-size: 18px;
+  color: #2f7d4f;
+  font-weight: 600;
+}
 .form-label { display: block; font-size: 14px; font-weight: 600; color: #1a1a2e; margin-bottom: 8px; }
 .input-wrapper { border: 1.5px solid #e8ece9; border-radius: 14px; padding: 12px 16px; background: #fafafa; &:focus-within { border-color: #2f7d4f; } }
 .picker-wrapper { display: flex; align-items: center; justify-content: space-between; }

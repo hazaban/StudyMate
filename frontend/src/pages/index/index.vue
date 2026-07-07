@@ -87,6 +87,7 @@
             <text class="task-title">{{ task.content }}</text>
             <view class="task-meta">
               <text class="task-subject">{{ task.subject }}</text>
+              <text class="task-time">{{ formatTaskTime(task) }}</text>
               <text class="task-duration">{{ task.duration }}分钟</text>
               <text class="task-actual" v-if="task.actual_duration">实际{{ task.actual_duration }}分钟</text>
             </view>
@@ -195,6 +196,12 @@ function taskTypeText(type) {
     mistake: '错题'
   }
   return map[type] || type
+}
+
+function formatTaskTime(task) {
+  const h = task.start_hour || 9
+  const m = task.start_minute || 0
+  return `${h}:${String(m).padStart(2, '0')}`
 }
 
 function editTask(task) {
@@ -623,10 +630,11 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
     display: flex;
     gap: 8px;
 
-    .task-subject, .task-duration, .task-actual {
+    .task-subject, .task-duration, .task-actual, .task-time {
       font-size: 12px;
       color: $muted;
     }
+    .task-time { color: $primary; font-weight: 500; }
   }
 }
 

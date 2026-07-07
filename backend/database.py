@@ -107,6 +107,7 @@ class DailyTask(Base):
     completed_dates = Column(JSON, default=list)          # 循环任务的完成日期列表
     importance = Column(String(30), default="")           # important_urgent / important_not_urgent / urgent_not_important / not_important_not_urgent
     start_hour = Column(Integer, default=9)               # 任务开始时间（小时，0-23）
+    start_minute = Column(Integer, default=0)             # 任务开始时间（分钟，0-59）
     created_at = Column(DateTime(timezone=True), default=utcnow)
 
     plan = relationship("StudyPlan", back_populates="tasks")

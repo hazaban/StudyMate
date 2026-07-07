@@ -19,6 +19,7 @@ class TaskCreate(BaseModel):
     chapter: str = ""
     importance: str = ""  # important_urgent / important_not_urgent / urgent_not_important / not_important_not_urgent
     start_hour: int = 9  # 任务开始时间（小时，0-23）
+    start_minute: int = 0  # 任务开始时间（分钟，0-59）
 
 
 class TaskUpdate(BaseModel):
@@ -34,6 +35,7 @@ class TaskUpdate(BaseModel):
     chapter: Optional[str] = None
     importance: Optional[str] = None
     start_hour: Optional[int] = None
+    start_minute: Optional[int] = None
 
 
 class TaskResponse(BaseModel):
@@ -53,6 +55,7 @@ class TaskResponse(BaseModel):
     chapter: str = ""
     importance: str = ""
     start_hour: int = 9
+    start_minute: int = 0
     created_at: datetime
 
     model_config = {"from_attributes": True}

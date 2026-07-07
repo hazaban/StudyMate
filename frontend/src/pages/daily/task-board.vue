@@ -98,7 +98,7 @@
           <scroll-view scroll-y class="week-timeline-scroll" :scroll-top="weekScrollTop" scroll-with-animation>
             <view class="week-timeline">
               <view class="time-label" v-for="hour in timelineHours" :key="hour">
-                <text>{{ hour }}:00</text>
+                <text>{{ formatTimelineHour(hour) }}</text>
               </view>
             </view>
           </scroll-view>
@@ -130,6 +130,7 @@
                       <view class="week-task" v-for="task in getTasksAt(day.dateStr, hour)" :key="task.id" :class="{ completed: task.status === 'completed', [getSubjectClass(task.subject)]: true }" @click.stop="editTask(task)" @contextmenu.prevent.stop="confirmDeleteTask(task)" @touchstart.stop="onTaskTouchStart(task)" @touchend.stop="onTaskTouchEnd" @touchmove.stop="onTaskTouchEnd">
                         <view class="task-importance-dot" :class="getImportanceClass(task.importance)" v-if="task.importance && enableQuadrant"></view>
                         <text class="week-task-content">{{ task.content }}</text>
+                        <text class="week-task-time">{{ formatTaskTime(task) }}</text>
                         <text class="week-task-duration">{{ task.duration }}min</text>
                       </view>
                     </view>
@@ -199,6 +200,7 @@
             <text class="task-chapter" v-if="task.chapter">{{ task.chapter }}</text>
             <view class="task-importance-tag" :class="getImportanceClass(task.importance)" v-if="task.importance && enableQuadrant">{{ getImportanceLabel(task.importance) }}</view>
             <text class="task-repeat-tag" v-if="task.repeat_type && task.repeat_type !== 'none'">{{ getRepeatLabel(task.repeat_type) }}</text>
+            <text class="task-time">{{ formatTaskTime(task) }}</text>
             <text class="task-duration">预计: {{ task.duration }}分钟</text>
             <text class="task-actual" v-if="task.actual_duration > 0">实际: {{ task.actual_duration }}分钟</text>
           </view>
@@ -286,7 +288,7 @@ const calendarDays = ref([])
 const taskDates = ref(new Set())
 const dateFocusRecords = ref([])
 
-const timelineHours = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+const timelineHours = [6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16, 16.5, 17, 17.5, 18, 18.5, 19, 19.5, 20, 20.5, 21, 21.5, 22, 22.5, 23, 23.5]
 // 列宽：桌面端自适应，手机端最少100px保证可读
 const colWidth = computed(() => {
   try {
@@ -492,7 +494,27 @@ const currentTimeLineStyle = computed(() => {
 })
 
 function getTasksAt(dateStr, hour) {
-  return taskStore.weekTasks.filter(t => t.date === dateStr && t.start_hour === hour)
+  return taskStore.weekTasks.filter(t => {
+    if (t.date !== dateStr) return false
+    const taskHour = t.start_hour || 9
+    const taskMinute = t.start_minute || 0
+    if (taskMinute >= 30) {
+      return taskHour === hour || taskHour + 0.5 === hour
+    }
+    return taskHour === hour
+  })
+}
+
+function formatTimelineHour(hour) {
+  const h = Math.floor(hour)
+  const m = (hour % 1) >= 0.5 ? 30 : 0
+  return `${h}:${String(m).padStart(2, '0')}`
+}
+
+function formatTaskTime(task) {
+  const h = task.start_hour || 9
+  const m = task.start_minute || 0
+  return `${h}:${String(m).padStart(2, '0')}`
 }
 
 async function toggleTask(task) {
@@ -1256,6 +1278,7 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   font-weight: 500; line-height: 1.4;
 }
 .week-task-duration { font-size: 10px; color: #999; margin-top: 2px; }
+.week-task-time { font-size: 10px; color: #2f7d4f; font-weight: 500; margin-right: 4px; }
 .week-task-actions { display: flex; gap: 4px; margin-top: 4px; width: 100%; }
 .wta-btn { font-size: 11px; padding: 2px 8px; border-radius: 6px; background: rgba(0,0,0,0.08); color: #555;
   &.danger { color: #c62828; background: rgba(198,40,40,0.1); } }
@@ -1299,7 +1322,8 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   &.importance-gray { background: #f5f5f5; color: #616161; }
 }
 .task-repeat-tag { font-size: 12px; color: #e65100; background: #fff3e0; padding: 2px 8px; border-radius: 8px; font-weight: 500; }
-.task-duration, .task-actual { font-size: 12px; color: #999; }
+.task-duration, .task-actual, .task-time { font-size: 12px; color: #999; }
+.task-time { color: #2f7d4f; font-weight: 500; }
 .task-pomodoro { flex-shrink: 0; .pomodoro-icon { font-size: 24px; } }
 .task-delete { flex-shrink: 0; padding: 4px 8px; .delete-icon { font-size: 18px; color: #c62828; } }
 

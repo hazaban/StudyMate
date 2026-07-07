@@ -26,7 +26,7 @@
             <view class="task-item" v-for="task in getTasks('important_urgent')" :key="task.id" :class="{ completed: task.status === 'completed' }" @click="editTask(task)" @contextmenu.prevent="confirmDeleteTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
               <view class="task-subject">{{ task.subject }}</view>
               <text class="task-content">{{ task.content }}</text>
-              <text class="task-time">{{ task.date }} · {{ task.duration }}min</text>
+              <text class="task-time">{{ formatTaskTime(task) }} · {{ task.duration }}min</text>
             </view>
             <view class="add-hint" @click="addTaskToQuadrant('important_urgent')">
               <text class="add-icon">+</text>
@@ -45,7 +45,7 @@
             <view class="task-item" v-for="task in getTasks('important_not_urgent')" :key="task.id" :class="{ completed: task.status === 'completed' }" @click="editTask(task)" @contextmenu.prevent="confirmDeleteTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
               <view class="task-subject">{{ task.subject }}</view>
               <text class="task-content">{{ task.content }}</text>
-              <text class="task-time">{{ task.date }} · {{ task.duration }}min</text>
+              <text class="task-time">{{ formatTaskTime(task) }} · {{ task.duration }}min</text>
             </view>
             <view class="add-hint" @click="addTaskToQuadrant('important_not_urgent')">
               <text class="add-icon">+</text>
@@ -64,7 +64,7 @@
             <view class="task-item" v-for="task in getTasks('urgent_not_important')" :key="task.id" :class="{ completed: task.status === 'completed' }" @click="editTask(task)" @contextmenu.prevent="confirmDeleteTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
               <view class="task-subject">{{ task.subject }}</view>
               <text class="task-content">{{ task.content }}</text>
-              <text class="task-time">{{ task.date }} · {{ task.duration }}min</text>
+              <text class="task-time">{{ formatTaskTime(task) }} · {{ task.duration }}min</text>
             </view>
             <view class="add-hint" @click="addTaskToQuadrant('urgent_not_important')">
               <text class="add-icon">+</text>
@@ -83,7 +83,7 @@
             <view class="task-item" v-for="task in getTasks('not_important_not_urgent')" :key="task.id" :class="{ completed: task.status === 'completed' }" @click="editTask(task)" @contextmenu.prevent="confirmDeleteTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
               <view class="task-subject">{{ task.subject }}</view>
               <text class="task-content">{{ task.content }}</text>
-              <text class="task-time">{{ task.date }} · {{ task.duration }}min</text>
+              <text class="task-time">{{ formatTaskTime(task) }} · {{ task.duration }}min</text>
             </view>
             <view class="add-hint" @click="addTaskToQuadrant('not_important_not_urgent')">
               <text class="add-icon">+</text>
@@ -136,6 +136,12 @@ const today = computed(() => new Date().toISOString().split('T')[0])
 function formatDate(date) {
   const d = new Date(date)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function formatTaskTime(task) {
+  const h = task.start_hour || 9
+  const m = task.start_minute || 0
+  return `${h}:${String(m).padStart(2, '0')}`
 }
 
 const filteredTasks = computed(() => {

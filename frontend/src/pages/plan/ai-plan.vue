@@ -259,6 +259,7 @@ async function confirmTasks(tasks) {
           type: task.type || 'new_study',
           date: task.date,
           start_hour: task.start_hour || 9,
+          start_minute: task.start_minute || 0,
           repeat_type: task.repeat_type || 'none',
           selected: true
         })
@@ -296,6 +297,7 @@ async function confirmSyllabus(data) {
             type: 'new_study',
             date: date.toISOString().split('T')[0],
             start_hour: 9,
+            start_minute: 0,
             repeat_type: 'none',
             selected: true
           })
