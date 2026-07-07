@@ -84,11 +84,15 @@
       </view>
     </view>
 
-    <view class="week-view" v-if="viewMode === 'week'">
+    <view class="week-view" v-if="viewMode === 'week'" id="weekViewContainer">
       <view class="week-header">
         <view class="week-arrow" @click="switchWeek(-1)">‹</view>
         <text class="week-title">{{ weekTitle }}</text>
         <view class="week-arrow" @click="switchWeek(1)">›</view>
+        <view class="week-download-btn" @click="downloadWeekView">
+          <text class="download-icon">📥</text>
+          <text class="download-text">下载周计划</text>
+        </view>
       </view>
       <!-- 周视图主体容器 -->
       <view class="week-container">
@@ -248,6 +252,8 @@
       :date="selectedDate"
       :enable-quadrant="enableQuadrant"
       :show-a-i-mode="true"
+      :default-hour="weekDefaultHour"
+      :default-minute="weekDefaultMinute"
       @saved="onTaskSaved"
       @deleted="onTaskDeleted"
     />
@@ -298,11 +304,7 @@ const timelineHours = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 2
 const colWidth = computed(() => {
   try {
     const w = uni.getSystemInfoSync().windowWidth || 375
-    if (w > 1000) {
-        // 桌面端精确计算：窗口宽度 - 页面padding(40px) - 时间轴(50px) - 列border(7px)
-        const available = w - 40 - 50 - 7
-        return Math.floor(available / 7)
-      }
+    if (w > 1000) return Math.floor((w - 100) / 7)
     return Math.max(100, Math.floor((w - 60) / 7))
   } catch (e) { return 100 }
 })
@@ -328,6 +330,9 @@ const weekMenuX = ref(0)
 const weekMenuY = ref(0)
 const weekCellDate = ref('')
 const weekCellHour = ref(9)
+// 从周视图格子弹窗添加任务时，传递格子的时间
+const weekDefaultHour = ref(9)
+const weekDefaultMinute = ref(0)
 let weekCellTouchTimer = null
 // 页面刚切到周视图时禁止长按，防止加载过程中滑动误触
 const weekViewReady = ref(false)
@@ -567,6 +572,8 @@ function editTask(task) {
 
 function openManualAdd() {
   editingTask.value = null
+  weekDefaultHour.value = 9
+  weekDefaultMinute.value = 0
   showAddForm.value = true
 }
 
@@ -632,6 +639,100 @@ function switchWeek(delta) {
   generateWeekDays()
   selectedDate.value = formatDate(d)
   loadTasks()
+}
+
+async function downloadWeekView() {
+  // #ifdef H5
+  uni.showLoading({ title: '正在生成图片...' })
+  try {
+    const container = document.getElementById('weekViewContainer')
+    if (!container) { uni.hideLoading(); return }
+
+    // 保存原始样式
+    const origStyles = new Map()
+    const saveStyle = (el, prop) => {
+      if (!el) return
+      origStyles.set(`${prop}-${el.className || el.id}`, { el, prop, val: el.style[prop] })
+    }
+
+    // 需要临时展开的元素
+    const weekView = container
+    const datesScroll = container.querySelector('.week-dates-scroll')
+    const datesHScroll = container.querySelector('.week-dates-hscroll')
+    const weekContainer = container.querySelector('.week-container')
+    const timelineScroll = container.querySelector('.week-timeline-scroll')
+    const grid = container.querySelector('.week-grid')
+
+    // 展开所有内容：移除滚动限制
+    const elementsToExpand = [weekView, datesScroll, datesHScroll, weekContainer, timelineScroll, grid]
+    elementsToExpand.forEach(el => {
+      if (!el) return
+      saveStyle(el, 'overflow')
+      saveStyle(el, 'overflowX')
+      saveStyle(el, 'overflowY')
+      saveStyle(el, 'maxHeight')
+      saveStyle(el, 'height')
+      saveStyle(el, 'width')
+      el.style.overflow = 'visible'
+      el.style.overflowX = 'visible'
+      el.style.overflowY = 'visible'
+      el.style.maxHeight = 'none'
+      el.style.height = 'auto'
+    })
+
+    // 扩展格子区高度显示全部时间轴
+    if (datesScroll) {
+      datesScroll.style.height = 'auto'
+      datesScroll.style.maxHeight = 'none'
+    }
+
+    // 确保横向7列完整显示
+    if (datesHScroll) {
+      datesHScroll.style.width = 'auto'
+      datesHScroll.style.overflowX = 'visible'
+    }
+
+    // 容器宽度确保完整
+    if (weekContainer) {
+      weekContainer.style.width = 'auto'
+      weekContainer.style.minWidth = 'auto'
+    }
+
+    // 强制 reflow
+    container.offsetHeight
+
+    // 用 html2canvas 截取
+    const canvas = await window.html2canvas(container, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      windowWidth: container.scrollWidth + 100,
+      windowHeight: container.scrollHeight + 100
+    })
+
+    // 恢复原始样式
+    origStyles.forEach(({ el, prop, val }) => {
+      el.style[prop] = val
+    })
+
+    // 下载图片
+    const link = document.createElement('a')
+    link.download = `周计划_${weekTitle.value.replace(/[/:]/g, '_')}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+
+    uni.hideLoading()
+    uni.showToast({ title: '周计划图片已生成', icon: 'success' })
+  } catch (e) {
+    uni.hideLoading()
+    console.error('下载周视图失败:', e)
+    uni.showToast({ title: '生成失败，请重试', icon: 'none' })
+  }
+  // #endif
+  // #ifndef H5
+  uni.showToast({ title: '请在电脑端使用此功能', icon: 'none' })
+  // #endif
 }
 
 function handleCalRightClick(date, event) {
@@ -754,6 +855,8 @@ function addTaskFromWeekCell(dateStr, hour) {
   showWeekMenu.value = false
   selectedDate.value = dateStr
   editingTask.value = null
+  weekDefaultHour.value = hour || 9
+  weekDefaultMinute.value = 0
   showAddForm.value = true
 }
 
@@ -1187,9 +1290,6 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   background: #fff; border-radius: 12px; margin-bottom: 16px;
   border: 1px solid #e8ece9; box-shadow: 0 1px 4px rgba(0,0,0,0.03);
   overflow: hidden;
-    @media (min-width: 1000px) {
-      overflow: visible;
-    }
 }
 .week-header {
   display: flex; justify-content: space-between; align-items: center;
@@ -1197,7 +1297,16 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 .week-arrow { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #2f7d4f; border-radius: 50%; font-weight: 600;
   &:active { background: #f5f7f5; } }
-.week-title { font-size: 15px; font-weight: 600; color: #1a1a2e; }
+.week-title { font-size: 15px; font-weight: 600; color: #1a1a2e; flex: 1; text-align: center; }
+.week-download-btn {
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 12px; border-radius: 16px;
+  background: rgba(47,125,79,0.08); border: 1px solid rgba(47,125,79,0.15);
+  white-space: nowrap; cursor: pointer;
+  &:active { background: rgba(47,125,79,0.15); }
+  .download-icon { font-size: 14px; }
+  .download-text { font-size: 12px; color: #2f7d4f; font-weight: 500; }
+}
 
 /* 周视图主体容器 */
 .week-container {
@@ -1222,29 +1331,17 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 
 /* 右侧日期区域 */
 .week-dates-container {
-  flex: 1; overflow: hidden; display: flex; flex-direction: column;
-    @media (min-width: 1000px) {
-      overflow: visible;
-    }
+  flex: 1; overflow: hidden;
 }
 .week-dates-hscroll {
-  overflow-x: auto; overflow-y: hidden; flex: 1;
-  @media (min-width: 1000px) {
-    overflow-x: visible;
-    overflow-y: visible;
-  }
+  overflow-x: auto; overflow-y: hidden;
 }
-.week-dates-table {
-  display: flex; flex-direction: column;
-  @media (min-width: 1000px) {
-    min-width: auto;
-  }
-}
+.week-dates-table { display: flex; flex-direction: column; }
 
 /* 日期头行 */
 .week-days-header {
   display: flex; background: #fff; border-bottom: 2px solid #f0f0f0;
-  height: 60px; flex-shrink: 0;
+  height: 60px;
 }
 .week-day-header {
   flex-shrink: 0; text-align: center;
@@ -1266,12 +1363,6 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 /* 格子体纵向滚动 */
 .week-dates-scroll {
   flex: 1;
-  @media (min-width: 1000px) {
-    /* 桌面端：显示完整时间轴（6:00-23:00），不做高度限制，随页面滚动 */
-    max-height: none;
-    flex: none;
-    height: auto;
-  }
 }
 
 /* 时间标签 */

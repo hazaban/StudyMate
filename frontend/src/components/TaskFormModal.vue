@@ -226,7 +226,9 @@ const props = defineProps({
   defaultImportance: { type: String, default: '' },
   enableQuadrant: { type: Boolean, default: false },
   showAIMode: { type: Boolean, default: true },
-  planSubjects: { type: Array, default: () => [] }
+  planSubjects: { type: Array, default: () => [] },
+  defaultHour: { type: Number, default: 9 },
+  defaultMinute: { type: Number, default: 0 }
 })
 
 const emit = defineEmits(['update:visible', 'saved', 'deleted'])
@@ -297,6 +299,8 @@ function resetForm() {
     }
   } else {
     form.value = base
+    form.value.start_hour = props.defaultHour
+    form.value.start_minute = props.defaultMinute
   }
   addMode.value = 'manual'
   aiParseInput.value = ''
@@ -519,7 +523,13 @@ async function parseWithAI() {
     })
     aiParseResult.value = (result.tasks || []).map(t => ({ ...t, selected: true }))
   } catch (e) {
-    uni.showToast({ title: 'AI 服务连接失败，请稍后重试', icon: 'none' })
+    console.error('AI 解析失败:', e)
+    let errorMsg = 'AI 服务连接失败，请稍后重试'
+    const detail = e?.data?.detail || e?.data?.error || e?.errMsg || e?.message || ''
+    if (detail) {
+      errorMsg = detail.length > 30 ? detail.substring(0, 30) + '...' : detail
+    }
+    uni.showToast({ title: errorMsg, icon: 'none', duration: 3000 })
   } finally {
     uni.hideLoading()
   }

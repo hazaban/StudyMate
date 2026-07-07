@@ -24,74 +24,78 @@
     </view>
 
     <scroll-view scroll-y class="chat-messages" :scroll-into-view="scrollToMsg">
-      <view class="msg-item ai" v-for="(msg, idx) in messages" :key="idx" :id="'msg-' + idx">
-        <view class="msg-avatar ai">🤖</view>
-        <view class="msg-bubble ai">
-          <text class="msg-text">{{ msg.text }}</text>
-          <view class="msg-content" v-if="msg.content">
-            <view class="content-section" v-if="msg.type === 'tasks' && msg.content.tasks && msg.content.tasks.length">
-              <text class="section-title">📋 识别到的任务</text>
-              <view class="task-list">
-                <view class="task-item" v-for="(t, tidx) in msg.content.tasks" :key="tidx">
-                  <text class="task-content">{{ t.content }}</text>
-                  <view class="task-meta">
-                    <text class="task-subject">{{ t.subject }}</text>
-                    <text class="task-duration">{{ t.duration }}分钟</text>
-                    <text class="task-date">{{ t.date }}</text>
+      <view v-for="(msg, idx) in displayMessages" :key="idx" :id="'msg-' + idx">
+        <!-- AI 消息 -->
+        <view class="msg-item ai" v-if="msg.role === 'ai'">
+          <view class="msg-avatar ai">🤖</view>
+          <view class="msg-bubble ai">
+            <text class="msg-text">{{ msg.text }}</text>
+            <view class="msg-content" v-if="msg.content">
+              <view class="content-section" v-if="msg.type === 'task' && msg.content.tasks && msg.content.tasks.length">
+                <text class="section-title">📋 识别到的任务{{ msg._autoAdded ? '（已自动添加到日程）' : '' }}</text>
+                <view class="task-list">
+                  <view class="task-item" v-for="(t, tidx) in msg.content.tasks" :key="tidx">
+                    <text class="task-content">{{ t.content }}</text>
+                    <view class="task-meta">
+                      <text class="task-subject">{{ t.subject }}</text>
+                      <text class="task-duration">{{ t.duration }}分钟</text>
+                      <text class="task-date">{{ t.date }}</text>
+                    </view>
                   </view>
                 </view>
+                <view class="msg-btn primary" v-if="!msg._autoAdded" @click="confirmTasks(msg.content.tasks)">确认添加任务</view>
               </view>
-              <view class="msg-btn primary" @click="confirmTasks(msg.content.tasks)">确认添加任务</view>
-            </view>
-            <view class="content-section" v-if="msg.type === 'syllabus' && msg.content.chapters && msg.content.chapters.length">
-              <text class="section-title">📖 章节分析结果</text>
-              <view class="chapter-list">
-                <view class="chapter-item" v-for="(ch, cidx) in msg.content.chapters" :key="cidx">
-                  <text class="chapter-name">{{ cidx + 1 }}. {{ ch.name }}</text>
-                  <view class="chapter-meta">
-                    <text>{{ ch.daily_duration || 30 }}分钟/天</text>
-                    <text>预计{{ ch.estimated_days || 1 }}天</text>
+              <view class="content-section" v-if="msg.type === 'syllabus' && msg.content.chapters && msg.content.chapters.length">
+                <text class="section-title">📖 章节分析结果</text>
+                <view class="chapter-list">
+                  <view class="chapter-item" v-for="(ch, cidx) in msg.content.chapters" :key="cidx">
+                    <text class="chapter-name">{{ cidx + 1 }}. {{ ch.name }}</text>
+                    <view class="chapter-meta">
+                      <text>{{ ch.daily_duration || 30 }}分钟/天</text>
+                      <text>预计{{ ch.estimated_days || 1 }}天</text>
+                    </view>
                   </view>
                 </view>
+                <text class="section-total" v-if="msg.content.total_days">总计预计 {{ msg.content.total_days }} 天</text>
+                <view class="msg-btn primary" @click="confirmSyllabus(msg.content)">确认写入计划</view>
               </view>
-              <text class="section-total" v-if="msg.content.total_days">总计预计 {{ msg.content.total_days }} 天</text>
-              <view class="msg-btn primary" @click="confirmSyllabus(msg.content)">确认写入计划</view>
-            </view>
-            <view class="content-section" v-if="msg.type === 'plan' && msg.content.phases && msg.content.phases.length">
-              <text class="section-title">📅 生成的学习计划</text>
-              <view class="plan-summary">
-                <text class="plan-overview" v-if="msg.content.overview">{{ msg.content.overview }}</text>
-                <view class="phase-list">
-                  <view class="phase-item" v-for="(p, pidx) in msg.content.phases" :key="pidx">
-                    <text class="phase-name">{{ pidx + 1 }}. {{ p.name }}</text>
-                    <text class="phase-desc">{{ p.description }}</text>
+              <view class="content-section" v-if="msg.type === 'plan' && msg.content.phases && msg.content.phases.length">
+                <text class="section-title">📅 生成的学习计划</text>
+                <view class="plan-summary">
+                  <text class="plan-overview" v-if="msg.content.overview">{{ msg.content.overview }}</text>
+                  <view class="phase-list">
+                    <view class="phase-item" v-for="(p, pidx) in msg.content.phases" :key="pidx">
+                      <text class="phase-name">{{ pidx + 1 }}. {{ p.name }}</text>
+                      <text class="phase-desc">{{ p.description }}</text>
+                    </view>
                   </view>
                 </view>
+                <view class="msg-btn primary" @click="confirmPlan(msg.content)">确认应用此计划</view>
               </view>
-              <view class="msg-btn primary" @click="confirmPlan(msg.content)">确认应用此计划</view>
-            </view>
-            <view class="content-section" v-if="msg.type === 'review' && msg.content.summary">
-              <text class="section-title">📊 今日复盘</text>
-              <text class="review-summary">{{ msg.content.summary }}</text>
-              <view class="review-items" v-if="msg.content.achievements && msg.content.achievements.length">
-                <text class="review-label">🎯 成就</text>
-                <text class="review-item" v-for="(a, aidx) in msg.content.achievements" :key="aidx">✓ {{ a }}</text>
+              <view class="content-section" v-if="msg.type === 'review' && msg.content.summary">
+                <text class="section-title">📊 今日复盘</text>
+                <text class="review-summary">{{ msg.content.summary }}</text>
+                <view class="review-items" v-if="msg.content.achievements && msg.content.achievements.length">
+                  <text class="review-label">🎯 成就</text>
+                  <text class="review-item" v-for="(a, aidx) in msg.content.achievements" :key="aidx">✓ {{ a }}</text>
+                </view>
+                <view class="review-items" v-if="msg.content.suggestions && msg.content.suggestions.length">
+                  <text class="review-label">💡 建议</text>
+                  <text class="review-item" v-for="(s, sidx) in msg.content.suggestions" :key="sidx">• {{ s }}</text>
+                </view>
+                <text class="review-encourage" v-if="msg.content.encouragement">{{ msg.content.encouragement }}</text>
               </view>
-              <view class="review-items" v-if="msg.content.suggestions && msg.content.suggestions.length">
-                <text class="review-label">💡 建议</text>
-                <text class="review-item" v-for="(s, sidx) in msg.content.suggestions" :key="sidx">• {{ s }}</text>
-              </view>
-              <text class="review-encourage" v-if="msg.content.encouragement">{{ msg.content.encouragement }}</text>
             </view>
           </view>
         </view>
-      </view>
-      <view class="msg-item user" v-for="(msg, idx) in userMessages" :key="'u-' + idx">
-        <view class="msg-bubble user">
-          <text class="msg-text">{{ msg.text }}</text>
-          <image v-if="msg.image" :src="msg.image" mode="widthFix" class="msg-image" />
+        <!-- 用户消息 -->
+        <view class="msg-item user" v-else-if="msg.role === 'user'">
+          <view class="msg-bubble user">
+            <text class="msg-text">{{ msg.text }}</text>
+            <image v-if="msg.image" :src="msg.image" mode="widthFix" class="msg-image" />
+          </view>
+          <view class="msg-avatar user">👤</view>
         </view>
-        <view class="msg-avatar user">👤</view>
       </view>
       <view class="msg-item ai" v-if="loading">
         <view class="msg-avatar ai">🤖</view>
@@ -102,7 +106,7 @@
     </scroll-view>
 
     <view class="chat-input-area">
-      <view class="quick-actions" v-if="messages.length <= 1">
+      <view class="quick-actions" v-if="displayMessages.filter(m => m.role === 'ai').length <= 1">
         <text class="quick-title">💡 试试这些：</text>
         <view class="quick-grid">
           <view class="quick-card" @click="quickFill('考研408计算机，还有150天，每天8小时')">
@@ -156,12 +160,37 @@ const messages = ref([
   { text: '你好！我是 AI 学习规划助手。你可以告诉我你的考试目标、添加学习任务、上传教材目录图片分析框架，或者让我帮你做每日复盘。', type: 'intro', content: null }
 ])
 const userMessages = ref([])
+
+// 交错排列 AI 消息和用户消息，保证对话顺序正确
+const displayMessages = computed(() => {
+  const result = []
+  let aiIdx = 0, userIdx = 0
+  // 首条 intro 消息始终在最前
+  if (messages.value[0]?.type === 'intro') {
+    result.push({ ...messages.value[0], role: 'ai' })
+    aiIdx = 1
+  }
+  // 交错排列后续消息：用户消息 → AI回复 → 用户消息 → AI回复
+  while (aiIdx < messages.value.length || userIdx < userMessages.value.length) {
+    if (userIdx < userMessages.value.length) {
+      result.push({ ...userMessages.value[userIdx], role: 'user' })
+      userIdx++
+    }
+    if (aiIdx < messages.value.length) {
+      result.push({ ...messages.value[aiIdx], role: 'ai' })
+      aiIdx++
+    }
+  }
+  return result
+})
+
 const conversationList = ref([])
 const showSidebar = ref(false)
 const CONV_KEY = 'studymate_ai_conversations'
 function loadConversationList() { try { conversationList.value = JSON.parse(uni.getStorageSync(CONV_KEY) || '[]') } catch(e) { conversationList.value = [] } }
 function saveCurrentConversation() {
-  if (messages.value.length <= 1) return
+  const aiMsgs = messages.value
+  if (aiMsgs.length <= 1 && userMessages.value.length === 0) return
   const title = userMessages.value[0]?.text?.substring(0, 30) || '新会话'
   const conv = { title, date: new Date().toLocaleDateString(), messages: [...messages.value], userMessages: [...userMessages.value] }
   const list = conversationList.value.filter(c => c.title !== title)
@@ -253,11 +282,23 @@ async function sendMessage() {
     }
     const result = await api.aiChat({ ...data, history })
 
-    messages.value.push({
+    const newMsg = {
       text: result.summary,
       type: result.tool,
       content: result.data
-    })
+    }
+
+    // 如果是 task 意图且有解析出的任务，自动写入数据库
+    if (result.tool === 'task' && result.data?.tasks?.length > 0) {
+      if (planStore.currentPlan) {
+        try {
+          await confirmTasksSilent(result.data.tasks)
+          newMsg._autoAdded = true
+        } catch (e) { /* 自动写入失败不影响对话展示 */ }
+      }
+    }
+
+    messages.value.push(newMsg)
 
     currentImage.value = ''
     currentImageBase64.value = ''
@@ -299,6 +340,26 @@ async function confirmTasks(tasks) {
     uni.showToast({ title: '添加失败', icon: 'none' })
   } finally {
     uni.hideLoading()
+  }
+}
+
+// 静默写入任务（不显示 toast，用于 AI 自动创建）
+async function confirmTasksSilent(tasks) {
+  if (!tasks || tasks.length === 0 || !planStore.currentPlan) return
+  for (const task of tasks) {
+    await api.createTask({
+      plan_id: planStore.currentPlan.id,
+      content: task.content,
+      subject: task.subject,
+      chapter: task.chapter || '',
+      duration: task.duration || 30,
+      type: task.type || 'new_study',
+      date: task.date,
+      start_hour: task.start_hour || 9,
+      start_minute: task.start_minute || 0,
+      repeat_type: task.repeat_type || 'none',
+      selected: true
+    })
   }
 }
 
@@ -371,8 +432,7 @@ async function confirmPlan(data) {
 
 async function scrollToBottom() {
   await nextTick()
-  const total = messages.value.length + userMessages.value.length
-  scrollToMsg.value = 'msg-' + (total - 1)
+  scrollToMsg.value = 'msg-' + (displayMessages.value.length - 1)
 }
 
 onMounted(async () => {

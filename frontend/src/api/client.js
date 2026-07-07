@@ -166,29 +166,6 @@ export async function aiGenerateTasks(data) {
   return request('/tasks/ai/generate', { method: 'POST', data })
 }
 
-export async function aiParsePlan(data) {
-  const today = new Date().toISOString().split('T')[0]
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
-  const prompt = `当前日期：${today}，明天：${tomorrow}
-
-用户输入的自然语言计划：
-${data.text}
-
-请把以上文字拆成结构化的任务列表。每个任务必须包含：
-- content: 20字以内的简洁摘要（不能照搬原文）
-- subject: 科目名
-- chapter: 章节名（提到了就提取，没提填空字符串""）
-- duration: 分钟数整数（默认30）
-- type: "new_study"/"review"/"mistake"
-- date: YYYY-MM-DD（明天=${tomorrow}，今天或无时间词=${today}）
-- start_hour: 0-23整数（默认9）
-- repeat_type: "none"
-- selected: true
-
-返回JSON格式：{"tasks": [{"content":"...","subject":"...","chapter":"...","duration":30,"type":"new_study","date":"${today}","start_hour":9,"repeat_type":"none","selected":true}]}`
-  return aiRequest('/parse-tasks', { prompt, temperature: 0.1 })
-}
-
 export async function aiChat(data) {
   return aiRequest('/chat', data)
 }
