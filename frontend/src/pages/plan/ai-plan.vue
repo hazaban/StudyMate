@@ -42,7 +42,7 @@
         <view class="msg-item ai" v-if="msg.role === 'ai'">
           <view class="msg-avatar ai">🤖</view>
           <view class="msg-bubble ai">
-            <text class="msg-text">{{ msg.text }}</text>
+            <text class="msg-text" v-if="msg.displayText || msg.text">{{ msg.displayText || msg.text }}</text>
             <view class="msg-content" v-if="msg.content">
               <view class="content-section" v-if="msg.type === 'task' && msg.content.tasks && msg.content.tasks.length">
                 <text class="section-title">📋 识别到的任务{{ msg._autoAdded ? '（已自动添加到日程）' : '' }}</text>
@@ -176,21 +176,30 @@ const userMessages = ref([])
 
 // 交错排列 AI 消息和用户消息，保证对话顺序正确
 const displayMessages = computed(() => {
+  const stripMarker = (text) => (text || '').replace(/◆\S*/g, '').trim()
   const result = []
   let aiIdx = 0, userIdx = 0
-  // 首条 intro 消息始终在最前
   if (messages.value[0]?.type === 'intro') {
-    result.push({ ...messages.value[0], role: 'ai' })
+    result.push({ ...messages.value[0], role: 'ai', displayText: messages.value[0].text })
     aiIdx = 1
   }
-  // 交错排列后续消息：用户消息 → AI回复 → 用户消息 → AI回复
   while (aiIdx < messages.value.length || userIdx < userMessages.value.length) {
     if (userIdx < userMessages.value.length) {
-      result.push({ ...userMessages.value[userIdx], role: 'user' })
+      result.push({ ...userMessages.value[userIdx], role: 'user', displayText: userMessages.value[userIdx].text })
       userIdx++
     }
     if (aiIdx < messages.value.length) {
-      result.push({ ...messages.value[aiIdx], role: 'ai' })
+      const msg = { ...messages.value[aiIdx], role: 'ai' }
+      // plan 消息有结构化内容时，隐藏原始 JSON 正文，只显示简短提示
+      if (msg.type === 'plan' && msg.content?.phases?.length) {
+        msg.displayText = '学习计划已生成，详情见下方卡片 ↘'
+      } else if (msg.text && (msg.text.startsWith('{') || msg.text.startsWith('```'))) {
+        // GLM 返回了原始 JSON → 截断为提示
+        msg.displayText = '处理完成，详情见下方卡片 ↘'
+      } else {
+        msg.displayText = stripMarker(msg.text)
+      }
+      result.push(msg)
       aiIdx++
     }
   }
