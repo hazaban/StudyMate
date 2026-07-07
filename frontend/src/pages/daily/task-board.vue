@@ -11,7 +11,7 @@
           <text class="title">{{ headerTitle }}</text>
           <text class="date">{{ currentDate }}</text>
         </view>
-        <view class="header-actions">
+        <view class="header-right">
           <view class="quadrant-switch" @click="toggleQuadrant">
             <view class="switch-track" :class="{ active: enableQuadrant }">
               <view class="switch-thumb"></view>
@@ -20,10 +20,6 @@
           </view>
           <view class="quadrant-entry-btn" v-if="enableQuadrant" @click="goToQuadrant">
             <text class="quadrant-entry-icon">◻️</text>
-          </view>
-          <view class="add-btn" @click="openManualAdd">
-            <text class="add-icon">+</text>
-            <text class="add-text">添加任务</text>
           </view>
         </view>
       </view>
@@ -258,6 +254,7 @@
       @deleted="onTaskDeleted"
     />
 
+    <view class="fab" @click="openManualAdd"><text class="fab-icon">+</text></view>
     <view class="bottom-space"></view>
   </view>
 </template>
@@ -1161,8 +1158,8 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   &:active { transform: scale(0.96); }
 }
 
-.header-actions {
-  display: flex; gap: 8px; align-items: center;
+.header-right {
+  display: flex; gap: 8px; align-items: center; flex-shrink: 0;
 }
 
 .quadrant-switch {
@@ -1185,12 +1182,8 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 .quadrant-entry-icon { font-size: 14px; }
 
-.add-btn {
-  display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.2); padding: 10px 16px; border-radius: 25px;
-  &:active { background: rgba(255,255,255,0.3); transform: scale(0.96); }
-  .add-icon { font-size: 18px; color: #fff; }
-  .add-text { font-size: 14px; color: #fff; font-weight: 500; }
-}
+/* FAB — 右下角添加任务 */
+.fab { position: fixed; right: 20px; bottom: 60px; z-index: 50; width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,0.35); background: #2f7d4f; &:active { transform: scale(0.92); } .fab-icon { font-size: 28px; color: #fff; font-weight: 300; } }
 
 .progress-summary {
   display: flex; align-items: center; background: rgba(255,255,255,0.12); border-radius: 16px; padding: 16px; border: 1px solid rgba(255,255,255,0.15);
