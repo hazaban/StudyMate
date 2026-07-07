@@ -128,7 +128,11 @@
                       @mousedown="onWeekCellMouseDown(day.dateStr, hour, $event)"
                       @mouseup="onWeekCellMouseUp" />
                     <view class="week-task" v-for="task in getDayTasks(day.dateStr)" :key="task.id" :class="{ completed: task.status === 'completed', [getSubjectClass(task.subject)]: true }"
-                      :style="getTaskStyle(task)">
+                      :style="getTaskStyle(task)"
+                      @click.stop="onWeekCellClick(day.dateStr, task.start_hour || 9)"
+                      @touchstart.stop="onTaskCardTouchStart(task)"
+                      @touchend="onTaskCardTouchEnd"
+                      @touchmove="onTaskCardTouchEnd">
                       <view class="task-importance-dot" :class="getImportanceClass(task.importance)" v-if="task.importance && enableQuadrant"></view>
                       <text class="week-task-content">{{ task.content }}</text>
                       <text class="week-task-time">{{ formatTaskTime(task) }}</text>
@@ -796,8 +800,19 @@ function onWeekCellTouchCancel() {
 
 function onWeekCellTouchEnd() {
   clearTimeout(weekCellTouchTimer)
-  // 重置长按标记，恢复短按功能
   setTimeout(() => { weekCellDidLong = false }, 50)
+}
+
+// 任务卡片触摸——点击展开，长按编辑
+let taskCardTimer = null
+function onTaskCardTouchStart(task) {
+  clearTimeout(taskCardTimer)
+  taskCardTimer = setTimeout(() => {
+    editTask(task)
+  }, 600)
+}
+function onTaskCardTouchEnd() {
+  clearTimeout(taskCardTimer)
 }
 
 function onWeekCellMouseDown(dateStr, hour, event) {
