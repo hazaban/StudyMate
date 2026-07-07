@@ -148,7 +148,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { usePlanStore } from '@/stores/plan'
 import { useSubjectsStore } from '@/stores/subjects'
 import * as api from '@/api/client'
