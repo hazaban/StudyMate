@@ -659,11 +659,11 @@ onMounted(async () => {
   box-shadow: 0 1px 3px rgba(0,0,0,0.03);
 }
 .ch-top-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-.ch-name { flex: 1; padding: 12px 14px; border: 1.5px solid #d0d5d2; border-radius: 12px; font-size: 16px; background: #fff; color: #1a1a2e; min-width: 0;
+.ch-name { flex: 1; padding: 12px 14px; border: 1.5px solid #d0d5d2; border-radius: 12px; font-size: 16px; background: #fff; color: #1a1a2e; min-width: 0; :deep(.uni-input-input) { height: 24px; line-height: 24px; } :deep(.uni-input-wrapper) { min-height: 24px; }
   &:active, &:focus { border-color: $accent; } }
 .ch-dur-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .ch-dur-label { font-size: 12px; color: #888; white-space: nowrap; }
-.ch-dur { width: 56px; padding: 12px 6px; border: 1.5px solid #d0d5d2; border-radius: 12px; font-size: 16px; background: #fff; color: #1a1a2e; text-align: center;
+.ch-dur { width: 56px; padding: 12px 6px; border: 1.5px solid #d0d5d2; border-radius: 12px; font-size: 16px; background: #fff; color: #1a1a2e; text-align: center; :deep(.uni-input-input) { height: 24px; line-height: 24px; } :deep(.uni-input-wrapper) { min-height: 24px; }
   &:focus { border-color: $accent; } }
 .ch-remove { font-size: 22px; color: #ef5350; padding: 6px 4px; flex-shrink: 0; cursor: pointer; }
 
