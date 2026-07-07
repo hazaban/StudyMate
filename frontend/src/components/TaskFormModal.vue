@@ -421,9 +421,8 @@ async function parseWithAI() {
   }
   uni.showLoading({ title: 'AI解析中...' })
   try {
-    const result = await api.aiParsePlan({
-      text: aiParseInput.value.trim(),
-      plan_id: planStore.currentPlan?.id
+    const result = await api.aiParseTask({
+      text: aiParseInput.value.trim()
     })
     aiParseResult.value = (result.tasks || []).map(t => ({ ...t, selected: true }))
   } catch (e) {

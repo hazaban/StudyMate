@@ -110,3 +110,20 @@ async def ai_chat(request: Request, user_id: UUID = Depends(_get_user_id)):
 
     result = await PlanAgent.run(text, image_url, plan_id)
     return result
+
+
+@router.post("/parse-task")
+async def parse_task(request: Request, user_id: UUID = Depends(_get_user_id)):
+    """直接调用 TaskAgent 解析任务，不走意图识别。用于添加任务弹窗等明确场景。"""
+    import json as _json
+    body = await request.body()
+    data = _json.loads(body) if body else {}
+
+    text = data.get("text", "")
+    image_url = data.get("image", "")
+
+    if not text and not image_url:
+        raise HTTPException(status_code=400, detail="请提供文本或图片输入")
+
+    result = await TaskAgent.parse(text, image_url)
+    return result

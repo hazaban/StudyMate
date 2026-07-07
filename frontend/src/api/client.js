@@ -193,6 +193,10 @@ export async function aiChat(data) {
   return request('/ai/chat', { method: 'POST', data })
 }
 
+export async function aiParseTask(data) {
+  return request('/ai/parse-task', { method: 'POST', data })
+}
+
 // ==================== Cards ====================
 
 export async function createCard(data) {
