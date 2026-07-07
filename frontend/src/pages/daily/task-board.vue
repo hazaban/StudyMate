@@ -114,7 +114,7 @@
         <!-- 右侧日期区域（横向滚动） -->
         <view class="week-dates-container">
           <scroll-view scroll-x class="week-dates-hscroll" @touchstart="onWeekHScrollTouchStart" @touchmove="onWeekHScrollTouchMove" @touchend="onWeekHScrollTouchEnd">
-            <view class="week-dates-table" :style="tableStyle">
+            <view class="week-dates-table" :style="{ minWidth: 7 * colWidth + 'px' }">
               <!-- 日期头行 -->
               <view class="week-days-header">
                 <view class="week-day-header" v-for="(day, idx) in weekDays" :key="idx" :class="{ today: day.isToday, weekend: day.isWeekend }" :style="{ width: colWidth + 'px' }">
@@ -315,14 +315,6 @@ const colWidth = computed(() => {
     return Math.max(75, Math.floor((w - 40) / 7))
   } catch (e) { return 100 }
 })
-// 桌面端表格居中，手机端左对齐（靠横向滑动）
-const isDesktop = computed(() => {
-  try { return (uni.getSystemInfoSync().windowWidth || 375) >= 768 } catch (e) { return false }
-})
-const tableStyle = computed(() => ({
-  minWidth: 7 * colWidth.value + 'px',
-  margin: isDesktop.value ? '0 auto' : '0'
-}))
 const CELL_H = 72
 const weekScrollTop = ref(0)
 
@@ -538,7 +530,7 @@ function getTaskStyle(task) {
   const m = task.start_minute || 0
   const dur = task.duration || 30
   const top = (h - timelineHours[0]) * CELL_H + (m / 60) * CELL_H
-  const height = Math.max(20, (dur / 60) * CELL_H)
+  const height = Math.max(36, (dur / 60) * CELL_H)
   return {
     position: 'absolute',
     top: top + 'px',
@@ -1367,6 +1359,15 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   overflow-x: auto; overflow-y: hidden;
 }
 .week-dates-table { display: flex; flex-direction: column; }
+/* 桌面端：表格居中，右侧不留白 */
+@media (min-width: 768px) {
+  .week-container {
+    justify-content: center;
+  }
+  .week-dates-container {
+    flex: 0 0 auto;
+  }
+}
 
 /* 日期头行 */
 .week-days-header {
