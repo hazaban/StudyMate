@@ -11,10 +11,6 @@
           </view>
         </view>
         <scroll-view scroll-y class="modal-body">
-          <view class="delete-hint" v-if="isEdit">
-            <text class="delete-hint-text">💡 长按或右键任务卡片可删除任务</text>
-          </view>
-
           <view v-if="showAIMode && addMode === 'ai' && !isEdit" class="ai-section">
             <view class="ai-hint-box">
               <text class="ai-hint-title">🤖 描述你的学习计划，AI自动解析为任务</text>
@@ -184,6 +180,7 @@
         </scroll-view>
         <view class="modal-footer">
           <view class="cancel-btn" @click="close">取消</view>
+          <view class="delete-btn" v-if="isEdit" @click="confirmDelete">删除</view>
           <view class="submit-btn" @click="submitForm">{{ isEdit ? '保存' : '添加' }}</view>
         </view>
       </view>
@@ -323,6 +320,20 @@ watch(() => form.value.subject, () => { form.value.chapter = '' })
 
 function close() {
   emit('update:visible', false)
+}
+
+function confirmDelete() {
+  if (!props.task) return
+  uni.showModal({
+    title: '删除任务',
+    content: `确定要删除「${props.task.content}」吗？`,
+    success: (res) => {
+      if (res.confirm) {
+        emit('deleted', props.task)
+        close()
+      }
+    }
+  })
 }
 
 function addCustomSubject() {
@@ -568,6 +579,7 @@ async function addParsedTasks() {
 .modal-body { padding: 20px 24px; flex: 1; overflow-y: auto; }
 .modal-footer { display: flex; gap: 12px; padding: 16px 24px; border-top: 1px solid #f0f0f0; }
 .cancel-btn { flex: 1; padding: 14px; text-align: center; border-radius: 14px; font-size: 16px; color: #65746d; background: #f5f7f5; font-weight: 500; }
+.delete-btn { flex: 1; padding: 14px; text-align: center; border-radius: 14px; font-size: 16px; color: #fff; background: #ef5350; font-weight: 500; }
 .submit-btn { flex: 2; padding: 14px; text-align: center; border-radius: 14px; font-size: 16px; color: #fff; background: #2f7d4f; font-weight: 600; }
 .delete-hint { margin-bottom: 14px; padding: 8px 12px; background: #fff8e1; border-radius: 10px; }
 .delete-hint-text { font-size: 12px; color: #9a7b00; }

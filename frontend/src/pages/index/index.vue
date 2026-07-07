@@ -83,7 +83,7 @@
           <view class="task-checkbox" :class="{ checked: task.status === 'completed' }" @click="toggleTaskComplete(task)">
             <text v-if="task.status === 'completed'">✓</text>
           </view>
-          <view class="task-content" @click="editTask(task)">
+          <view class="task-content">
             <text class="task-title">{{ task.content }}</text>
             <view class="task-meta">
               <text class="task-subject">{{ task.subject }}</text>
@@ -94,7 +94,6 @@
           </view>
           <view class="task-actions">
             <view class="task-action-btn" @click="startPomodoroFromTask(task)">🍅</view>
-            <view class="task-action-btn" @click="editTask(task)">✎</view>
           </view>
           <view class="task-type" :class="task.type">
             {{ taskTypeText(task.type) }}
@@ -209,12 +208,12 @@ function editTask(task) {
   showTaskForm.value = true
 }
 
-// Long-press / right-click delete
+// Long-press to edit task
 let taskLongPressTimer = null
 function onTaskTouchStart(task) {
   taskLongPressTimer = setTimeout(() => {
     taskLongPressTimer = null
-    confirmDeleteTask(task)
+    editTask(task)
   }, 600)
 }
 function onTaskTouchEnd() {

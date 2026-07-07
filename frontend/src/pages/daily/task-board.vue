@@ -190,7 +190,7 @@
             <text v-if="task.status === 'completed'" class="check-icon">✓</text>
           </view>
         </view>
-        <view class="task-body" @click="editTask(task)">
+        <view class="task-body">
           <view class="task-top">
             <text class="task-content">{{ task.content }}</text>
             <view class="task-type-tag" :class="getTypeClass(task.type)">
@@ -887,12 +887,12 @@ function confirmDeleteTask(task) {
   })
 }
 
-// Long-press to delete task (mobile)
+// Long-press to edit task (mobile)
 let taskLongPressTimer = null
 function onTaskTouchStart(task) {
   taskLongPressTimer = setTimeout(() => {
     taskLongPressTimer = null
-    confirmDeleteTask(task)
+    editTask(task)
   }, 600)
 }
 function onTaskTouchEnd() {
