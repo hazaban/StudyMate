@@ -5,10 +5,9 @@
         <text class="back-icon">←</text>
       </view>
       <text class="page-title">AI 智能规划</text>
-      <view style="width: 40px;"></view>
+      <view class="header-placeholder"></view>
     </view>
 
-    <!-- 聊天区域 -->
     <scroll-view scroll-y class="chat-messages" :scroll-into-view="scrollToMsg">
       <view class="msg-item ai" v-for="(msg, idx) in messages" :key="idx" :id="'msg-' + idx">
         <view class="msg-avatar ai">🤖</view>
@@ -87,29 +86,30 @@
       </view>
     </scroll-view>
 
-    <!-- 输入区域 -->
     <view class="chat-input-area">
-      <view class="chat-hint" v-if="messages.length <= 1">
-        <view class="chat-hint-header" @click="toggleHint">
-          <text class="chat-hint-title">💡 我可以帮你做这些事：</text>
-          <text class="hint-toggle">{{ showHintDetail ? '▼' : '▶' }}</text>
-        </view>
-        <view class="chat-hint-tags" v-if="showHintDetail">
-          <text class="hint-tag">📋 规划学习计划（如：考研408，150天，每天8小时）</text>
-          <text class="hint-tag">✅ 添加任务（如：明天上午9点复习数据结构）</text>
-          <text class="hint-tag">📖 分析教材目录（上传图片或输入章节列表）</text>
-          <text class="hint-tag">📊 每日复盘（如：今天学了什么，给我复盘一下）</text>
-        </view>
-      </view>
-      <view class="quick-tips" v-if="messages.length <= 1">
-        <view class="tip-item" @click="quickFill('考研408计算机，还有150天，每天8小时')">
-          <text>考研408，150天，每天8小时</text>
-        </view>
-        <view class="tip-item" @click="quickFill('明天上午复习数据结构，下午做英语阅读')">
-          <text>添加任务：明天复习数据结构</text>
-        </view>
-        <view class="tip-item" @click="triggerUpload">
-          <text>上传教材目录图片</text>
+      <view class="quick-actions" v-if="messages.length <= 1">
+        <text class="quick-title">💡 试试这些：</text>
+        <view class="quick-grid">
+          <view class="quick-card" @click="quickFill('考研408计算机，还有150天，每天8小时')">
+            <text class="quick-icon">📋</text>
+            <text class="quick-label">规划学习计划</text>
+            <text class="quick-example">考研408，150天，每天8小时</text>
+          </view>
+          <view class="quick-card" @click="quickFill('明天上午复习数据结构，下午做英语阅读')">
+            <text class="quick-icon">✅</text>
+            <text class="quick-label">添加任务</text>
+            <text class="quick-example">明天复习数据结构</text>
+          </view>
+          <view class="quick-card" @click="chooseImage">
+            <text class="quick-icon">📖</text>
+            <text class="quick-label">分析教材目录</text>
+            <text class="quick-example">上传目录图片</text>
+          </view>
+          <view class="quick-card" @click="quickFill('今天学了什么，给我复盘一下')">
+            <text class="quick-icon">📊</text>
+            <text class="quick-label">每日复盘</text>
+            <text class="quick-example">今天学了什么</text>
+          </view>
         </view>
       </view>
       <view class="input-row">
@@ -144,7 +144,6 @@ const userMessages = ref([])
 const inputText = ref('')
 const loading = ref(false)
 const scrollToMsg = ref('')
-const showHintDetail = ref(false)
 const currentImage = ref('')
 const currentImageBase64 = ref('')
 
@@ -152,55 +151,53 @@ function goBack() {
   uni.navigateBack()
 }
 
-function toggleHint() {
-  showHintDetail.value = !showHintDetail.value
-}
-
 function quickFill(text) {
   inputText.value = text
 }
 
-function triggerUpload() {
-  chooseImage()
-}
-
 function chooseImage() {
-  uni.chooseImage({
-    count: 1,
-    sizeType: ['compressed'],
-    sourceType: ['album', 'camera'],
+  uni.showActionSheet({
+    itemList: ['拍照', '从相册选择'],
     success: (res) => {
-      const tempPath = res.tempFilePaths[0]
-      currentImage.value = tempPath
-      // #ifdef H5
-      const img = new Image()
-      img.crossOrigin = 'anonymous'
-      img.onload = () => {
-        const canvas = document.createElement('canvas')
-        const maxWidth = 1024
-        let width = img.width
-        let height = img.height
-        if (width > maxWidth) {
-          height = (maxWidth / width) * height
-          width = maxWidth
-        }
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-        ctx.drawImage(img, 0, 0, width, height)
-        currentImageBase64.value = canvas.toDataURL('image/jpeg', 0.8)
-      }
-      img.src = tempPath
-      // #endif
-      // #ifndef H5
-      uni.getFileSystemManager().readFile({
-        filePath: tempPath,
-        encoding: 'base64',
-        success: (data) => {
-          currentImageBase64.value = `data:image/jpeg;base64,${data.data}`
+      const sourceType = res.tapIndex === 0 ? ['camera'] : ['album']
+      uni.chooseImage({
+        count: 1,
+        sizeType: ['compressed'],
+        sourceType: sourceType,
+        success: (res) => {
+          const tempPath = res.tempFilePaths[0]
+          currentImage.value = tempPath
+          // #ifdef H5
+          const img = new Image()
+          img.crossOrigin = 'anonymous'
+          img.onload = () => {
+            const canvas = document.createElement('canvas')
+            const maxWidth = 1024
+            let width = img.width
+            let height = img.height
+            if (width > maxWidth) {
+              height = (maxWidth / width) * height
+              width = maxWidth
+            }
+            canvas.width = width
+            canvas.height = height
+            const ctx = canvas.getContext('2d')
+            ctx.drawImage(img, 0, 0, width, height)
+            currentImageBase64.value = canvas.toDataURL('image/jpeg', 0.8)
+          }
+          img.src = tempPath
+          // #endif
+          // #ifndef H5
+          uni.getFileSystemManager().readFile({
+            filePath: tempPath,
+            encoding: 'base64',
+            success: (data) => {
+              currentImageBase64.value = `data:image/jpeg;base64,${data.data}`
+            }
+          })
+          // #endif
         }
       })
-      // #endif
     }
   })
 }
@@ -351,10 +348,10 @@ onMounted(async () => {
 })
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 .page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: $bg;
   display: flex;
   flex-direction: column;
 }
@@ -363,47 +360,39 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px;
-  background: linear-gradient(135deg, #6b4ce6 0%, #8b5cf6 100%);
-  color: #fff;
-}
-
-.back-btn {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.back-icon {
-  font-size: 24px;
-}
-
-.page-title {
-  font-size: 18px;
-  font-weight: 600;
+  padding: 60px 20px 20px;
+  background: $bg2;
+  border-bottom: 1px solid $rule;
+  .back-btn {
+    width: 40px;
+    height: 40px;
+    background: $soft;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    &:active { opacity: 0.7; }
+  }
+  .back-icon { font-size: 20px; color: $ink; }
+  .page-title { font-size: 20px; font-weight: 600; color: $ink; }
+  .header-placeholder { width: 40px; }
 }
 
 .chat-messages {
   flex: 1;
-  padding: 15px;
+  padding: 16px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .msg-item {
   display: flex;
-  margin-bottom: 15px;
+  margin-bottom: 16px;
   align-items: flex-start;
 }
 
-.msg-item.ai {
-  flex-direction: row;
-}
-
-.msg-item.user {
-  flex-direction: row-reverse;
-}
+.msg-item.ai { flex-direction: row; }
+.msg-item.user { flex-direction: row-reverse; }
 
 .msg-avatar {
   width: 40px;
@@ -416,13 +405,8 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
-.msg-avatar.ai {
-  background: linear-gradient(135deg, #6b4ce6 0%, #8b5cf6 100%);
-}
-
-.msg-avatar.user {
-  background: #ddd;
-}
+.msg-avatar.ai { background: $accent; color: #fff; }
+.msg-avatar.user { background: $soft; color: $muted; }
 
 .msg-bubble {
   max-width: 75%;
@@ -432,31 +416,27 @@ onMounted(async () => {
 }
 
 .msg-bubble.ai {
-  background: #fff;
+  background: $bg2;
   margin-left: 10px;
   border-bottom-left-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .msg-bubble.user {
-  background: linear-gradient(135deg, #6b4ce6 0%, #8b5cf6 100%);
+  background: $accent;
   margin-right: 10px;
   border-bottom-right-radius: 4px;
 }
 
-.msg-bubble.loading {
-  opacity: 0.6;
-}
+.msg-bubble.loading { opacity: 0.6; }
 
 .msg-text {
   font-size: 14px;
   line-height: 1.6;
-  color: #333;
+  color: $ink;
 }
 
-.msg-bubble.user .msg-text {
-  color: #fff;
-}
+.msg-bubble.user .msg-text { color: #fff; }
 
 .msg-image {
   max-width: 100%;
@@ -464,21 +444,19 @@ onMounted(async () => {
   margin-top: 8px;
 }
 
-.msg-content {
-  margin-top: 12px;
-}
+.msg-content { margin-top: 12px; }
 
 .content-section {
-  background: #f8f9fa;
+  background: $soft;
   border-radius: 12px;
-  padding: 12px;
+  padding: 14px;
   margin-top: 10px;
 }
 
 .section-title {
   font-size: 14px;
   font-weight: 600;
-  color: #6b4ce6;
+  color: $accent;
   margin-bottom: 10px;
   display: block;
 }
@@ -490,27 +468,28 @@ onMounted(async () => {
 }
 
 .task-item {
-  background: #fff;
-  padding: 10px;
-  border-radius: 8px;
+  background: $bg2;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid $rule;
 }
 
 .task-content {
   font-size: 13px;
   font-weight: 500;
-  color: #333;
+  color: $ink;
   display: block;
 }
 
 .task-meta {
   display: flex;
-  gap: 8px;
-  margin-top: 4px;
+  gap: 10px;
+  margin-top: 6px;
 }
 
 .task-subject, .task-duration, .task-date {
   font-size: 11px;
-  color: #999;
+  color: $muted;
 }
 
 .chapter-list {
@@ -520,42 +499,45 @@ onMounted(async () => {
 }
 
 .chapter-item {
-  background: #fff;
-  padding: 10px;
-  border-radius: 8px;
+  background: $bg2;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid $rule;
 }
 
 .chapter-name {
   font-size: 13px;
   font-weight: 500;
-  color: #333;
+  color: $ink;
   display: block;
 }
 
 .chapter-meta {
   display: flex;
-  gap: 12px;
-  margin-top: 4px;
+  gap: 14px;
+  margin-top: 6px;
   font-size: 11px;
-  color: #999;
+  color: $muted;
 }
 
 .section-total {
   font-size: 12px;
-  color: #6b4ce6;
+  color: $accent;
   margin-top: 8px;
   display: block;
+  font-weight: 500;
 }
 
 .plan-summary {
-  background: #fff;
-  padding: 10px;
-  border-radius: 8px;
+  background: $bg2;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid $rule;
 }
 
 .plan-overview {
   font-size: 13px;
-  color: #333;
+  color: $ink;
   line-height: 1.6;
   display: block;
   margin-bottom: 10px;
@@ -568,128 +550,124 @@ onMounted(async () => {
 }
 
 .phase-item {
-  padding: 8px;
-  background: #f0f4ff;
-  border-radius: 6px;
+  padding: 10px;
+  background: $soft;
+  border-radius: 8px;
 }
 
 .phase-name {
   font-size: 13px;
   font-weight: 600;
-  color: #6b4ce6;
+  color: $accent;
   display: block;
 }
 
 .phase-desc {
   font-size: 12px;
-  color: #666;
-  margin-top: 2px;
+  color: $muted;
+  margin-top: 4px;
   display: block;
+  line-height: 1.5;
 }
 
 .review-summary {
   font-size: 13px;
-  color: #333;
+  color: $ink;
   line-height: 1.6;
   display: block;
   margin-bottom: 10px;
 }
 
-.review-items {
-  margin-bottom: 8px;
-}
+.review-items { margin-bottom: 10px; }
 
 .review-label {
   font-size: 12px;
   font-weight: 600;
-  color: #6b4ce6;
+  color: $accent;
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .review-item {
   font-size: 12px;
-  color: #666;
+  color: $muted;
   display: block;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
+  line-height: 1.5;
 }
 
 .review-encourage {
   font-size: 13px;
-  color: #4caf50;
+  color: $accent;
   font-weight: 500;
-  margin-top: 10px;
+  margin-top: 12px;
   display: block;
 }
 
 .msg-btn {
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 500;
-  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 14px;
   text-align: center;
+  &:active { opacity: 0.9; }
 }
 
 .msg-btn.primary {
-  background: linear-gradient(135deg, #6b4ce6 0%, #8b5cf6 100%);
+  background: $accent;
   color: #fff;
 }
 
 .chat-input-area {
-  padding: 15px;
-  background: #fff;
-  border-top: 1px solid #eee;
+  padding: 16px;
+  background: $bg2;
+  border-top: 1px solid $rule;
 }
 
-.chat-hint {
-  margin-bottom: 10px;
+.quick-actions {
+  margin-bottom: 16px;
 }
 
-.chat-hint-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.chat-hint-title {
+.quick-title {
   font-size: 13px;
-  color: #999;
+  color: $muted;
+  font-weight: 500;
+  margin-bottom: 12px;
+  display: block;
 }
 
-.hint-toggle {
-  font-size: 12px;
-  color: #999;
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
 }
 
-.chat-hint-tags {
-  margin-top: 8px;
+.quick-card {
+  background: $soft;
+  border-radius: 12px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  &:active {
+    opacity: 0.8;
+    transform: scale(0.98);
+  }
 }
 
-.hint-tag {
-  font-size: 12px;
-  color: #666;
-  padding: 4px 8px;
-  background: #f5f5f5;
-  border-radius: 4px;
+.quick-icon { font-size: 20px; }
+
+.quick-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: $ink;
 }
 
-.quick-tips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.tip-item {
-  padding: 6px 12px;
-  background: #f0f4ff;
-  border-radius: 16px;
-  font-size: 12px;
-  color: #6b4ce6;
+.quick-example {
+  font-size: 11px;
+  color: $muted;
+  line-height: 1.4;
 }
 
 .input-row {
@@ -704,21 +682,21 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f5f5f5;
+  background: $soft;
   border-radius: 12px;
+  &:active { opacity: 0.7; }
 }
 
-.upload-icon {
-  font-size: 20px;
-}
+.upload-icon { font-size: 20px; }
 
 .chat-input {
   flex: 1;
   height: 44px;
-  padding: 0 15px;
-  background: #f5f5f5;
+  padding: 0 16px;
+  background: $soft;
   border-radius: 22px;
   font-size: 14px;
+  color: $ink;
 }
 
 .send-btn {
@@ -727,26 +705,19 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #6b4ce6 0%, #8b5cf6 100%);
+  background: $accent;
   border-radius: 12px;
+  &:active { opacity: 0.9; }
+  &.disabled { opacity: 0.5; }
 }
 
-.send-btn.disabled {
-  opacity: 0.5;
-}
-
-.send-icon {
-  font-size: 18px;
-  color: #fff;
-}
+.send-icon { font-size: 18px; color: #fff; }
 
 .preview-image-small {
   max-width: 200px;
   border-radius: 8px;
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
-.bottom-space {
-  height: 20px;
-}
+.bottom-space { height: 20px; }
 </style>
