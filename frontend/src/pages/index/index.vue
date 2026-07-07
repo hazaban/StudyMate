@@ -79,7 +79,7 @@
         <text class="section-link" @click="goToTaskBoard">全部任务</text>
       </view>
       <view class="task-list">
-        <view class="task-item" v-for="task in previewTasks" :key="task.id" @contextmenu.prevent="confirmDeleteTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
+        <view class="task-item" v-for="task in previewTasks" :key="task.id" @contextmenu.prevent="editTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
           <view class="task-checkbox" :class="{ checked: task.status === 'completed' }" @click="toggleTaskComplete(task)">
             <text v-if="task.status === 'completed'">✓</text>
           </view>

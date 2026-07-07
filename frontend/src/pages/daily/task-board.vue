@@ -184,7 +184,7 @@
     </view>
 
     <view class="task-list" v-if="viewMode !== 'week'">
-      <view class="task-item" v-for="task in filteredTasks" :key="task.id" :class="{ completed: task.status === 'completed' }" @contextmenu.prevent="confirmDeleteTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
+      <view class="task-item" v-for="task in filteredTasks" :key="task.id" :class="{ completed: task.status === 'completed' }" @contextmenu.prevent="editTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
         <view class="task-check" @click="toggleTask(task)">
           <view class="check-circle" :class="{ checked: task.status === 'completed' }">
             <text v-if="task.status === 'completed'" class="check-icon">✓</text>
