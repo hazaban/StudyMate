@@ -12,7 +12,10 @@
             <view class="notif-badge" v-if="upcomingTasks.length > 0">{{ upcomingTasks.length }}</view>
           </view>
           <view class="avatar" @click="goToProfile">
-            <text class="avatar-text">{{ userStore.user?.nickname?.charAt(0) || '学' }}</text>
+            <image v-if="userStore.user?.avatar_url" :src="userStore.user.avatar_url" mode="aspectFill" class="avatar-img" />
+            <view class="avatar-default" v-else>
+              <view class="avatar-face"><view class="a-eye l"></view><view class="a-eye r"></view><view class="a-mouth"></view></view>
+            </view>
           </view>
         </view>
       </view>
@@ -452,21 +455,18 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 }
 
 .avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  
-  .avatar-text {
-    font-size: 20px;
-    font-weight: 700;
-    color: #fff;
-  }
+  width: 38px; height: 38px; border-radius: 50%;
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  .avatar-img { width: 100%; height: 100%; }
 }
+/* 可爱默认头像：CSS熊脸 */
+.avatar-default { width: 30px; height: 30px; position: relative; }
+.avatar-face { width: 30px; height: 26px; background: #fff; border-radius: 14px 14px 11px 11px; position: absolute; bottom: 0; }
+.a-eye { position: absolute; top: 7px; width: 5px; height: 6px; border-radius: 50%; background: #333; }
+.a-eye.l { left: 7px; } .a-eye.r { right: 7px; }
+.a-mouth { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 8px; height: 4px; border-radius: 0 0 8px 8px; background: #f48fb1; }
 
 .motivation-card {
   display: flex;
