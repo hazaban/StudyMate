@@ -2,11 +2,15 @@
   <view class="page">
     <view class="profile-card" v-if="userStore.user">
       <view class="avatar-section">
-        <view class="avatar">
-          <text class="avatar-text">{{ userStore.user.user_metadata?.nickname?.charAt(0) || '用' }}</text>
+        <view class="avatar" @click="chooseAvatar">
+          <image v-if="avatarUrl" :src="avatarUrl" mode="aspectFill" class="avatar-img" />
+          <text class="avatar-text" v-else>👤</text>
         </view>
         <view class="user-info">
-          <text class="username">{{ userStore.user.user_metadata?.nickname || '用户' }}</text>
+          <view class="nickname-row" @click="editNickname">
+            <text class="username">{{ userStore.user.user_metadata?.nickname || '用户' }}</text>
+            <text class="edit-icon">✎</text>
+          </view>
           <text class="user-email">{{ userStore.user.email }}</text>
         </view>
         <view class="settings-btn" @click="goToSettings">
@@ -99,6 +103,13 @@ const planStore = usePlanStore()
 const planCount = ref(0)
 const cardCount = ref(0)
 const totalDays = ref(0)
+const avatarUrl = ref('')
+const editingNickname = ref(false)
+const nicknameTemp = ref('')
+
+function initAvatar() {
+  avatarUrl.value = userStore.user?.user_metadata?.avatar_url || userStore.user?.avatar_url || ''
+}
 
 async function loadData() {
   await userStore.getUserInfo()
@@ -145,6 +156,73 @@ async function loadData() {
   }
 }
 
+function chooseAvatar() {
+  // #ifdef H5
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/*'
+  input.onchange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      const base64 = ev.target.result
+      avatarUrl.value = base64
+      try {
+        await api.updateMe({ avatar_url: base64 })
+        uni.showToast({ title: '头像已更新', icon: 'success' })
+      } catch (e) { uni.showToast({ title: '头像更新失败', icon: 'none' }) }
+    }
+    reader.readAsDataURL(file)
+  }
+  input.click()
+  // #endif
+  // #ifndef H5
+  uni.chooseImage({
+    count: 1, sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: async (res) => {
+      const path = res.tempFilePaths[0]
+      avatarUrl.value = path
+      try {
+        uni.getFileSystemManager().readFile({
+          filePath: path, encoding: 'base64',
+          success: async (data) => {
+            const b64 = 'data:image/jpeg;base64,' + data.data
+            await api.updateMe({ avatar_url: b64 })
+            uni.showToast({ title: '头像已更新', icon: 'success' })
+          }
+        })
+      } catch (e) { uni.showToast({ title: '头像更新失败', icon: 'none' }) }
+    }
+  })
+  // #endif
+}
+
+function editNickname() {
+  nicknameTemp.value = userStore.user?.user_metadata?.nickname || ''
+  editingNickname.value = true
+  uni.showModal({
+    title: '修改昵称',
+    editable: true,
+    placeholderText: '请输入新昵称',
+    content: nicknameTemp.value,
+    success: async (res) => {
+      if (res.confirm && res.content) {
+        const newName = res.content.trim()
+        if (newName) {
+          try {
+            await api.updateMe({ nickname: newName })
+            await userStore.getUserInfo()
+            uni.showToast({ title: '昵称已更新', icon: 'success' })
+          } catch (e) { uni.showToast({ title: '更新失败', icon: 'none' }) }
+        }
+      }
+      editingNickname.value = false
+    }
+  })
+}
+
 function goToLogin() {
   uni.navigateTo({ url: '/pages/auth/login' })
 }
@@ -171,10 +249,12 @@ function goToSettings() {
 
 onMounted(async () => {
   await loadData()
+  initAvatar()
 })
 
 onShow(async () => {
   await loadData()
+  initAvatar()
 })
 </script>
 
@@ -215,34 +295,21 @@ onShow(async () => {
 }
 
 .avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: $accent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  
-  .avatar-text {
-    font-size: 28px;
-    font-weight: 700;
-    color: #fff;
-  }
+  width: 64px; height: 64px; border-radius: 50%;
+  background: #f0f0f0; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  &:active { opacity: 0.8; }
+  .avatar-text { font-size: 32px; }
+  .avatar-img { width: 100%; height: 100%; }
 }
 
 .user-info {
-  .username {
-    display: block;
-    font-size: 20px;
-    font-weight: 600;
-    color: $ink;
-    margin-bottom: 4px;
-  }
-  
-  .user-email {
-    font-size: 14px;
-    color: $muted;
-  }
+  .nickname-row { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .username { display: block; font-size: 18px; font-weight: 600; color: $ink; }
+  .edit-icon { font-size: 14px; color: $muted; opacity: 0.5; }
+  &:active .edit-icon { opacity: 1; }
+  .user-email { font-size: 13px; color: $muted; }
 }
 
 .stats-row {
@@ -313,42 +380,25 @@ onShow(async () => {
 }
 
 .menu-title {
-  padding: 16px 20px;
-  font-size: 14px;
+  padding: 12px 20px;
+  font-size: 13px;
   color: $muted;
   border-bottom: 1px solid $rule;
 }
 
 .menu-list {
-  padding: 4px 0;
+  padding: 2px 0;
 }
 
 .menu-item {
   display: flex;
   align-items: center;
-  padding: 16px 20px;
-  
-  .menu-icon {
-    font-size: 20px;
-    margin-right: 12px;
-  }
-  
-  .menu-text {
-    flex: 1;
-    font-size: 16px;
-    color: $ink;
-  }
+  padding: 12px 20px;
 
-  .menu-text-sub {
-    font-size: 12px;
-    color: $muted;
-    margin-right: 8px;
-  }
-  
-  .menu-arrow {
-    font-size: 18px;
-    color: $muted;
-  }
+  .menu-icon { font-size: 18px; margin-right: 10px; }
+  .menu-text { flex: 1; font-size: 15px; color: $ink; }
+  .menu-text-sub { font-size: 12px; color: $muted; margin-right: 8px; }
+  .menu-arrow { font-size: 16px; color: $muted; }
 }
 
 .menu-switch {

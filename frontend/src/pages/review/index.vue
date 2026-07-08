@@ -2,18 +2,18 @@
   <view class="page">
     <!-- Header -->
     <view class="header" :class="currentView === 'mistakes' ? 'header-red' : 'header-purple'">
-      <view class="header-top">
-        <view class="header-left">
-          <text class="title">{{ currentView === 'mistakes' ? '错题本' : '抗遗忘卡片' }}</text>
-          <text class="subtitle">{{ currentView === 'mistakes' ? '记录每一次错误，让知识不再溜走' : '艾宾浩斯记忆曲线，科学对抗遗忘' }}</text>
+      <view class="header-row">
+        <view class="review-toggle">
+          <view class="review-toggle-btn" :class="{ active: currentView === 'cards' }" @click="switchView('cards')">知识卡片</view>
+          <view class="review-toggle-btn" :class="{ active: currentView === 'mistakes' }" @click="switchView('mistakes')">错题本</view>
         </view>
-        <view class="header-right">
-          <view class="export-btn" @click="showExportModal = true">
-            <text class="export-icon">📤</text>
-            <text class="export-text">导出</text>
-          </view>
+        <view class="export-btn" @click="showExportModal = true">
+          <text class="export-icon">📤</text>
+          <text class="export-text">导出</text>
         </view>
       </view>
+      <text class="title">{{ currentView === 'mistakes' ? '错题本' : '抗遗忘卡片' }}</text>
+      <text class="subtitle">{{ currentView === 'mistakes' ? '记录每一次错误，让知识不再溜走' : '艾宾浩斯记忆曲线，科学对抗遗忘' }}</text>
       <view class="stats-row">
         <view class="stat-item" v-if="currentView === 'cards'">
           <text class="stat-num">{{ pendingCardsCount }}</text>
@@ -40,12 +40,6 @@
           <text class="stat-label">待攻克</text>
         </view>
       </view>
-    </view>
-
-    <!-- Sub Navigation -->
-    <view class="sub-nav">
-      <view class="sub-nav-item" :class="{ active: currentView === 'cards' }" @click="switchView('cards')">知识卡片</view>
-      <view class="sub-nav-item" :class="{ active: currentView === 'mistakes' }" @click="switchView('mistakes')">错题本</view>
     </view>
 
     <!-- ==================== 知识卡片视图 ==================== -->
@@ -304,6 +298,7 @@
 
     <!-- ==================== 错题本视图 ==================== -->
     <template v-if="currentView === 'mistakes'">
+      <view class="mistake-content">
       <view class="mode-toggle">
         <view class="mode-btn" :class="{ active: mistakeViewMode === 'pending' }" @click="switchMistakeMode('pending')">今日复习</view>
         <view class="mode-btn" :class="{ active: mistakeViewMode === 'all' }" @click="switchMistakeMode('all')">查看全部</view>
@@ -573,6 +568,7 @@
 
       <!-- Mistake FAB -->
       <view class="fab red" @click="showMistakeForm = true"><text class="fab-icon">+</text></view>
+      </view>
     </template>
 
     <!-- Export Modal -->
@@ -617,7 +613,7 @@ import { useUserStore } from '@/stores/user'
 import { useSubjectsStore } from '@/stores/subjects'
 import * as api from '@/api/client'
 import { uploadUtil } from '@/utils/upload'
-import { exportCardsCSV, exportCardsExcel, exportCardsPDF, exportMistakesCSV, exportMistakesExcel, exportMistakesPDF, getDefaultTags } from '@/utils/export'
+import { exportCardsCSV, exportCardsExcel, exportCardsPDF, exportMistakesCSV, exportMistakesExcel, exportMistakesPDF } from '@/utils/export'
 
 const planStore = usePlanStore()
 const userStore = useUserStore()
@@ -680,13 +676,17 @@ const editingCardId = ref(null)
 const pendingCardsCount = computed(() => cards.value.filter(c => c.next_review_date && c.next_review_date <= today).length)
 const masteredCardsCount = computed(() => cards.value.filter(c => c.mastery_level === 'mastered').length)
 const availableCardTags = computed(() => {
-  if (activeSubject.value) return getDefaultTags(activeSubject.value)
-  const set = new Set(); cards.value.forEach(c => (c.tags || []).forEach(t => set.add(t))); return [...set]
+  const set = new Set()
+  const source = activeSubject.value ? cards.value.filter(c => c.subject === activeSubject.value) : cards.value
+  source.forEach(c => (c.tags || []).forEach(t => set.add(t)))
+  return [...set].sort()
 })
 
 const availableMistakeTags = computed(() => {
-  if (activeSubject.value) return getDefaultTags(activeSubject.value)
-  const set = new Set(); mistakes.value.forEach(m => (m.tags || []).forEach(t => set.add(t))); return [...set]
+  const set = new Set()
+  const source = activeSubject.value ? mistakes.value.filter(m => m.subject === activeSubject.value) : mistakes.value
+  source.forEach(m => (m.tags || []).forEach(t => set.add(t)))
+  return [...set].sort()
 })
 
 // Tags available for picker in forms (from all cards/mistakes)
@@ -1190,21 +1190,29 @@ watch(() => planStore.currentPlan?.id, async (n, o) => { if (n && n !== o) { awa
 .header { padding: 44px 0 14px; border-radius: 0 0 24px 24px; margin: 0 -20px 16px; padding-left: 20px; padding-right: 20px; }
 .header-purple { background: linear-gradient(135deg, var(--color-header-purple-start, #6b4ce6) 0%, var(--color-header-purple-end, #8b6ef5) 100%); }
 .header-red { background: linear-gradient(135deg, var(--color-header-red-start, #ef5350) 0%, var(--color-header-red-end, #f27573) 100%); }
-.header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.header-left { .title { display: block; font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 2px; } .subtitle { font-size: 14px; color: rgba(255,255,255,0.75); } @media (max-width: 767px) { .title { font-size: 20px; } .subtitle { font-size: 12px; } } }
-.header-right { position: relative; }
-.export-btn { display: flex; align-items: center; gap: 4px; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); &:active { background: rgba(255,255,255,0.35); } .export-icon { font-size: 14px; } .export-text { font-size: 13px; color: #fff; font-weight: 500; } }
+
+.header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+
+.review-toggle { display: inline-flex; background: rgba(255,255,255,0.2); border-radius: 22px; padding: 3px; gap: 2px; }
+.review-toggle-btn { padding: 6px 16px; border-radius: 19px; font-size: 13px; color: rgba(255,255,255,0.85); font-weight: 500; transition: all 0.2s;
+  &.active { background: #fff; color: #6b4ce6; font-weight: 600; }
+  &:active { transform: scale(0.96); }
+}
+.header-red .review-toggle-btn.active { color: #ef5350; }
+
+.title { display: block; font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+.subtitle { display: block; font-size: 13px; color: rgba(255,255,255,0.75); margin-bottom: 10px; }
+@media (max-width: 767px) { .title { font-size: 20px; } .subtitle { font-size: 12px; } }
+
+.export-btn { display: flex; align-items: center; gap: 4px; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); cursor: pointer; &:active { background: rgba(255,255,255,0.35); } .export-icon { font-size: 14px; } .export-text { font-size: 13px; color: #fff; font-weight: 500; } }
 .stats-row { display: flex; background: rgba(255,255,255,0.1); border-radius: 8px; padding: 8px; }
 .stat-item { flex: 1; text-align: center; .stat-num { display: block; font-size: 17px; font-weight: 700; color: #fff; } .stat-label { font-size: 11px; color: rgba(255,255,255,0.7); } }
-
-/* ===== Sub Nav ===== */
-.sub-nav { display: flex; margin-bottom: 14px; background: #f5f7f5; border-radius: 12px; padding: 4px; }
-.sub-nav-item { flex: 1; text-align: center; padding: 10px; border-radius: 10px; font-size: 14px; color: #65746d; transition: all 0.2s; &.active { background: #fff; color: #6b4ce6; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.08); } }
 
 /* ===== Mode Toggle ===== */
 .mode-toggle { display: flex; margin-bottom: 14px; background: #f5f7f5; border-radius: 12px; padding: 4px; }
 .mode-btn { flex: 1; text-align: center; padding: 10px; border-radius: 10px; font-size: 14px; color: #65746d; transition: all 0.2s; &.active { background: #fff; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.08); } }
 .mode-toggle .mode-btn.active { color: #6b4ce6; }
+.mistake-content .mode-btn.active { color: #ef5350; }
 
 /* ===== Filters ===== */
 .filter-section { margin-bottom: 10px; }
@@ -1212,7 +1220,9 @@ watch(() => planStore.currentPlan?.id, async (n, o) => { if (n && n !== o) { awa
 .filter-scroll { white-space: nowrap; width: 100%; flex: 1; min-width: 0; }
 .filter-list { display: inline-flex; gap: 8px; padding: 2px 0; }
 .filter-item { display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 13px; color: #65746d; background: #f5f7f5; white-space: nowrap; transition: all 0.2s; &.active { background: #6b4ce6; color: #fff; } }
+.mistake-content .filter-item.active:not(.err-item) { background: #ef5350; }
 .tag-item { &.active { background: #8b6ef5; } }
+.mistake-content .tag-item.active { background: #ef5350; }
 .mastery-item { &.active { background: #6b4ce6; color: #fff; } &.unmastered.active { background: #ef5350; } &.familiar.active { background: #ffb74d; } &.mastered.active { background: #66bb6a; } }
 .err-item { &.active { background: #ef5350; color: #fff; } &.err-1.active { background: #ffb74d; } &.err-2.active { background: #ef5350; } &.err-3.active { background: #c62828; } &.mastered.active { background: #4caf50; } }
 .filter-manage-btn { width: 32px; height: 32px; border-radius: 50%; background: #f5f7f5; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; border: 1px solid #e0e0e0; &:active { background: #e8e0ff; } }

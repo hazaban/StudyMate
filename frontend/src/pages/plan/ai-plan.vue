@@ -149,8 +149,11 @@
           <text class="upload-icon">📷</text>
         </view>
         <input class="chat-input" v-model="inputText" placeholder="输入你的需求，或上传图片..." @confirm="sendMessage" />
-        <view class="send-btn" :class="{ disabled: !inputText.trim() && !currentImageBase64 || loading }" @click="sendMessage">
+        <view class="send-btn" v-if="!loading" :class="{ disabled: !inputText.trim() && !currentImageBase64 }" @click="sendMessage">
           <text class="send-icon">➤</text>
+        </view>
+        <view class="send-btn stop-btn" v-else @click="stopMessage">
+          <text class="stop-icon">■</text>
         </view>
       </view>
       <image v-if="currentImage" :src="currentImage" mode="widthFix" class="preview-image-small" />
@@ -266,6 +269,7 @@ function startNewConversation() { saveCurrentConversation(); messages.value = [{
 function loadConversation(idx) { saveCurrentConversation(); const c = conversationList.value[idx]; if(!c) return; messages.value = c.messages; userMessages.value = c.userMessages||[]; showSidebar.value = false; uni.setStorageSync(LAST_CONV_KEY, JSON.stringify(c)) }
 const inputText = ref('')
 const loading = ref(false)
+const abortFlag = ref(false)
 const scrollToMsg = ref('')
 const currentImage = ref('')
 const currentImageBase64 = ref('')
@@ -279,55 +283,69 @@ function quickFill(text) {
 }
 
 function chooseImage() {
+  // #ifdef H5
+  pickImage(['album'])
+  // #endif
+  // #ifndef H5
   uni.showActionSheet({
     itemList: ['拍照', '从相册选择'],
     success: (res) => {
-      const sourceType = res.tapIndex === 0 ? ['camera'] : ['album']
-      uni.chooseImage({
-        count: 1,
-        sizeType: ['compressed'],
-        sourceType: sourceType,
-        success: (res) => {
-          const tempPath = res.tempFilePaths[0]
-          currentImage.value = tempPath
-          // #ifdef H5
-          const img = new Image()
-          img.crossOrigin = 'anonymous'
-          img.onload = () => {
-            const canvas = document.createElement('canvas')
-            const maxWidth = 1024
-            let width = img.width
-            let height = img.height
-            if (width > maxWidth) {
-              height = (maxWidth / width) * height
-              width = maxWidth
-            }
-            canvas.width = width
-            canvas.height = height
-            const ctx = canvas.getContext('2d')
-            ctx.drawImage(img, 0, 0, width, height)
-            currentImageBase64.value = canvas.toDataURL('image/jpeg', 0.8)
-          }
-          img.src = tempPath
-          // #endif
-          // #ifndef H5
-          uni.getFileSystemManager().readFile({
-            filePath: tempPath,
-            encoding: 'base64',
-            success: (data) => {
-              currentImageBase64.value = `data:image/jpeg;base64,${data.data}`
-            }
-          })
-          // #endif
-        }
-      })
+      pickImage(res.tapIndex === 0 ? ['camera'] : ['album'])
     }
   })
+  // #endif
+}
+
+function pickImage(sourceType) {
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    sourceType: sourceType,
+    success: (res) => {
+      const tempPath = res.tempFilePaths[0]
+      currentImage.value = tempPath
+      // #ifdef H5
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const maxWidth = 1024
+        let width = img.width
+        let height = img.height
+        if (width > maxWidth) {
+          height = (maxWidth / width) * height
+          width = maxWidth
+        }
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+        currentImageBase64.value = canvas.toDataURL('image/jpeg', 0.8)
+      }
+      img.src = tempPath
+      // #endif
+      // #ifndef H5
+      uni.getFileSystemManager().readFile({
+        filePath: tempPath,
+        encoding: 'base64',
+        success: (data) => {
+          currentImageBase64.value = `data:image/jpeg;base64,${data.data}`
+        }
+      })
+      // #endif
+    }
+  })
+}
+
+function stopMessage() {
+  abortFlag.value = true
+  loading.value = false
 }
 
 async function sendMessage() {
   if ((!inputText.value.trim() && !currentImageBase64.value) || loading.value) return
 
+  abortFlag.value = false
   const userText = inputText.value.trim()
   userMessages.value.push({ text: userText || '[图片]', image: currentImage.value })
   inputText.value = ''
@@ -344,6 +362,8 @@ async function sendMessage() {
       if (ra[i]) history.push({ role: 'assistant', content: ra[i].text || '' })
     }
     const result = await api.aiChat({ ...data, history })
+    // 用户中途点了停止 → 丢弃结果
+    if (abortFlag.value) return
 
     const newMsg = {
       text: result.summary,
@@ -976,6 +996,17 @@ onUnmounted(() => {
 }
 
 .send-icon { font-size: 18px; color: #fff; }
+
+.stop-btn {
+  background: #ef5350;
+  animation: pulse-stop 1.5s ease infinite;
+}
+.stop-icon { font-size: 14px; color: #fff; }
+
+@keyframes pulse-stop {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,83,80,0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(239,83,80,0); }
+}
 
 .preview-image-small {
   max-width: 200px;
