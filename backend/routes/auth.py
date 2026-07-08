@@ -3,7 +3,7 @@
 from datetime import timedelta, datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Body
 from sqlalchemy.orm import Session
 from jose import jwt
 import bcrypt
@@ -85,11 +85,12 @@ def get_me(
 
 @router.put("/me", response_model=UserResponse)
 def update_me(
-    nickname: str = None,
-    avatar_url: str = None,
+    body: dict = Body(...),
     authorization: str = Header(None),
     db: Session = Depends(get_db)
 ):
+    nickname = body.get("nickname")
+    avatar_url = body.get("avatar_url")
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="未登录")
     try:

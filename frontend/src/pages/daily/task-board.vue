@@ -16,7 +16,10 @@
               <text class="switch-label">四象限</text>
             </view>
             <view class="quadrant-entry-btn" v-if="enableQuadrant" @click="goToQuadrant">
-              <text class="quadrant-entry-icon">▦</text>
+              <view class="quadrant-grid-icon">
+                <view class="qg-cell"></view><view class="qg-cell"></view>
+                <view class="qg-cell"></view><view class="qg-cell"></view>
+              </view>
             </view>
           </view>
         </view>
@@ -1187,7 +1190,8 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   display: flex; align-items: center; justify-content: center;
   &:active { background: rgba(255,255,255,0.4); transform: scale(0.92); }
 }
-.quadrant-entry-icon { font-size: 14px; }
+.quadrant-grid-icon { display: grid; grid-template-columns: 5px 5px; grid-template-rows: 5px 5px; gap: 2px; }
+.qg-cell { background: #fff; border-radius: 1px; }
 
 /* FAB — 右下角添加任务 */
 .fab { position: fixed; right: 20px; bottom: 60px; z-index: 50; width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,0.35); background: #2f7d4f; &:active { transform: scale(0.92); } .fab-icon { font-size: 28px; color: #fff; font-weight: 300; } }

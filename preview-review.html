@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=390"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei",sans-serif;background:#f8fbf6;padding:0}
+h3{margin:20px 16px 8px;font-size:14px;color:#1a1a2e;padding-bottom:6px;border-bottom:1px solid #e8ece9}
+.wrap{max-width:390px;margin:0 auto}
+.pg{padding:0 20px}
+
+.hdr{padding:44px 0 14px;border-radius:0 0 24px 24px;margin:0 -20px 16px;padding-left:20px;padding-right:20px}
+.hdr.purple{background:linear-gradient(135deg,#6b4ce6,#8b6ef5)}
+.hdr.red{background:linear-gradient(135deg,#ef5350,#f27573)}
+.hrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.tog{display:inline-flex;background:rgba(255,255,255,.2);border-radius:22px;padding:3px;gap:2px}
+.tog-b{padding:6px 16px;border-radius:19px;font-size:13px;color:rgba(255,255,255,.85);font-weight:500}
+.tog-b.a{background:#fff;font-weight:600}.purple .tog-b.a{color:#6b4ce6}.red .tog-b.a{color:#ef5350}
+.xpt{display:flex;align-items:center;gap:4px;padding:8px 16px;background:rgba(255,255,255,.2);border-radius:20px;font-size:13px;color:#fff}
+.title{display:block;font-size:22px;font-weight:700;color:#fff;margin-bottom:2px}
+.sub{display:block;font-size:13px;color:rgba(255,255,255,.75);margin-bottom:10px}
+.stats{display:flex;background:rgba(255,255,255,.1);border-radius:8px;padding:8px}
+.si{flex:1;text-align:center}.sn{font-size:17px;font-weight:700;color:#fff;display:block}.sl{font-size:11px;color:rgba(255,255,255,.7)}
+
+/* Mode toggle */
+.mtog{display:flex;margin-bottom:14px;background:#f5f7f5;border-radius:12px;padding:4px}
+.mtb{flex:1;text-align:center;padding:10px;border-radius:10px;font-size:14px;color:#65746d}
+.mtb.a{background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.08);font-weight:600}
+.pg .mtb.a{color:#6b4ce6}
+.purple+.pg .mtb.a{color:#6b4ce6}
+
+.fs{margin-bottom:10px}.frow{display:flex;gap:6px;overflow-x:auto;white-space:nowrap}
+.fi{padding:6px 14px;border-radius:20px;font-size:12px;color:#65746d;background:#f5f7f5}
+.fi.a{background:#6b4ce6;color:#fff}
+
+/* Card item */
+.card{background:#fff;border-radius:14px;padding:14px;border:1px solid #d9e7dd;margin-bottom:10px}
+.ctop{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.csubj{font-size:11px;color:#6b4ce6;background:#f3f0ff;padding:2px 8px;border-radius:6px}
+.cq{font-size:14px;color:#17332a;margin-bottom:6px;line-height:1.4}
+.ctag{font-size:10px;padding:2px 8px;background:#f5f7f5;border-radius:6px;color:#999;margin-right:4px}
+
+.mcard{background:#fff;border-radius:14px;padding:14px;border:1px solid #ffcdd2;margin-bottom:10px}
+.mq{font-size:14px;color:#17332a;margin-bottom:4px;line-height:1.4}
+.ma{font-size:13px;color:#65746d;margin-bottom:6px}
+</style></head><body><div class="wrap">
+
+<h3>📚 知识卡片视图</h3>
+<div class="pg">
+  <div class="hdr purple">
+    <div class="hrow">
+      <div class="tog"><span class="tog-b a">知识卡片</span><span class="tog-b">错题本</span></div>
+      <span class="xpt">📤 导出</span>
+    </div>
+    <span class="title">抗遗忘卡片</span>
+    <span class="sub">艾宾浩斯记忆曲线，科学对抗遗忘</span>
+    <div class="stats"><div class="si"><span class="sn">12</span><span class="sl">待复习</span></div><div class="si"><span class="sn">68</span><span class="sl">总卡片</span></div><div class="si"><span class="sn">5</span><span class="sl">已掌握</span></div></div>
+  </div>
+  <div class="mtog" style="--accent:#6b4ce6"><span class="mtb a" style="color:#6b4ce6">今日复习</span><span class="mtb">查看全部</span></div>
+  <div class="fs"><div class="frow"><span class="fi a">全部科目</span><span class="fi">数据结构</span><span class="fi">操作系统</span><span class="fi">计算机网络</span></div></div>
+  <div class="fs"><div class="frow"><span class="fi a">全部标签</span><span class="fi">二叉树</span><span class="fi">遍历</span><span class="fi">重点</span></div></div>
+  <div class="card">
+    <div class="ctop"><span class="csubj">数据结构</span></div>
+    <div class="cq">Q: 二叉树的前序遍历顺序是什么？</div>
+    <span class="ctag">二叉树</span><span class="ctag">遍历</span><span class="ctag">重点</span>
+  </div>
+  <div class="card">
+    <div class="ctop"><span class="csubj">操作系统</span></div>
+    <div class="cq">Q: 进程和线程的区别是什么？</div>
+    <span class="ctag">进程</span><span class="ctag">线程</span><span class="ctag">重点</span>
+  </div>
+</div>
+
+<h3>📝 错题本视图</h3>
+<div class="pg">
+  <div class="hdr red">
+    <div class="hrow">
+      <div class="tog"><span class="tog-b">知识卡片</span><span class="tog-b a">错题本</span></div>
+      <span class="xpt">📤 导出</span>
+    </div>
+    <span class="title">错题本</span>
+    <span class="sub">记录每一次错误，让知识不再溜走</span>
+    <div class="stats"><div class="si"><span class="sn">25</span><span class="sl">总错题</span></div><div class="si"><span class="sn">18</span><span class="sl">已掌握</span></div><div class="si"><span class="sn">7</span><span class="sl">待攻克</span></div></div>
+  </div>
+  <div class="mtog"><span class="mtb a" style="color:#ef5350">今日复习</span><span class="mtb">查看全部</span></div>
+  <div class="fs"><div class="frow"><span class="fi a" style="background:#6b4ce6">全部科目</span><span class="fi" style="background:#ef5350;color:#fff">计算机网络</span></div></div>
+  <div class="mcard">
+    <div class="ctop"><span class="csubj" style="color:#ef5350;background:#ffebee">计算机网络</span></div>
+    <div class="mq">Q: TCP三次握手的过程是怎样的？</div>
+    <div class="ma">A: SYN→SYN-ACK→ACK，建立双向连接</div>
+    <span class="ctag">TCP</span><span class="ctag">协议</span><span class="ctag">易错</span>
+  </div>
+</div>
+
+</div></body></html>

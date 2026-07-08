@@ -8,7 +8,7 @@
         </view>
         <view class="user-info">
           <view class="nickname-row" @click="editNickname">
-            <text class="username">{{ userStore.user.user_metadata?.nickname || '用户' }}</text>
+            <text class="username">{{ userStore.user?.nickname || '用户' }}</text>
             <text class="edit-icon">✎</text>
           </view>
           <text class="user-email">{{ userStore.user.email }}</text>
@@ -108,7 +108,7 @@ const editingNickname = ref(false)
 const nicknameTemp = ref('')
 
 function initAvatar() {
-  avatarUrl.value = userStore.user?.user_metadata?.avatar_url || userStore.user?.avatar_url || ''
+  avatarUrl.value = userStore.user?.avatar_url || ''
 }
 
 async function loadData() {
@@ -200,7 +200,7 @@ function chooseAvatar() {
 }
 
 function editNickname() {
-  nicknameTemp.value = userStore.user?.user_metadata?.nickname || ''
+  nicknameTemp.value = userStore.user?.nickname || ''
   editingNickname.value = true
   uni.showModal({
     title: '修改昵称',
