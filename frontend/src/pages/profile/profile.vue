@@ -4,9 +4,7 @@
       <view class="avatar-section">
         <view class="avatar" @click="chooseAvatar">
           <image v-if="avatarUrl" :src="avatarUrl" mode="aspectFill" class="avatar-img" />
-          <view class="avatar-default" v-else>
-            <view class="avatar-face"><view class="a-eye l"></view><view class="a-eye r"></view><view class="a-mouth"></view></view>
-          </view>
+          <text class="avatar-emoji" v-else>🧸</text>
         </view>
         <view class="user-info">
           <view class="nickname-row" @click="editNickname">
@@ -304,11 +302,7 @@ onShow(async () => {
   &:active { opacity: 0.8; }
   .avatar-img { width: 100%; height: 100%; }
 }
-.avatar-default { width: 46px; height: 46px; position: relative; }
-.avatar-face { width: 46px; height: 38px; background: #f5d6a8; border-radius: 22px 22px 16px 16px; position: absolute; bottom: 0; }
-.a-eye { position: absolute; top: 11px; width: 7px; height: 8px; border-radius: 50%; background: #333; }
-.a-eye.l { left: 11px; } .a-eye.r { right: 11px; }
-.a-mouth { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 12px; height: 6px; border-radius: 0 0 12px 12px; background: #f48fb1; }
+.avatar-emoji { font-size: 40px; }
 
 .user-info {
   .nickname-row { display: flex; align-items: center; gap: 6px; cursor: pointer; }
