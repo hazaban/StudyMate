@@ -350,32 +350,32 @@ onShow(async () => {
 
 <style lang="scss" scoped>
 .header {
-  padding: 60px 0 20px;
+  padding: 44px 0 12px;
   background: linear-gradient(135deg, #e8a838 0%, #f0c060 100%);
-  border-radius: 0 0 32px 32px;
-  margin: 0 -20px 24px;
+  border-radius: 0 0 24px 24px;
+  margin: 0 -20px 20px;
   padding-left: 20px; padding-right: 20px;
 }
 
 .header-top {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 16px;
+  align-items: center;
+  margin-bottom: 10px;
 }
 
 .header-left {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 10px;
   .title {
     display: block;
-    font-size: 26px;
+    font-size: 22px;
     font-weight: 700;
     color: #fff;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
   }
   .subtitle {
-    font-size: 14px;
-    color: rgba(255,255,255,0.8);
+    font-size: 13px;
+    color: rgba(255,255,255,0.75);
   }
 }
 
@@ -393,20 +393,19 @@ onShow(async () => {
   align-items: center;
   gap: 2px;
   background: rgba(255,255,255,0.2);
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 12px;
   &:active { background: rgba(255,255,255,0.3); transform: scale(0.96); }
-  .guide-icon { font-size: 18px; }
-  .guide-text { font-size: 11px; color: #fff; font-weight: 500; }
+  .guide-icon { font-size: 16px; }
+  .guide-text { font-size: 10px; color: #fff; font-weight: 500; }
 }
 
 .stats-row {
   display: flex;
   align-items: center;
-  background: rgba(255,255,255,0.15);
-  border-radius: 16px;
-  padding: 16px;
-  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 10px;
 }
 
 .stat-item {

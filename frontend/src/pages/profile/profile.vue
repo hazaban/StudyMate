@@ -259,7 +259,7 @@ onShow(async () => {
 </script>
 
 <style lang="scss" scoped>
-.page { padding-top: 20px; }
+.page { padding-top: 32px; }
 .profile-card {
   background: $bg2;
   border-radius: 20px;
