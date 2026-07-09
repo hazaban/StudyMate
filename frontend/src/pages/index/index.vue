@@ -102,8 +102,8 @@
         <text class="section-link" @click="goToTaskBoard">全部任务</text>
       </view>
       <view class="task-list">
-        <view class="task-item" v-for="task in previewTasks" :key="task.id" @contextmenu.prevent="editTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
-          <view class="task-checkbox" :class="{ checked: task.status === 'completed' }" @click="toggleTaskComplete(task)">
+        <view class="task-item" v-for="task in previewTasks" :key="task.id" @click="onTaskCardClick(task)" @contextmenu.prevent="editTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
+          <view class="task-checkbox" :class="{ checked: task.status === 'completed' }" @click.stop="toggleTaskComplete(task)">
             <text v-if="task.status === 'completed'">✓</text>
           </view>
           <view class="task-content">
@@ -116,12 +116,18 @@
             </view>
           </view>
           <view class="task-actions">
-            <view class="task-action-btn" @click="startPomodoroFromTask(task)">🍅</view>
+            <view class="task-action-btn" @click.stop="startPomodoroFromTask(task)">🍅</view>
           </view>
           <view class="task-type" :class="task.type">
             {{ taskTypeText(task.type) }}
           </view>
         </view>
+      </view>
+      <view class="task-preview-footer" v-if="taskStore.todayTasks.length > 0">
+        <text class="task-preview-count">共 {{ taskStore.todayTasks.length }} 个任务 · 完成 {{ taskStore.completedCount }} 个</text>
+      </view>
+      <view class="empty-tip" v-if="taskStore.todayTasks.length === 0">
+        <text class="empty-tip-text">今日还没有任务，去任务页添加吧</text>
       </view>
     </view>
 
@@ -229,8 +235,21 @@ async function loadSubjects() {
 }
 
 const previewTasks = computed(() => {
-  return taskStore.todayTasks.slice(0, 3)
+  // 显示全部今日任务，与任务版块保持一致
+  return taskStore.todayTasks
 })
+
+// 平台检测：桌面端(无触控)用点击编辑，移动端用长按编辑
+const isDesktop = ref(false)
+try {
+  // #ifdef H5
+  isDesktop.value = !('ontouchstart' in window) && (navigator.maxTouchPoints || 0) === 0
+  // #endif
+} catch (e) { /* non-H5 */ }
+
+function onTaskCardClick(task) {
+  if (isDesktop.value) editTask(task)
+}
 
 function taskTypeText(type) {
   const map = {
@@ -583,6 +602,12 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .task-preview {
   margin-bottom: 20px;
 }
+.task-preview-footer {
+  margin-top: 12px; text-align: center;
+}
+.task-preview-count { font-size: 12px; color: $muted; }
+.empty-tip { padding: 24px 12px; text-align: center; }
+.empty-tip-text { font-size: 13px; color: $muted; }
 
 .task-list {
   display: flex;

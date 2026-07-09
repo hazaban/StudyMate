@@ -34,7 +34,7 @@
         <view class="ctrl-btn reset" @click="resetTimer" v-if="isRunning || isPaused || hasProgress">
           <text>重置</text>
         </view>
-        <view class="ctrl-btn complete" @click="completeSession" v-if="timerMode === 'countup' && (isRunning || isPaused || hasProgress)">
+        <view class="ctrl-btn complete" @click="completeSession(true)" v-if="timerMode === 'countup' && (isRunning || isPaused || hasProgress)">
           <text>✓ 完成</text>
         </view>
         <view class="ctrl-btn start" @click="toggleTimer" :class="{ pause: isRunning }">
@@ -219,6 +219,70 @@ const totalMinutes = ref(0)
 const todayRecords = ref([])
 let timerInterval = null
 
+// --- 时间戳计时（后台也能准确计时，且离开后可恢复）---
+// runningSession 是计时的事实来源；timeRemaining/elapsedSeconds 仅作显示，由 tick() 校准
+const runningSession = ref(null)
+// 结构: { mode, isBreak, focusSeconds, breakSeconds, startTimestamp, accumulatedElapsed, currentTaskId, currentTaskName, date }
+// startTimestamp != null 表示正在运行；== null 表示已暂停（accumulatedElapsed 已累计）
+const isCompleting = ref(false) // 防止 completeSession 重入
+const POMODORO_SESSION_KEY = 'studymate_pomodoro_running'
+
+function persistRunningSession() {
+  if (!runningSession.value) {
+    uni.removeStorageSync(POMODORO_SESSION_KEY)
+    return
+  }
+  uni.setStorageSync(POMODORO_SESSION_KEY, JSON.stringify(runningSession.value))
+}
+function loadRunningSession() {
+  try {
+    const s = uni.getStorageSync(POMODORO_SESSION_KEY)
+    if (s) return JSON.parse(s)
+  } catch (e) { /* */ }
+  return null
+}
+function clearRunningSession() {
+  runningSession.value = null
+  uni.removeStorageSync(POMODORO_SESSION_KEY)
+}
+
+// 每秒刷新显示；即便后台被节流，回到前台/visibilitychange 时也会用时间戳校准
+function tick() {
+  const rs = runningSession.value
+  if (!rs || !rs.startTimestamp) return
+  const now = Date.now()
+  const segmentElapsed = (now - rs.startTimestamp) / 1000
+  const totalElapsed = rs.accumulatedElapsed + segmentElapsed
+  const targetSeconds = rs.isBreak ? rs.breakSeconds : rs.focusSeconds
+
+  if (rs.mode === 'countup') {
+    elapsedSeconds.value = Math.floor(totalElapsed)
+  } else {
+    const remaining = targetSeconds - totalElapsed
+    if (remaining <= 0) {
+      timeRemaining.value = 0
+      // 自然结束（可能在后台）
+      completeSession(false)
+      return
+    }
+    timeRemaining.value = Math.ceil(remaining)
+  }
+}
+
+function startInterval() {
+  if (timerInterval) clearInterval(timerInterval)
+  timerInterval = setInterval(() => { tick() }, 1000)
+}
+
+function onVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    // 回到前台：用时间戳校准，若期间已结束则触发完成
+    tick()
+  }
+}
+
+function onWindowFocus() { tick() }
+
 // --- Task association ---
 const currentTaskId = ref(null)
 const currentTaskName = ref('')
@@ -239,7 +303,12 @@ const todayTasks = computed(() => taskStore.todayTasks || [])
 
 const currentFocusSeconds = computed(() => focusTime.value * 60)
 const currentBreakSeconds = computed(() => breakTime.value * 60)
-const currentTotalSeconds = computed(() => isBreak.value ? currentBreakSeconds.value : currentFocusSeconds.value)
+// 运行中用会话快照的目标时长，避免运行中修改 focusTime 导致进度错乱
+const currentTotalSeconds = computed(() => {
+  const rs = runningSession.value
+  if (rs) return rs.isBreak ? rs.breakSeconds : rs.focusSeconds
+  return isBreak.value ? currentBreakSeconds.value : currentFocusSeconds.value
+})
 const hasProgress = computed(() => {
   if (timerMode.value === 'countup') return elapsedSeconds.value > 0
   return timeRemaining.value < currentTotalSeconds.value
@@ -296,8 +365,8 @@ watch([focusTime, breakTime, timerMode], () => {
 
 // --- Mode Switch ---
 function switchMode(mode) {
-  if (isRunning.value) {
-    uni.showToast({ title: '请先停止计时', icon: 'none' })
+  if (runningSession.value) {
+    uni.showToast({ title: '计时进行中，无法切换模式', icon: 'none' })
     return
   }
   timerMode.value = mode
@@ -310,12 +379,14 @@ function switchMode(mode) {
 
 // --- Time adjust ---
 function adjustFocusTime(d) {
+  if (runningSession.value) { uni.showToast({ title: '计时中无法修改', icon: 'none' }); return }
   const n = focusTime.value + d
   if (n < 1 || n > 120) return
   focusTime.value = n
   if (!isRunning.value && !isBreak.value) timeRemaining.value = n * 60
 }
 function adjustBreakTime(d) {
+  if (runningSession.value) { uni.showToast({ title: '计时中无法修改', icon: 'none' }); return }
   const n = breakTime.value + d
   if (n < 0 || n > 30) return
   breakTime.value = n
@@ -327,7 +398,7 @@ function onFocusTimeBlur() {
   v = Math.max(1, Math.min(120, v))
   focusTime.value = v
   focusTimeInput.value = String(v)
-  if (!isRunning.value && !isBreak.value) timeRemaining.value = v * 60
+  if (!runningSession.value && !isRunning.value && !isBreak.value) timeRemaining.value = v * 60
 }
 function onBreakTimeBlur() {
   let v = parseInt(breakTimeInput.value)
@@ -335,13 +406,15 @@ function onBreakTimeBlur() {
   v = Math.max(0, Math.min(30, v))
   breakTime.value = v
   breakTimeInput.value = String(v)
-  if (!isRunning.value && isBreak.value) timeRemaining.value = v * 60
+  if (!runningSession.value && !isRunning.value && isBreak.value) timeRemaining.value = v * 60
 }
 
 // --- Timer ---
 function resetTimer() {
-  isRunning.value = false; isPaused.value = false; isBreak.value = false
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null }
+  clearRunningSession()
+  isRunning.value = false; isPaused.value = false; isBreak.value = false
+  isCompleting.value = false
   if (timerMode.value === 'countup') {
     elapsedSeconds.value = 0
   } else {
@@ -351,128 +424,186 @@ function resetTimer() {
 
 function toggleTimer() {
   if (isRunning.value) {
+    // 暂停：把当前段已计时累加到 accumulatedElapsed，清空 startTimestamp
+    const rs = runningSession.value
+    if (rs && rs.startTimestamp) {
+      rs.accumulatedElapsed += (Date.now() - rs.startTimestamp) / 1000
+      rs.startTimestamp = null
+      persistRunningSession()
+      // 立即刷新显示（避免显示残留 1 秒误差）
+      const target = rs.isBreak ? rs.breakSeconds : rs.focusSeconds
+      if (rs.mode === 'countup') {
+        elapsedSeconds.value = Math.floor(rs.accumulatedElapsed)
+      } else {
+        timeRemaining.value = Math.max(0, Math.ceil(target - rs.accumulatedElapsed))
+      }
+    }
     isRunning.value = false; isPaused.value = true
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null }
   } else {
-    isRunning.value = true; isPaused.value = false
-    if (timerMode.value === 'countup') {
-      // 正计时模式：累加时间
-      timerInterval = setInterval(() => {
-        elapsedSeconds.value++
-      }, 1000)
+    // 开始 或 继续
+    if (!runningSession.value) {
+      // 全新开始：记录绝对开始时间，快照目标时长
+      runningSession.value = {
+        mode: timerMode.value,
+        isBreak: false,
+        focusSeconds: focusTime.value * 60,
+        breakSeconds: breakTime.value * 60,
+        startTimestamp: Date.now(),
+        accumulatedElapsed: 0,
+        currentTaskId: currentTaskId.value,
+        currentTaskName: currentTaskName.value,
+        date: today.value
+      }
     } else {
-      // 倒计时模式：递减时间
-      timerInterval = setInterval(() => {
-        timeRemaining.value--
-        if (timeRemaining.value <= 0) completeSession()
-      }, 1000)
+      // 从暂停继续
+      runningSession.value.startTimestamp = Date.now()
     }
+    persistRunningSession()
+    isRunning.value = true; isPaused.value = false
+    startInterval()
+    tick()
   }
 }
 
-async function completeSession() {
-  isRunning.value = false; isPaused.value = false
-  if (timerInterval) { clearInterval(timerInterval); timerInterval = null }
+async function completeSession(isManual = false) {
+  if (isCompleting.value) return
+  const rs = runningSession.value
+  if (!rs) return
+  isCompleting.value = true
+  try {
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null }
+    isRunning.value = false; isPaused.value = false
 
-  // 计算本次时长
-  let dur = 0
-  if (timerMode.value === 'countup') {
-    dur = Math.round(elapsedSeconds.value / 60)
-    elapsedSeconds.value = 0
-  } else {
-    dur = Math.round(currentFocusSeconds.value / 60)
-  }
+    // 用时间戳计算实际已计时长（后台也能准确）
+    const now = Date.now()
+    const segmentElapsed = rs.startTimestamp ? (now - rs.startTimestamp) / 1000 : 0
+    const totalElapsed = rs.accumulatedElapsed + segmentElapsed
+    const targetSeconds = rs.isBreak ? rs.breakSeconds : rs.focusSeconds
 
-  if (!isBreak.value && dur > 0) {
-    completedPomodoros.value++
-    totalMinutes.value += dur
-
-    const name = currentTaskName.value || (timerMode.value === 'countup' ? '正计时专注' : '番茄钟专注')
-    const now = new Date()
-    const ts = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`
-
-    todayRecords.value.unshift({ type: timerMode.value === 'countup' ? 'countup' : 'focus', taskName: name, time: ts, duration: dur, date: today.value })
-    saveRecords()
-
-    if (planStore.currentPlan) {
-      try {
-        let subj = ''
-        const t = taskStore.todayTasks.find(t => t.id === currentTaskId.value)
-        if (t) subj = t.subject
-        else if (currentTaskName.value) subj = currentTaskName.value.split(':')[0].split(' - ')[0].trim()
-        const now = new Date()
-        const endTime = now.toISOString()
-        const startTime = new Date(now.getTime() - dur * 60 * 1000).toISOString()
-        await createFocusRecord({
-          plan_id: planStore.currentPlan.id,
-          date: today.value,
-          type: timerMode.value === 'countup' ? 'countup' : 'focus',
-          subject: subj,
-          task_id: currentTaskId.value || null,
-          task_name: name,
-          duration: dur,
-          start_time: startTime,
-          end_time: endTime
-        })
-      } catch (e) { console.warn('Sync focus record failed:', e) }
+    if (rs.isBreak) {
+      // 休息结束
+      isBreak.value = false
+      clearRunningSession()
+      timeRemaining.value = currentFocusSeconds.value
+      elapsedSeconds.value = 0
+      notifyCompletion('☕ 休息结束', '休息时间到了，继续专注学习吧！', false)
+      return
     }
 
-    if (currentTaskId.value) {
-      try {
-        const t = taskStore.todayTasks.find(t => t.id === currentTaskId.value)
-        if (t) {
-          const newActual = (t.actual_duration || 0) + dur
-          const updateData = { actual_duration: newActual }
-          // 任务未设置开始时间时，用番茄钟自动填充
-          if (!t.start_hour || (t.start_hour === 9 && !t.start_minute && !t.actual_duration)) {
-            const start = new Date(new Date().getTime() - dur * 60 * 1000)
-            updateData.start_hour = start.getHours()
-            updateData.start_minute = start.getMinutes()
+    // 专注结束：计算时长
+    let dur = 0
+    if (rs.mode === 'countup') {
+      dur = Math.round(totalElapsed / 60)
+    } else {
+      // 倒计时：自然结束用目标时长；手动提前结束用实际已计时长
+      dur = isManual ? Math.max(0, Math.round(totalElapsed / 60)) : Math.round(targetSeconds / 60)
+    }
+    if (dur < 1 && totalElapsed >= 60) dur = 1
+
+    if (dur > 0) {
+      completedPomodoros.value++
+      totalMinutes.value += dur
+
+      const name = currentTaskName.value || (rs.mode === 'countup' ? '正计时专注' : '番茄钟专注')
+      const nowDate = new Date()
+      const ts = `${nowDate.getHours()}:${String(nowDate.getMinutes()).padStart(2, '0')}`
+
+      todayRecords.value.unshift({ type: rs.mode === 'countup' ? 'countup' : 'focus', taskName: name, time: ts, duration: dur, date: today.value })
+      saveRecords()
+
+      if (planStore.currentPlan) {
+        try {
+          let subj = ''
+          const t = taskStore.todayTasks.find(t => t.id === rs.currentTaskId)
+          if (t) subj = t.subject
+          else if (currentTaskName.value) subj = currentTaskName.value.split(':')[0].split(' - ')[0].trim()
+          const endTime = nowDate.toISOString()
+          const startTime = new Date(nowDate.getTime() - dur * 60 * 1000).toISOString()
+          await createFocusRecord({
+            plan_id: planStore.currentPlan.id,
+            date: today.value,
+            type: rs.mode === 'countup' ? 'countup' : 'focus',
+            subject: subj,
+            task_id: rs.currentTaskId || null,
+            task_name: name,
+            duration: dur,
+            start_time: startTime,
+            end_time: endTime
+          })
+        } catch (e) { console.warn('Sync focus record failed:', e) }
+      }
+
+      if (rs.currentTaskId) {
+        try {
+          const t = taskStore.todayTasks.find(t => t.id === rs.currentTaskId)
+          if (t) {
+            const newActual = (t.actual_duration || 0) + dur
+            const updateData = { actual_duration: newActual }
+            // 任务未设置开始时间时，用番茄钟自动填充
+            if (!t.start_hour || (t.start_hour === 9 && !t.start_minute && !t.actual_duration)) {
+              const start = new Date(new Date().getTime() - dur * 60 * 1000)
+              updateData.start_hour = start.getHours()
+              updateData.start_minute = start.getMinutes()
+            }
+            await taskStore.updateTask(rs.currentTaskId, updateData)
           }
-          await taskStore.updateTask(currentTaskId.value, updateData)
-        }
-      } catch (e) { /* */ }
+        } catch (e) { /* */ }
+      }
+
+      if (planStore.currentPlan) {
+        try {
+          let subj = ''
+          const t = taskStore.todayTasks.find(t => t.id === rs.currentTaskId)
+          if (t) subj = t.subject
+          else if (currentTaskName.value) subj = currentTaskName.value.split(':')[0].split(' - ')[0].trim()
+          if (subj) {
+            const crop = await farmStore.ensureCrop(planStore.currentPlan.id, subj)
+            if (crop?.plant) await farmStore.waterPlant(crop.plant.id)
+          }
+        } catch (e) { /* */ }
+      }
+
+      uni.showToast({ title: `完成 ${dur} 分钟专注!`, icon: 'success' })
+      notifyCompletion(
+        '🎉 专注完成',
+        `已完成 ${dur} 分钟专注学习${currentTaskName.value ? '：' + currentTaskName.value : ''}`,
+        true
+      )
     }
 
-    if (planStore.currentPlan) {
-      try {
-        let subj = ''
-        const t = taskStore.todayTasks.find(t => t.id === currentTaskId.value)
-        if (t) subj = t.subject
-        else if (currentTaskName.value) subj = currentTaskName.value.split(':')[0].split(' - ')[0].trim()
-        if (subj) {
-          const crop = await farmStore.ensureCrop(planStore.currentPlan.id, subj)
-          if (crop?.plant) await farmStore.waterPlant(crop.plant.id)
-        }
-      } catch (e) { /* */ }
-    }
-
-    uni.showToast({ title: `完成 ${dur} 分钟专注!`, icon: 'success' })
-
-    notifyCompletion(
-      '🎉 专注完成',
-      `已完成 ${dur} 分钟专注学习${currentTaskName.value ? '：' + currentTaskName.value : ''}`,
-      true
-    )
-
-    // 倒计时模式下，开始休息
-    if (timerMode.value === 'countdown') {
-      const bs = currentBreakSeconds.value
+    // 倒计时模式：专注结束后自动进入休息阶段（建立新的会话段）
+    if (rs.mode === 'countdown') {
+      const bs = rs.breakSeconds
       if (bs > 0) {
-        isBreak.value = true; timeRemaining.value = bs; isRunning.value = true
-        timerInterval = setInterval(() => { timeRemaining.value--; if (timeRemaining.value <= 0) completeSession() }, 1000)
-      } else {
-        timeRemaining.value = currentFocusSeconds.value
+        isBreak.value = true
+        runningSession.value = {
+          mode: 'countdown',
+          isBreak: true,
+          focusSeconds: rs.focusSeconds,
+          breakSeconds: rs.breakSeconds,
+          startTimestamp: Date.now(),
+          accumulatedElapsed: 0,
+          currentTaskId: rs.currentTaskId,
+          currentTaskName: rs.currentTaskName,
+          date: today.value
+        }
+        persistRunningSession()
+        isRunning.value = true; isPaused.value = false
+        startInterval()
+        return // finally 会释放完成锁，让休息的 tick 正常工作
       }
     }
-  } else if (isBreak.value) {
-    isBreak.value = false
-    timeRemaining.value = currentFocusSeconds.value
-    notifyCompletion(
-      '☕ 休息结束',
-      '休息时间到了，继续专注学习吧！',
-      false
-    )
+
+    // 正计时模式 或 倒计时无休息：彻底结束
+    clearRunningSession()
+    if (rs.mode === 'countup') {
+      elapsedSeconds.value = 0
+    } else {
+      timeRemaining.value = currentFocusSeconds.value
+    }
+  } finally {
+    isCompleting.value = false
   }
 }
 
@@ -481,6 +612,12 @@ function selectTask(t) {
   currentTaskId.value = t.id
   currentTaskName.value = `${t.subject}${t.chapter ? ' - ' + t.chapter : ''}: ${t.content}`
   showTaskPicker.value = false
+  // 若计时进行中，同步更新会话关联的任务
+  if (runningSession.value) {
+    runningSession.value.currentTaskId = currentTaskId.value
+    runningSession.value.currentTaskName = currentTaskName.value
+    persistRunningSession()
+  }
 }
 
 // --- Manual record ---
@@ -562,12 +699,33 @@ function saveRecords() {
 }
 
 // --- Notification: sound + popup + vibration ---
+// 全局复用的 AudioContext，便于在后台标签页恢复播放
+let _audioCtx = null
+function getAudioCtx() {
+  // #ifdef H5
+  try {
+    if (!_audioCtx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext
+      if (!AudioCtx) return null
+      _audioCtx = new AudioCtx()
+    }
+    // 后台标签页 AudioContext 可能被挂起，尝试恢复
+    if (_audioCtx.state === 'suspended') {
+      _audioCtx.resume().catch(() => {})
+    }
+    return _audioCtx
+  } catch (e) { return null }
+  // #endif
+  // #ifndef H5
+  return null
+  // #endif
+}
+
 function playCompletionSound(isFocusEnd) {
   // #ifdef H5
   try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext
-    if (!AudioCtx) return
-    const ctx = new AudioCtx()
+    const ctx = getAudioCtx()
+    if (!ctx) return
     // Play 3 ascending beeps for focus end, 2 gentle beeps for break end
     const beeps = isFocusEnd ? [
       { freq: 523.25, time: 0, dur: 0.15 },   // C5
@@ -706,17 +864,85 @@ onMounted(async () => {
   // Save merged records back to localStorage
   uni.setStorageSync('studymate_pomodoro_records', JSON.stringify(allRecords))
 
-  // Initialize timer based on mode
-  if (timerMode.value === 'countup') {
-    elapsedSeconds.value = 0
+  // 恢复未完成的番茄钟（退出页面/切换标签后再进入，计时不会丢失）
+  const saved = loadRunningSession()
+  if (saved) {
+    if (saved.date !== today.value) {
+      // 跨天了，旧的会话作废
+      clearRunningSession()
+      uni.showToast({ title: '上次的番茄钟已过期', icon: 'none' })
+    } else {
+      // 用会话快照同步设置
+      if (saved.mode) timerMode.value = saved.mode
+      if (saved.focusSeconds) focusTime.value = Math.round(saved.focusSeconds / 60)
+      if (saved.breakSeconds != null) breakTime.value = Math.round(saved.breakSeconds / 60)
+      focusTimeInput.value = String(focusTime.value)
+      breakTimeInput.value = String(breakTime.value)
+      currentTaskId.value = saved.currentTaskId || null
+      currentTaskName.value = saved.currentTaskName || ''
+      isBreak.value = !!saved.isBreak
+      runningSession.value = saved
+
+      const nowMs = Date.now()
+      const seg = saved.startTimestamp ? (nowMs - saved.startTimestamp) / 1000 : 0
+      const totalElapsed = (saved.accumulatedElapsed || 0) + seg
+      const target = saved.isBreak ? saved.breakSeconds : saved.focusSeconds
+
+      if (saved.startTimestamp) {
+        // 离开时正在运行
+        if (saved.mode === 'countdown' && totalElapsed >= target) {
+          // 在后台已自然结束 → 询问是否记录
+          uni.showModal({
+            title: '番茄钟已完成',
+            content: `上次的${saved.isBreak ? '休息' : '专注'}在后台已结束，是否记录本次专注？`,
+            confirmText: '记录',
+            cancelText: '放弃',
+            success: res => {
+              if (res.confirm) {
+                completeSession(false)
+              } else {
+                clearRunningSession()
+                isBreak.value = false
+                timeRemaining.value = currentFocusSeconds.value
+                elapsedSeconds.value = 0
+              }
+            }
+          })
+        } else {
+          // 未结束，继续运行
+          isRunning.value = true; isPaused.value = false
+          startInterval()
+          tick()
+          uni.showToast({ title: '已恢复未完成的番茄钟', icon: 'none' })
+        }
+      } else {
+        // 暂停状态
+        isRunning.value = false; isPaused.value = true
+        if (saved.mode === 'countup') {
+          elapsedSeconds.value = Math.floor(saved.accumulatedElapsed || 0)
+        } else {
+          timeRemaining.value = Math.max(0, Math.ceil(target - (saved.accumulatedElapsed || 0)))
+        }
+        uni.showToast({ title: '已恢复暂停的番茄钟，点开始继续', icon: 'none' })
+      }
+    }
   } else {
-    timeRemaining.value = currentFocusSeconds.value
+    // 无未完成会话，按模式初始化显示
+    if (timerMode.value === 'countup') {
+      elapsedSeconds.value = 0
+    } else {
+      timeRemaining.value = currentFocusSeconds.value
+    }
   }
 
   // #ifdef H5
   if ('Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission()
   }
+  // 注册可见性监听，回到前台时用时间戳校准（修复后台计时不准/暂停问题）
+  document.addEventListener('visibilitychange', onVisibilityChange)
+  window.addEventListener('pageshow', onVisibilityChange)
+  window.addEventListener('focus', onWindowFocus)
   // #endif
 })
 
@@ -724,7 +950,13 @@ onUnmounted(() => {
   uni.setStorageSync('studymate_pomodoro_settings', JSON.stringify({
     focusTime: focusTime.value, breakTime: breakTime.value, timerMode: timerMode.value
   }))
+  // 仅清理 interval；不清理 runningSession 持久化，让用户离开后仍可恢复
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null }
+  // #ifdef H5
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  window.removeEventListener('pageshow', onVisibilityChange)
+  window.removeEventListener('focus', onWindowFocus)
+  // #endif
 })
 </script>
 
