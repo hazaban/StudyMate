@@ -125,14 +125,14 @@ function handleClose() {
 <style lang="scss" scoped>
 .modal-mask {
   position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100;
-  display: flex; align-items: flex-end;
+  display: flex; align-items: center; justify-content: center;
 }
 .modal-sheet {
-  background: #fafbf9; border-radius: 24px 24px 0 0; width: 100%; max-height: 70vh;
+  background: #fafbf9; border-radius: 24px; width: 90%; max-width: 480px; max-height: 70vh;
   display: flex; flex-direction: column;
-  animation: up 0.25s ease;
+  animation: fadeIn 0.2s ease;
 }
-@keyframes up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
 .modal-top {
   display: flex; justify-content: space-between; align-items: center;

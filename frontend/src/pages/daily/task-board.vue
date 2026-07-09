@@ -1991,14 +1991,14 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 /* 复制任务选择弹窗 */
 .modal-mask {
   position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 300;
-  display: flex; align-items: flex-end;
+  display: flex; align-items: center; justify-content: center;
 }
 .modal-sheet {
-  background: #fff; border-radius: 24px 24px 0 0; width: 100%; max-width: 520px; margin: 0 auto;
+  background: #fff; border-radius: 24px; width: 90%; max-width: 520px; margin: 0 auto;
   max-height: 75vh; display: flex; flex-direction: column;
-  animation: cpUp 0.25s ease;
+  animation: cpIn 0.2s ease;
 }
-@keyframes cpUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes cpIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 .modal-top {
   display: flex; justify-content: space-between; align-items: center;
   padding: 18px 22px; border-bottom: 1px solid #f0f0f0;
