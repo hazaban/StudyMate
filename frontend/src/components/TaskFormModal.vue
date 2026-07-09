@@ -3,7 +3,7 @@
     <view class="modal-overlay" v-if="visible" @click="close">
       <view class="modal-content" @click.stop>
         <view class="modal-header">
-          <text class="modal-title">{{ isEdit ? '编辑任务' : '添加任务' }}</text>
+          <text class="modal-title">{{ isEdit ? '编辑任务' : (isCopy ? '复制任务' : '添加任务') }}</text>
           <view class="modal-header-actions">
             <text class="modal-ai-btn" v-if="showAIMode && !isEdit && addMode === 'manual'" @click="addMode = 'ai'">🤖 AI添加</text>
             <text class="modal-ai-btn" v-if="showAIMode && !isEdit && addMode === 'ai'" @click="addMode = 'manual'">✏️ 手动输入</text>
@@ -99,6 +99,16 @@
               <view class="input-wrapper" v-else>
                 <input class="input-field" v-model="form.chapter" placeholder="如：第3章 二叉树（无预设章节时可手动输入）" />
               </view>
+            </view>
+
+            <view class="form-group">
+              <text class="form-label">任务日期</text>
+              <picker mode="date" :value="form.date" @change="onDateChange">
+                <view class="input-wrapper picker-wrapper">
+                  <text class="picker-value" :class="{ placeholder: !form.date }">{{ form.date || '选择日期' }}</text>
+                  <text class="picker-arrow">▾</text>
+                </view>
+              </picker>
             </view>
 
             <view class="form-group">
@@ -229,7 +239,9 @@ const props = defineProps({
   showAIMode: { type: Boolean, default: true },
   planSubjects: { type: Array, default: () => [] },
   defaultHour: { type: Number, default: 9 },
-  defaultMinute: { type: Number, default: 0 }
+  defaultMinute: { type: Number, default: 0 },
+  // 复制来源任务：传入后会以新建模式预填该任务的字段
+  copySource: { type: Object, default: null }
 })
 
 const emit = defineEmits(['update:visible', 'saved', 'deleted'])
@@ -238,7 +250,8 @@ const taskStore = useTaskStore()
 const planStore = usePlanStore()
 const subjectsStore = useSubjectsStore()
 
-const isEdit = computed(() => !!props.task)
+const isEdit = computed(() => !!props.task && !props.copySource)
+const isCopy = computed(() => !!props.copySource)
 
 const subjectOptions = computed(() => subjectsStore.mergedSubjects)
 const showManageSubjects = ref(false)
@@ -298,6 +311,21 @@ function resetForm() {
       start_minute: props.task.start_minute || 0,
       date: props.task.date || props.date || ''
     }
+  } else if (props.copySource) {
+    // 从已有任务复制：以新建模式预填字段，日期用传入的 date/格子日期，时间用传入的默认时间
+    form.value = {
+      subject: props.copySource.subject || base.subject,
+      chapter: props.copySource.chapter || '',
+      content: props.copySource.content || '',
+      duration: props.copySource.duration ?? 25,
+      actual_duration: 0,
+      type: props.copySource.type || 'new_study',
+      repeat_type: props.copySource.repeat_type || 'none',
+      importance: props.copySource.importance || props.defaultImportance || '',
+      start_hour: props.defaultHour ?? props.copySource.start_hour ?? 9,
+      start_minute: props.defaultMinute ?? props.copySource.start_minute ?? 0,
+      date: props.date || props.copySource.date || ''
+    }
   } else {
     form.value = base
     form.value.start_hour = props.defaultHour
@@ -318,6 +346,10 @@ watch(() => props.visible, (v) => {
 }, { immediate: true })
 
 watch(() => props.task, () => {
+  if (props.visible) resetForm()
+})
+
+watch(() => props.copySource, () => {
   if (props.visible) resetForm()
 })
 
@@ -385,6 +417,10 @@ function onChapterChange(e) {
       form.value.duration = currentSubj.chapters[idx].duration
     }
   }
+}
+
+function onDateChange(e) {
+  form.value.date = e.detail.value
 }
 
 function onStartHourChange(e) {

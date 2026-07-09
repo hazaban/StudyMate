@@ -439,7 +439,11 @@ function goBack() {
   const pages = getCurrentPages()
   if (pages.length > 1) { uni.navigateBack() } else { uni.switchTab({ url: '/pages/profile/profile' }) }
 }
-function editPlan() { uni.navigateTo({ url: '/pages/plan/target-setup?edit=1' }) }
+function editPlan() {
+  const id = planStore.currentPlan?.id
+  const url = id ? `/pages/plan/target-setup?edit=1&id=${id}` : '/pages/plan/target-setup?edit=1'
+  uni.navigateTo({ url })
+}
 function goToTaskBoard() { uni.switchTab({ url: '/pages/daily/task-board' }) }
 
 function startAddSubject() { newSubject.value = { name: '', target_score: '' }; showAddSubject.value = true }

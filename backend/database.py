@@ -113,6 +113,20 @@ class DailyTask(Base):
     plan = relationship("StudyPlan", back_populates="tasks")
 
 
+class TaskReflection(Base):
+    __tablename__ = "task_reflections"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    task_id = Column(UUID(as_uuid=True), ForeignKey("daily_tasks.id", ondelete="CASCADE"), nullable=False, index=True)
+    plan_id = Column(UUID(as_uuid=True), ForeignKey("study_plans.id", ondelete="CASCADE"), nullable=False, index=True)
+    task_date = Column(Date, nullable=False, index=True)
+    actual_duration = Column(Integer, default=0)        # 实际用时（分钟）
+    completion_issues = Column(Text, default="")        # 完成过程中的问题（已完成任务填写）
+    incomplete_reason = Column(Text, default="")        # 未完成原因（未完成任务填写）
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
 class FlashCard(Base):
     __tablename__ = "flash_cards"
 

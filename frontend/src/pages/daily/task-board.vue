@@ -63,7 +63,7 @@
             other: !day.currentMonth,
             today: day.isToday,
             selected: day.dateStr === selectedDate,
-            'has-task': taskDates.has(day.dateStr)
+            'has-task': allVisibleTaskDates.has(day.dateStr)
           }"
           @click="selectDate(day.dateStr)"
           @contextmenu.prevent="handleCalRightClick(day.dateStr, $event)"
@@ -73,7 +73,7 @@
           @mouseup="onCalMouseUp"
           @mouseleave="onCalMouseUp">
           <text class="day-num">{{ day.day }}</text>
-          <view class="day-dot" v-if="taskDates.has(day.dateStr)"></view>
+          <view class="day-dot" v-if="allVisibleTaskDates.has(day.dateStr)"></view>
         </view>
       </view>
     </view>
@@ -121,7 +121,7 @@
                 <view class="week-day-header" v-for="(day, idx) in weekDays" :key="idx" :class="{ today: day.isToday, weekend: day.isWeekend }" :style="{ width: colWidth + 'px' }">
                   <text class="week-day-name">{{ day.dayName }}</text>
                   <text class="week-day-num">{{ day.day }}</text>
-                  <view class="week-day-dot" v-if="taskDates.has(day.dateStr)"></view>
+                  <view class="week-day-dot" v-if="allVisibleTaskDates.has(day.dateStr)"></view>
                 </view>
               </view>
               <!-- 格子体（纵向滚动） -->
@@ -162,7 +162,11 @@
     <view class="cal-menu" v-if="showWeekMenu" :style="{ left: weekMenuX + 'px', top: weekMenuY + 'px' }" @click.stop>
       <view class="cal-menu-item" @click="addTaskFromWeekCell(weekCellDate, weekCellHour)">
         <text class="cal-menu-icon">+</text>
-        <text class="cal-menu-text">添加任务</text>
+        <text class="cal-menu-text">新建任务</text>
+      </view>
+      <view class="cal-menu-item" @click="copyFromWeekCell(weekCellDate, weekCellHour)">
+        <text class="cal-menu-icon">📋</text>
+        <text class="cal-menu-text">从已有任务复制</text>
       </view>
     </view>
 
@@ -192,8 +196,8 @@
     </view>
 
     <view class="task-list" v-if="viewMode !== 'week'">
-      <view class="task-item" v-for="task in filteredTasks" :key="task.id" :class="{ completed: task.status === 'completed' }" @contextmenu.prevent="editTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
-        <view class="task-check" @click="toggleTask(task)">
+      <view class="task-item" v-for="task in filteredTasks" :key="task.id" :class="{ completed: task.status === 'completed' }" @click="onTaskCardClick(task)" @contextmenu.prevent="editTask(task)" @touchstart="onTaskTouchStart(task)" @touchend="onTaskTouchEnd" @touchmove="onTaskTouchEnd">
+        <view class="task-check" @click.stop="toggleTask(task)">
           <view class="check-circle" :class="{ checked: task.status === 'completed' }">
             <text v-if="task.status === 'completed'" class="check-icon">✓</text>
           </view>
@@ -215,8 +219,11 @@
             <text class="task-actual" v-if="task.actual_duration > 0">实际: {{ task.actual_duration }}分钟</text>
           </view>
         </view>
-        <view class="task-pomodoro" @click="startPomodoro(task)">
+        <view class="task-pomodoro" @click.stop="startPomodoro(task)">
           <text class="pomodoro-icon">🍅</text>
+        </view>
+        <view class="task-reflection" @click.stop="showTaskReflection(task, selectedDate, task.status === 'completed')">
+          <text class="reflection-icon">✎</text>
         </view>
       </view>
     </view>
@@ -250,6 +257,7 @@
     <TaskFormModal
       v-model:visible="showAddForm"
       :task="editingTask"
+      :copy-source="copySourceTask"
       :date="selectedDate"
       :enable-quadrant="enableQuadrant"
       :show-a-i-mode="true"
@@ -259,8 +267,55 @@
       @deleted="onTaskDeleted"
     />
 
+    <!-- 复制任务选择弹窗 -->
+    <view class="modal-mask" v-if="showCopyPicker" @click="showCopyPicker = false">
+      <view class="modal-sheet" @click.stop>
+        <view class="modal-top">
+          <text class="modal-title">从已有任务复制</text>
+          <view class="modal-x" @click="showCopyPicker = false">✕</view>
+        </view>
+        <view class="modal-body">
+          <view class="copy-search-wrap">
+            <input class="copy-search-input" v-model="copyKeyword" placeholder="输入关键字搜索（科目/章节/内容）" />
+          </view>
+          <view class="copy-target-hint">
+            将复制到：<text class="copy-target-date">{{ copyContextDate || selectedDate }}</text>
+            <text class="copy-target-time"> {{ (copyContextHour || 9) }}:{{ String(copyContextMinute || 0).padStart(2,'0') }}</text>
+          </view>
+          <view class="copy-list">
+            <view class="copy-item" v-for="t in copyCandidates" :key="t.id" @click="confirmCopyFromTask(t)">
+              <view class="copy-item-body">
+                <text class="copy-item-content">{{ t.content }}</text>
+                <view class="copy-item-meta">
+                  <text class="copy-item-subj">{{ t.subject }}</text>
+                  <text class="copy-item-chap" v-if="t.chapter">{{ t.chapter }}</text>
+                  <text class="copy-item-dur">{{ t.duration }}分钟</text>
+                  <text class="copy-item-date">来源: {{ t.date }}</text>
+                </view>
+              </view>
+              <text class="copy-item-arrow">›</text>
+            </view>
+            <view class="copy-empty" v-if="copyCandidates.length === 0">
+              <text class="copy-empty-text">暂无匹配任务，换个关键字试试</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
     <view class="fab" @click="openManualAdd"><text class="fab-icon">+</text></view>
     <view class="bottom-space"></view>
+
+    <TaskReflectionModal
+      :visible="showReflectionModal"
+      :task="reflectionTask"
+      :task-date="reflectionDate"
+      :is-complete="reflectionIsComplete"
+      :existing-reflection="existingReflection"
+      :default-duration="reflectionDefaultDuration"
+      @close="closeReflectionModal"
+      @submitted="onReflectionSubmitted"
+    />
   </view>
 </template>
 
@@ -273,6 +328,7 @@ import { useUserStore } from '@/stores/user'
 import { useFarmStore } from '@/stores/farm'
 import { useSubjectsStore } from '@/stores/subjects'
 import TaskFormModal from '@/components/TaskFormModal.vue'
+import TaskReflectionModal from '@/components/TaskReflectionModal.vue'
 import * as api from '@/api/client'
 
 const taskStore = useTaskStore()
@@ -285,6 +341,23 @@ const activeTab = ref('all')
 const activeFilter = ref('all')
 const showAddForm = ref(false)
 const editingTask = ref(null)
+// 复制来源任务（传入 TaskFormModal 以新建模式预填）
+const copySourceTask = ref(null)
+// 复制任务选择弹窗
+const showCopyPicker = ref(false)
+const copyKeyword = ref('')
+// 复制时的目标日期/时间上下文（来自周视图格子或今日默认）
+const copyContextDate = ref('')
+const copyContextHour = ref(9)
+const copyContextMinute = ref(0)
+
+// 平台检测：桌面端(无触控)用点击编辑，移动端用长按编辑
+const isDesktop = ref(false)
+try {
+  // #ifdef H5
+  isDesktop.value = !('ontouchstart' in window) && (navigator.maxTouchPoints || 0) === 0
+  // #endif
+} catch (e) { /* non-H5 */ }
 
 const QUADRANT_KEY = 'studymate_quadrant_enabled'
 const enableQuadrant = ref(uni.getStorageSync(QUADRANT_KEY) === 'true')
@@ -344,6 +417,19 @@ const weekDefaultHour = ref(9)
 const weekDefaultMinute = ref(0)
 let weekCellTouchTimer = null
 // 页面刚切到周视图时禁止长按，防止加载过程中滑动误触
+
+// 任务反思
+const showReflectionModal = ref(false)
+const reflectionTask = ref(null)
+const reflectionIsComplete = ref(false)
+const reflectionDate = ref('')
+const reflectionDefaultDuration = ref(0)
+const existingReflection = ref(null)
+const dailyReflections = ref({})
+
+// 23:30 未完成任务提醒
+const UNFINISHED_REMIND_KEY = 'studymate_unfinished_remind_date'
+const lastRemindDate = ref(uni.getStorageSync(UNFINISHED_REMIND_KEY) || '')
 const weekViewReady = ref(false)
 let weekViewReadyTimer = null
 
@@ -520,11 +606,37 @@ const currentTimeLineStyle = computed(() => {
 })
 
 function getDayTasks(dateStr) {
-  return taskStore.weekTasks.filter(t => t.date === dateStr)
+  return taskStore.weekTasks.filter(t => shouldRepeatOnDate(t, dateStr))
 }
 function getTasksAt(dateStr, hour) {
-  return taskStore.weekTasks.filter(t => t.date === dateStr && (t.start_hour || 9) === hour)
+  return taskStore.weekTasks.filter(t => shouldRepeatOnDate(t, dateStr) && (t.start_hour || 9) === hour)
 }
+
+// 循环任务在指定日期是否应出现（与后端 _should_repeat 逻辑一致）
+function shouldRepeatOnDate(task, dateStr) {
+  if (!task || !task.date) return false
+  if (!task.repeat_type || task.repeat_type === 'none') return task.date === dateStr
+  if (task.date > dateStr) return false
+  if (task.repeat_type === 'daily') return true
+  let day
+  try { day = new Date(dateStr + 'T00:00:00').getDay() } catch (e) { return false }
+  if (task.repeat_type === 'weekday') return day >= 1 && day <= 5
+  if (task.repeat_type === 'holiday') return day === 0 || day === 6
+  return false
+}
+
+// 当前月视图+周视图范围内，所有任务(含循环展开)出现的日期集合
+const allVisibleTaskDates = computed(() => {
+  const set = new Set()
+  const checkDates = new Set()
+  calendarDays.value.forEach(d => checkDates.add(d.dateStr))
+  weekDays.value.forEach(d => checkDates.add(d.dateStr))
+  taskStore.weekTasks.forEach(t => {
+    if (t.date) set.add(t.date)
+    checkDates.forEach(ds => { if (shouldRepeatOnDate(t, ds)) set.add(ds) })
+  })
+  return set
+})
 
 function formatTimelineHour(hour) {
   return `${hour}:00`
@@ -565,10 +677,91 @@ async function toggleTask(task) {
         }
       } catch (e) { /* silent */ }
     }
+    // 完成任务时弹出反思弹窗（预填番茄钟累计的实际用时）
+    const taskDate = selectedDate.value
+    const pomodoroDuration = task.actual_duration || 0
+    showTaskReflection(task, taskDate, true, pomodoroDuration)
   }
   if (planStore.currentPlan && viewMode.value === 'week') {
     await taskStore.getAllTasks(planStore.currentPlan.id)
   }
+}
+
+function showTaskReflection(task, taskDate, isComplete, defaultDuration = 0) {
+  reflectionTask.value = task
+  reflectionDate.value = taskDate
+  reflectionIsComplete.value = isComplete
+  reflectionDefaultDuration.value = defaultDuration
+  // 查找是否已有该任务当天的反思记录
+  const key = `${task.id}-${taskDate}`
+  existingReflection.value = dailyReflections.value[key] || null
+  showReflectionModal.value = true
+}
+
+function closeReflectionModal() {
+  showReflectionModal.value = false
+  reflectionTask.value = null
+  existingReflection.value = null
+}
+
+function onReflectionSubmitted(data) {
+  const key = `${data.task_id}-${data.task_date}`
+  dailyReflections.value[key] = data
+}
+
+async function loadDailyReflections(dateStr) {
+  if (!planStore.currentPlan) return
+  try {
+    const records = await api.getReflections(planStore.currentPlan.id, dateStr)
+    records.forEach(r => {
+      const key = `${r.task_id}-${r.task_date}`
+      dailyReflections.value[key] = r
+    })
+  } catch (e) { /* ignore */ }
+}
+
+function checkUnfinishedReminder() {
+  const now = new Date()
+  const todayStr = formatDate(now)
+  const hour = now.getHours()
+  const minute = now.getMinutes()
+
+  // 仅在 23:30-23:59 之间，且今天尚未提醒过
+  if (hour === 23 && minute >= 30 && lastRemindDate.value !== todayStr) {
+    const pendingTasks = taskStore.todayTasks.filter(t => t.status !== 'completed')
+    if (pendingTasks.length > 0) {
+      uni.showModal({
+        title: '今日未完成任务',
+        content: `还有 ${pendingTasks.length} 个任务未完成，是否记录原因？`,
+        confirmText: '记录原因',
+        cancelText: '明天再说',
+        success: (res) => {
+          if (res.confirm) {
+            // 逐个打开未完成原因弹窗
+            let idx = 0
+            const showNext = () => {
+              if (idx < pendingTasks.length) {
+                showTaskReflection(pendingTasks[idx], todayStr, false)
+                idx++
+              }
+            }
+            showNext()
+          }
+        }
+      })
+      lastRemindDate.value = todayStr
+      uni.setStorageSync(UNFINISHED_REMIND_KEY, todayStr)
+    }
+  }
+}
+
+// 定时检查 23:30 提醒
+let unfinishedReminderTimer = null
+function startUnfinishedReminder() {
+  if (unfinishedReminderTimer) clearInterval(unfinishedReminderTimer)
+  unfinishedReminderTimer = setInterval(() => {
+    checkUnfinishedReminder()
+  }, 60000)
 }
 
 function startPomodoro(task) {
@@ -579,13 +772,69 @@ function startPomodoro(task) {
 
 function editTask(task) {
   editingTask.value = task
+  copySourceTask.value = null
   showAddForm.value = true
 }
 
 function openManualAdd() {
+  // 今日任务版块：点击加号弹出"新建 / 从已有任务复制"两种选择
+  uni.showActionSheet({
+    itemList: ['✚ 新建任务', '📋 从已有任务复制'],
+    success: (res) => {
+      if (res.tapIndex === 0) startNewTask()
+      else if (res.tapIndex === 1) startCopyPicker()
+    }
+  })
+}
+
+function startNewTask() {
   editingTask.value = null
+  copySourceTask.value = null
   weekDefaultHour.value = 9
   weekDefaultMinute.value = 0
+  showAddForm.value = true
+}
+
+function startCopyPicker() {
+  copyKeyword.value = ''
+  // 复制目标默认为当前选中日期
+  copyContextDate.value = selectedDate.value
+  copyContextHour.value = 9
+  copyContextMinute.value = 0
+  showCopyPicker.value = true
+}
+
+// 复制候选任务列表（按关键字搜索匹配 科目/章节/内容）
+const copyCandidates = computed(() => {
+  const kw = copyKeyword.value.trim().toLowerCase()
+  let list = taskStore.weekTasks || []
+  if (kw) {
+    list = list.filter(t =>
+      (t.subject || '').toLowerCase().includes(kw) ||
+      (t.chapter || '').toLowerCase().includes(kw) ||
+      (t.content || '').toLowerCase().includes(kw)
+    )
+  }
+  // 去重：相同 subject+content 只保留一条最新
+  const seen = new Set()
+  const result = []
+  for (const t of list) {
+    const key = (t.subject || '') + '|' + (t.content || '')
+    if (seen.has(key)) continue
+    seen.add(key)
+    result.push(t)
+  }
+  return result.slice(0, 50)
+})
+
+function confirmCopyFromTask(task) {
+  showCopyPicker.value = false
+  editingTask.value = null
+  copySourceTask.value = task
+  // 复制时使用复制上下文的日期与时间
+  selectedDate.value = copyContextDate.value || selectedDate.value
+  weekDefaultHour.value = copyContextHour.value || 9
+  weekDefaultMinute.value = copyContextMinute.value || 0
   showAddForm.value = true
 }
 
@@ -867,9 +1116,20 @@ function addTaskFromWeekCell(dateStr, hour) {
   showWeekMenu.value = false
   selectedDate.value = dateStr
   editingTask.value = null
+  copySourceTask.value = null
   weekDefaultHour.value = hour || 9
   weekDefaultMinute.value = 0
   showAddForm.value = true
+}
+
+// 周视图：从已有任务复制，自动使用当前格子的日期与开始时间
+function copyFromWeekCell(dateStr, hour) {
+  showWeekMenu.value = false
+  copyContextDate.value = dateStr
+  copyContextHour.value = hour || 9
+  copyContextMinute.value = 0
+  copyKeyword.value = ''
+  showCopyPicker.value = true
 }
 
 // === 单元格交互：点击展开任务详情，长按编辑/添加 ===
@@ -1033,6 +1293,11 @@ function onTaskTouchEnd() {
   if (taskLongPressTimer) { clearTimeout(taskLongPressTimer); taskLongPressTimer = null }
 }
 
+// 桌面端：任务卡片点击即编辑（移动端无此处理，避免误触，仍用长按）
+function onTaskCardClick(task) {
+  if (isDesktop.value) editTask(task)
+}
+
 async function switchView(mode) {
   if (viewMode.value === mode) return
   viewMode.value = mode
@@ -1044,6 +1309,7 @@ async function switchView(mode) {
     loadTaskDates()
     generateCalendar()
     await loadTasks()
+    if (planStore.currentPlan) await taskStore.getAllTasks(planStore.currentPlan.id)
   } else if (mode === 'week') {
     weekViewReady.value = false
     clearTimeout(weekViewReadyTimer)
@@ -1101,13 +1367,20 @@ onMounted(async () => {
     if (planStore.currentPlan) {
       loadTaskDates()
       await loadTasks()
+      // 预加载全部任务，供月视图/周视图循环任务展开使用
+      await taskStore.getAllTasks(planStore.currentPlan.id)
+      // 加载今日反思记录
+      await loadDailyReflections(selectedDate.value)
     }
   }
+  // 启动23:30未完成任务提醒
+  startUnfinishedReminder()
 })
 
 onShow(async () => {
   if (planStore.currentPlan && userStore.isLoggedIn) {
     await loadTasks()
+    await loadDailyReflections(selectedDate.value)
   }
 })
 
@@ -1495,6 +1768,12 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
 .task-duration, .task-actual, .task-time { font-size: 12px; color: #999; }
 .task-time { color: #2f7d4f; font-weight: 500; }
 .task-pomodoro { flex-shrink: 0; .pomodoro-icon { font-size: 24px; } }
+.task-reflection {
+  flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(47,125,79,0.08); display: flex; align-items: center; justify-content: center;
+  .reflection-icon { font-size: 16px; color: #2f7d4f; }
+  &:active { background: rgba(47,125,79,0.15); }
+}
 .task-delete { flex-shrink: 0; padding: 4px 8px; .delete-icon { font-size: 18px; color: #c62828; } }
 
 .empty { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; .empty-icon { font-size: 48px; margin-bottom: 12px; } .empty-text { font-size: 16px; color: #65746d; margin-bottom: 8px; } .empty-hint { font-size: 13px; color: #999; text-align: center; } }
@@ -1708,4 +1987,56 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   font-size: 14px; font-weight: 600; color: #ef5350;
   flex-shrink: 0;
 }
+
+/* 复制任务选择弹窗 */
+.modal-mask {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 300;
+  display: flex; align-items: flex-end;
+}
+.modal-sheet {
+  background: #fff; border-radius: 24px 24px 0 0; width: 100%; max-width: 520px; margin: 0 auto;
+  max-height: 75vh; display: flex; flex-direction: column;
+  animation: cpUp 0.25s ease;
+}
+@keyframes cpUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-top {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 18px 22px; border-bottom: 1px solid #f0f0f0;
+}
+.modal-sheet .modal-title { font-size: 17px; font-weight: 700; color: #1a1a2e; }
+.modal-sheet .modal-x {
+  width: 30px; height: 30px; border-radius: 50%; background: #f5f7f5;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; color: #999;
+}
+.modal-sheet .modal-body { padding: 16px 22px; flex: 1; overflow-y: auto; }
+.copy-search-wrap { margin-bottom: 12px; }
+.copy-search-input {
+  width: 100%; padding: 12px 14px; border: 1.5px solid #e8ece9; border-radius: 12px;
+  background: #fafafa; font-size: 14px; color: #1a1a2e; box-sizing: border-box;
+  height: 44px;
+}
+.copy-search-input:focus { border-color: #2f7d4f; }
+.copy-target-hint {
+  font-size: 12px; color: #888; background: #f5f7f5; padding: 8px 12px;
+  border-radius: 10px; margin-bottom: 12px;
+}
+.copy-target-date { color: #2f7d4f; font-weight: 600; }
+.copy-target-time { color: #2f7d4f; font-weight: 600; margin-left: 4px; }
+.copy-list { display: flex; flex-direction: column; gap: 8px; }
+.copy-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; background: #fafafa; border-radius: 12px; border: 1px solid #e8ece9;
+  &:active { background: #e8f0eb; border-color: #2f7d4f; }
+}
+.copy-item-body { flex: 1; min-width: 0; }
+.copy-item-content { display: block; font-size: 14px; color: #1a1a2e; font-weight: 500; }
+.copy-item-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.copy-item-subj { font-size: 11px; padding: 2px 8px; background: #e8f5e9; color: #2f7d4f; border-radius: 8px; }
+.copy-item-chap { font-size: 11px; padding: 2px 8px; background: #f3f0ff; color: #6b4ce6; border-radius: 8px; }
+.copy-item-dur { font-size: 11px; color: #999; }
+.copy-item-date { font-size: 11px; color: #bbb; }
+.copy-item-arrow { font-size: 20px; color: #ccc; flex-shrink: 0; }
+.copy-empty { text-align: center; padding: 30px 12px; }
+.copy-empty-text { font-size: 13px; color: #999; }
 </style>

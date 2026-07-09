@@ -145,15 +145,35 @@ onMounted(async () => {
   // Check if editing
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
-  isEdit.value = currentPage?.options?.edit === '1'
+  const opts = currentPage?.options || currentPage?.$page?.options || {}
+  isEdit.value = opts.edit === '1'
 
-  if (isEdit.value && planStore.currentPlan) {
+  if (isEdit.value) {
+    // 确保计划列表已加载，避免深链/刷新后 currentPlan 为空导致字段无法回填
+    await planStore.getPlansByUserId()
+    // 若指定了 id，切换到对应计划
+    if (opts.id && planStore.plans.length > 0) {
+      const target = planStore.plans.find(p => String(p.id) === String(opts.id))
+      if (target) planStore.switchPlan(target.id)
+    }
+    // 仍未命中 currentPlan 时回退到第一个计划
+    if (!planStore.currentPlan && planStore.plans.length > 0) {
+      planStore.switchPlan(planStore.plans[0].id)
+    }
+
     const p = planStore.currentPlan
-    form.exam_name = p.exam_name
-    form.exam_date = p.exam_date
-    form.daily_study_time = p.daily_study_time
-    form.notes = p.notes || ''
-    form.subjects = p.subjects ? JSON.parse(JSON.stringify(p.subjects)) : []
+    if (p) {
+      form.exam_name = p.exam_name || ''
+      form.exam_date = p.exam_date || ''
+      form.daily_study_time = p.daily_study_time || 480
+      form.notes = p.notes || ''
+      form.subjects = p.subjects && p.subjects.length
+        ? JSON.parse(JSON.stringify(p.subjects))
+        : []
+    } else {
+      uni.showToast({ title: '未找到计划，将创建新计划', icon: 'none' })
+      isEdit.value = false
+    }
   }
 })
 </script>

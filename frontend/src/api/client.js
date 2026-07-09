@@ -399,6 +399,27 @@ export async function aiDailyReview(planId, date) {
   return request(`/ai/review?plan_id=${planId}&task_date=${date}`, { method: 'POST' })
 }
 
+// ==================== Task Reflections (任务反思) ====================
+
+export async function createReflection(data) {
+  return request('/reflections', { method: 'POST', data })
+}
+
+export async function getReflections(planId, taskDate = null, taskId = null) {
+  let url = `/reflections?plan_id=${planId}`
+  if (taskDate) url += `&task_date=${taskDate}`
+  if (taskId) url += `&task_id=${taskId}`
+  return request(url)
+}
+
+export async function updateReflection(id, data) {
+  return request(`/reflections/${id}`, { method: 'PUT', data })
+}
+
+export async function deleteReflection(id) {
+  return request(`/reflections/${id}`, { method: 'DELETE' })
+}
+
 // ==================== Upload ====================
 
 export async function getSTSCredential() {
