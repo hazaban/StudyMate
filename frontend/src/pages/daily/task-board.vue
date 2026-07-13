@@ -567,6 +567,28 @@ const getImportanceClass = (type) => {
   return map[type] || ''
 }
 
+function hashString(str) {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash
+  }
+  return Math.abs(hash)
+}
+
+function getSubjectColors(subject) {
+  if (!subject) {
+    return { bg: '#e8f5e9', text: '#2f7d4f', time: '#2f7d4f' }
+  }
+  const hash = hashString(subject)
+  const hue = hash % 360
+  const bg = `hsl(${hue}, 60%, 94%)`
+  const text = `hsl(${hue}, 70%, 32%)`
+  const time = `hsl(${hue}, 75%, 38%)`
+  return { bg, text, time }
+}
+
 const getSubjectClass = (subject) => {
   if (!subject) return 'subject-default'
   const map = {
@@ -648,13 +670,17 @@ function getTaskStyle(task) {
   const dur = task.duration || 30
   const top = (h - timelineHours[0]) * CELL_H + (m / 60) * CELL_H
   const height = Math.max(36, (dur / 60) * CELL_H)
+  const colors = getSubjectColors(task.subject)
   return {
     position: 'absolute',
     top: top + 'px',
     height: height + 'px',
     left: '2px',
     right: '2px',
-    zIndex: 1
+    zIndex: 1,
+    background: colors.bg,
+    '--subject-text-color': colors.text,
+    '--subject-time-color': colors.time
   }
 }
 
@@ -1696,18 +1722,6 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   &:active { filter: brightness(0.93); }
   &.scrolled { overflow-y: auto; -webkit-overflow-scrolling: touch; }
   &.completed { background: #f0f0f0; box-shadow: none; opacity: 0.7; }
-  &.subject-ds { background: #e3f2fd; .week-task-content { color: #1565c0; } }
-  &.subject-os { background: #f3e5f5; .week-task-content { color: #7b1fa2; } }
-  &.subject-cn { background: #e0f7fa; .week-task-content { color: #00838f; } }
-  &.subject-co { background: #fff3e0; .week-task-content { color: #e65100; } }
-  &.subject-en { background: #fce4ec; .week-task-content { color: #c62828; } }
-  &.subject-pol { background: #f1f8e9; .week-task-content { color: #558b2f; } }
-  &.subject-math { background: #ede7f6; .week-task-content { color: #4527a0; } }
-  &.subject-db { background: #e8f5e9; .week-task-content { color: #2e7d32; } }
-  &.subject-uml { background: #fff8e1; .week-task-content { color: #f57f17; } }
-  &.subject-algo { background: #e1f5fe; .week-task-content { color: #01579b; } }
-  &.subject-c { background: #fbe9e7; .week-task-content { color: #bf360c; } }
-  &.subject-default { background: #e8f5e9; .week-task-content { color: #2f7d4f; } }
 }
 .task-importance-dot {
   width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px;
@@ -1717,12 +1731,12 @@ watch(() => planStore.currentPlan?.id, async (newId, oldId) => {
   &.importance-gray { background: #9e9e9e; }
 }
 .week-task-content {
-  font-size: 12px; color: #2f7d4f;
+  font-size: 12px; color: var(--subject-text-color, #2f7d4f);
   white-space: normal; word-break: break-word; overflow-wrap: break-word;
   font-weight: 500; line-height: 1.4;
 }
 .week-task-duration { font-size: 10px; color: #999; margin-top: 2px; }
-.week-task-time { font-size: 10px; color: #2f7d4f; font-weight: 500; margin-right: 4px; }
+.week-task-time { font-size: 10px; color: var(--subject-time-color, #2f7d4f); font-weight: 500; margin-right: 4px; }
 .week-task-actions { display: flex; gap: 4px; margin-top: 4px; width: 100%; }
 .wta-btn { font-size: 11px; padding: 2px 8px; border-radius: 6px; background: rgba(0,0,0,0.08); color: #555;
   &.danger { color: #c62828; background: rgba(198,40,40,0.1); } }
