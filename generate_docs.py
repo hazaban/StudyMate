@@ -26,7 +26,7 @@ html_content = """
     }
   }
   body {
-    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    font-family: "Noto Sans CJK SC", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
     font-size: 11pt;
     line-height: 1.6;
     color: #333;
