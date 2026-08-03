@@ -239,6 +239,31 @@ class UserSubject(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow)
 
 
+class QuestionBank(Base):
+    """共享题库表 —— 由 PDF 批量导入，所有用户可见，不绑定 plan_id。
+
+    支持题型：single_choice / multiple_choice / judge / fill_blank / short_answer / essay
+    """
+    __tablename__ = "question_bank"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    question_type = Column(String(30), nullable=False, index=True)   # single_choice / multiple_choice / judge / ...
+    subject = Column(String(100), nullable=False, index=True)         # 科目：数据结构 / 操作系统 / ...
+    chapter = Column(String(200), default="", index=True)            # 章节
+    question = Column(Text, nullable=False)                          # 题干
+    options = Column(JSON, default=list)                              # [{"label":"A","text":"..."}]
+    answer = Column(Text, default="")                                  # 答案 "A" / "ABC" / "对" / 具体内容
+    analysis = Column(Text, default="")                               # 解析
+    difficulty = Column(String(20), default="medium")                 # easy / medium / hard
+    tags = Column(JSON, default=list)                                  # 标签
+    source = Column(String(255), default="", index=True)              # 来源 PDF 文件名
+    source_no = Column(Integer, default=None, index=True)             # 原题号（去重依据）
+    question_images = Column(JSON, default=list)                      # 题干图片 URL
+    answer_images = Column(JSON, default=list)                        # 答案/解析图片 URL
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
 # ---------------------------------------------------------------------------
 # Create tables
 # ---------------------------------------------------------------------------
