@@ -62,6 +62,20 @@ def list_cards(
 
     cards = query.order_by(FlashCard.next_review_date.asc()).all()
 
+    # 顺延：把逾期未复习的卡片 next_review_date 拉回到今天，
+    # 这样前端看到的"下次复习"始终是今天或未来日期；
+    # 复习时 calculate_next_review_date 也会以今天为基准计算下一次。
+    today = date.today()
+    postponed = False
+    for c in cards:
+        if c.next_review_date and c.next_review_date < today:
+            c.next_review_date = today
+            postponed = True
+    if postponed:
+        db.commit()
+        for c in cards:
+            db.refresh(c)
+
     # Filter by tag on the Python side (JSON array matching)
     if tag:
         cards = [c for c in cards if c.tags and tag in (c.tags or [])]
@@ -87,6 +101,17 @@ def list_pending_cards(
         FlashCard.plan_id == plan_id,
         FlashCard.next_review_date <= today
     ).order_by(FlashCard.next_review_date.asc()).all()
+
+    # 顺延：把逾期未复习的卡片 next_review_date 拉回到今天
+    postponed = False
+    for c in cards:
+        if c.next_review_date and c.next_review_date < today:
+            c.next_review_date = today
+            postponed = True
+    if postponed:
+        db.commit()
+        for c in cards:
+            db.refresh(c)
 
     return CardListResponse(
         cards=[CardResponse.model_validate(c) for c in cards],

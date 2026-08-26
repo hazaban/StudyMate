@@ -195,11 +195,44 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useTaskStore } from '@/stores/task'
 import { useFarmStore } from '@/stores/farm'
 import { usePlanStore } from '@/stores/plan'
+import { useUserStore } from '@/stores/user'
 import { createFocusRecord, getFocusRecords, updateFocusRecord, deleteFocusRecord, createReflection } from '@/api/client'
 
 const taskStore = useTaskStore()
 const farmStore = useFarmStore()
 const planStore = usePlanStore()
+const userStore = useUserStore()
+
+// --- 待同步队列：当 token 过期 / 网络异常导致 createFocusRecord 失败时，
+// 把记录暂存到 localStorage，下次进入页面或重新登录后自动补传 ---
+const PENDING_SYNC_KEY = 'studymate_pomodoro_pending_sync'
+function getPendingSync() {
+  try { return JSON.parse(uni.getStorageSync(PENDING_SYNC_KEY) || '[]') } catch (e) { return [] }
+}
+function savePendingSync(records) {
+  uni.setStorageSync(PENDING_SYNC_KEY, JSON.stringify(records))
+}
+function enqueuePendingSync(record) {
+  const list = getPendingSync()
+  list.push(record)
+  savePendingSync(list)
+}
+async function syncPendingFocusRecords() {
+  const list = getPendingSync()
+  if (!list.length) return { synced: 0, authError: false }
+  const remaining = []
+  let authError = false
+  for (const rec of list) {
+    try {
+      await createFocusRecord(rec)
+    } catch (e) {
+      if (e?.isAuthError) authError = true
+      remaining.push(rec) // 失败的保留，等下次再试
+    }
+  }
+  savePendingSync(remaining)
+  return { synced: list.length - remaining.length, authError }
+}
 
 // --- Time settings ---
 const timerMode = ref('countdown') // 'countdown' | 'countup'
@@ -520,7 +553,7 @@ async function completeSession(isManual = false) {
           else if (currentTaskName.value) subj = currentTaskName.value.split(':')[0].split(' - ')[0].trim()
           const endTime = nowDate.toISOString()
           const startTime = new Date(nowDate.getTime() - dur * 60 * 1000).toISOString()
-          await createFocusRecord({
+          const focusPayload = {
             plan_id: planStore.currentPlan.id,
             date: today.value,
             type: rs.mode === 'countup' ? 'countup' : 'focus',
@@ -530,8 +563,20 @@ async function completeSession(isManual = false) {
             duration: dur,
             start_time: startTime,
             end_time: endTime
-          })
-        } catch (e) { console.warn('Sync focus record failed:', e) }
+          }
+          try {
+            await createFocusRecord(focusPayload)
+          } catch (e) {
+            // token 过期 / 网络异常 → 暂存到待同步队列，避免数据丢失
+            enqueuePendingSync(focusPayload)
+            console.warn('Focus record saved to pending sync queue:', e?.message || e)
+            if (e?.isAuthError) {
+              uni.showToast({ title: '登录已过期，本次记录已暂存，重新登录后将自动同步', icon: 'none', duration: 3000 })
+            } else {
+              uni.showToast({ title: '记录暂存，稍后自动同步', icon: 'none' })
+            }
+          }
+        } catch (e) { console.warn('Build focus payload failed:', e) }
       }
 
       if (rs.currentTaskId) {
@@ -647,7 +692,7 @@ function submitManualRecord() {
     try {
       const endTime = now.toISOString()
       const startTime = new Date(now.getTime() - m * 60 * 1000).toISOString()
-      createFocusRecord({
+      const manualPayload = {
         plan_id: planStore.currentPlan.id,
         date: today.value,
         type: 'manual',
@@ -656,6 +701,13 @@ function submitManualRecord() {
         duration: m,
         start_time: startTime,
         end_time: endTime
+      }
+      createFocusRecord(manualPayload).catch(e => {
+        enqueuePendingSync(manualPayload)
+        console.warn('Manual record saved to pending sync queue:', e?.message || e)
+        if (e?.isAuthError) {
+          uni.showToast({ title: '登录已过期，本次记录已暂存，重新登录后将自动同步', icon: 'none', duration: 3000 })
+        }
       })
     } catch (e) { console.warn('Sync manual record failed:', e) }
   }
@@ -840,6 +892,17 @@ onMounted(async () => {
   const opts = pages[pages.length - 1]?.options || pages[pages.length - 1]?.$page?.options || {}
   if (opts.taskContent) currentTaskName.value = decodeURIComponent(opts.taskContent)
   if (opts.taskId) currentTaskId.value = opts.taskId
+
+  // 进入页面时先尝试补传之前因 token 过期 / 网络异常暂存的番茄钟记录，
+  // 避免在平板等设备上后台挂起过久后数据无法记录到账号。
+  try {
+    const r = await syncPendingFocusRecords()
+    if (r.synced > 0) {
+      uni.showToast({ title: `已补传 ${r.synced} 条暂存记录`, icon: 'success' })
+    } else if (r.authError) {
+      uni.showToast({ title: '登录已过期，暂存记录将在重新登录后同步', icon: 'none', duration: 3000 })
+    }
+  } catch (e) { /* ignore */ }
 
   // Load records from backend (primary) → fallback to localStorage (secondary)
   let allRecords = []

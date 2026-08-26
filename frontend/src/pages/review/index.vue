@@ -361,9 +361,15 @@
         <view class="review-card-body">
           <view class="review-subject">{{ mistakeReviewCards[mistakeReviewIndex].subject }}</view>
           <view class="review-question"><text class="question-label red">Q</text><text class="question-text">{{ mistakeReviewCards[mistakeReviewIndex].question }}</text></view>
+          <view class="image-gallery" v-if="mistakeReviewCards[mistakeReviewIndex].question_images && mistakeReviewCards[mistakeReviewIndex].question_images.length > 0">
+            <image v-for="(url, idx) in mistakeReviewCards[mistakeReviewIndex].question_images" :key="'mrq'+idx" :src="url" mode="widthFix" class="review-image" @click="previewImage(url, mistakeReviewCards[mistakeReviewIndex].question_images)" />
+          </view>
           <view class="review-answer" v-if="mistakeShowAnswer">
             <view class="answer-divider"></view>
             <view class="answer-content"><text class="answer-label">A</text><text class="answer-text">{{ mistakeReviewCards[mistakeReviewIndex].answer }}</text></view>
+            <view class="image-gallery" v-if="mistakeReviewCards[mistakeReviewIndex].answer_images && mistakeReviewCards[mistakeReviewIndex].answer_images.length > 0" style="margin-top: 10px;">
+              <image v-for="(url, idx) in mistakeReviewCards[mistakeReviewIndex].answer_images" :key="'mra'+idx" :src="url" mode="widthFix" class="review-image" @click="previewImage(url, mistakeReviewCards[mistakeReviewIndex].answer_images)" />
+            </view>
             <view v-if="mistakeReviewCards[mistakeReviewIndex].analysis" class="analysis-content">
               <text class="analysis-label">分析</text><text class="analysis-text">{{ mistakeReviewCards[mistakeReviewIndex].analysis }}</text>
             </view>

@@ -72,6 +72,20 @@ def list_mistakes(
 
     mistakes = query.order_by(Mistake.next_review_date.asc()).all()
 
+    # 顺延：把逾期未复习（含已掌握但到期复习）的错题 next_review_date 拉回到今天，
+    # 这样前端看到的"下次复习"始终是今天或未来日期；
+    # 复习时 review_mistake 也会以今天为基准计算下一次。
+    today = date.today()
+    postponed = False
+    for m in mistakes:
+        if m.next_review_date and m.next_review_date < today:
+            m.next_review_date = today
+            postponed = True
+    if postponed:
+        db.commit()
+        for m in mistakes:
+            db.refresh(m)
+
     # Filter by tag on the Python side (JSON array matching)
     if tag:
         mistakes = [m for m in mistakes if m.tags and tag in (m.tags or [])]

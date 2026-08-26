@@ -35,7 +35,10 @@ export async function request(url, options = {}) {
   }
 
   const msg = res.data?.detail || '请求失败'
-  throw new Error(msg)
+  const err = new Error(msg)
+  err.status = res.statusCode
+  err.isAuthError = res.statusCode === 401
+  throw err
 }
 
 // ==================== Auth ====================
