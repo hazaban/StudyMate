@@ -5,8 +5,8 @@
     return Array.prototype.slice.call((root || document).querySelectorAll(selector));
   }
 
-  /* ---------- 1. 卡片类型选择 ---------- */
-  qsa('[data-type-selector]').forEach(function (group) {
+  /* ---------- 1a. 卡片类型选择：单选（旧逻辑） ---------- */
+  qsa('[data-type-selector]:not([data-multi])').forEach(function (group) {
     var next = group.parentNode.querySelector('[data-type-next]');
     var labels = {
       basic: '下一步：填写问答',
@@ -27,13 +27,23 @@
     });
   });
 
-  /* ---------- 2. 挖空编辑器：标记 / 取消标记 ---------- */
-  var clozeEditor = document.getElementById('clozeEditor');
-  var markButton = document.querySelector('[data-mark-cloze]');
+  /* ---------- 1b. 卡片模块选择：多选（新增，支持组合卡） ---------- */
+  qsa('[data-type-selector][data-multi]').forEach(function (group) {
+    qsa('.type-card', group).forEach(function (card) {
+      card.addEventListener('click', function () {
+        card.classList.toggle('is-active');
+      });
+    });
+  });
 
-  if (clozeEditor && markButton) {
+  /* ---------- 2. 挖空编辑器：标记 / 取消标记 ---------- */
+  qsa('[data-mark-cloze]').forEach(function (markButton) {
+    var clozeEditor = markButton.closest('.phone-body').querySelector('.editor-text');
+    if (!clozeEditor) return;
+
     var preview = clozeEditor.parentNode.querySelector('.preview-box');
 
+    // 初始处于「已标记」状态
     clozeEditor.classList.add('editor-on');
     markButton.textContent = '取消标记';
 
@@ -47,7 +57,7 @@
         });
       }
     });
-  }
+  });
 
   /* ---------- 3. 单个空：点击揭示 ---------- */
   document.addEventListener('click', function (event) {
@@ -57,6 +67,16 @@
     var blank = target.closest('.blank');
     if (blank) {
       blank.classList.toggle('is-open');
+      return;
+    }
+
+    var mask = target.closest('.mask');
+    if (mask) {
+      // 只在复习区域（有 occlusionReview 或 comboReview）才切换；
+      // 编辑区域通过其他按钮控制
+      var scope = mask.closest('#occlusionReview, #comboReview');
+      if (scope) mask.classList.toggle('is-open');
+      return;
     }
   });
 
@@ -68,14 +88,17 @@
         blank.classList.add('is-open');
       });
       button.textContent = '已全部揭示';
+      button.disabled = true;
+      button.style.opacity = '0.6';
     });
   });
 
   /* ---------- 5. 遮挡编辑器：框选模式 ---------- */
-  var occlusionEditor = document.getElementById('occlusionEditor');
-  var drawButton = document.querySelector('[data-draw-mask]');
+  qsa('[data-draw-mask]').forEach(function (drawButton) {
+    var phoneBody = drawButton.closest('.phone-body');
+    var occlusionEditor = phoneBody ? phoneBody.querySelector('.img-wrap[data-drawing]') : null;
+    if (!occlusionEditor) return;
 
-  if (occlusionEditor && drawButton) {
     occlusionEditor.setAttribute('data-drawing', 'true');
     drawButton.textContent = '完成框选';
 
@@ -84,32 +107,23 @@
       occlusionEditor.setAttribute('data-drawing', drawing ? 'true' : 'false');
       drawButton.textContent = drawing ? '完成框选' : '框选遮罩';
     });
-  }
+  });
 
   /* ---------- 6. 遮罩列表：单块显示 / 隐藏 ---------- */
   qsa('[data-mask-chip]').forEach(function (chip) {
     chip.addEventListener('click', function () {
       var active = chip.classList.toggle('is-on');
-      if (!occlusionEditor) return;
+      var editor = chip.closest('.phone-body');
+      if (!editor) return;
 
-      var mask = occlusionEditor.querySelector('.mask[data-mask="' + chip.getAttribute('data-mask-chip') + '"]');
+      var mask = editor.querySelector('.mask[data-mask="' + chip.getAttribute('data-mask-chip') + '"]');
       if (mask) {
         mask.classList.toggle('is-hidden', !active);
       }
     });
   });
 
-  /* ---------- 7. 复习遮挡卡：逐块揭示 ---------- */
-  var occlusionReview = document.getElementById('occlusionReview');
-  if (occlusionReview) {
-    qsa('.mask', occlusionReview).forEach(function (mask) {
-      mask.addEventListener('click', function () {
-        mask.classList.toggle('is-open');
-      });
-    });
-  }
-
-  /* ---------- 8. 复习遮挡卡：全部揭示 ---------- */
+  /* ---------- 7. 复习遮挡卡 & 组合卡：全部揭示遮罩 ---------- */
   qsa('[data-reveal-mask]').forEach(function (button) {
     button.addEventListener('click', function () {
       var scope = button.closest('.p-block') || document;
@@ -117,6 +131,20 @@
         mask.classList.add('is-open');
       });
       button.textContent = '已全部揭示';
+      button.disabled = true;
+      button.style.opacity = '0.6';
+    });
+  });
+
+  /* ---------- 8. 组合卡复习：全部揭示（挖空 + 遮罩） ---------- */
+  qsa('[data-reveal-all]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var scope = button.closest('.p-block') || document;
+      qsa('.blank', scope).forEach(function (b) { b.classList.add('is-open'); });
+      qsa('.mask', scope).forEach(function (m) { m.classList.add('is-open'); });
+      button.textContent = '已全部揭示';
+      button.disabled = true;
+      button.style.opacity = '0.6';
     });
   });
 })();

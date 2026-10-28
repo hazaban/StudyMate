@@ -686,14 +686,33 @@ pre .c-com { color: var(--code-com); }
   margin-left: auto;
   width: 16px;
   height: 16px;
-  border-radius: 50%;
-  border: 1px solid var(--rule);
+  border-radius: 4px;
+  border: 1.5px solid var(--rule);
   background: var(--bg2);
 }
 
+[data-multi] .type-check { border-radius: 4px; }
+[data-multi] .type-card.is-active .type-check {
+  background: var(--accent);
+  border-color: var(--accent);
+  position: relative;
+}
+[data-multi] .type-card.is-active .type-check::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.type-card:not([data-multi]) .type-check { border-radius: 50%; }
 .type-card.is-active .type-check {
   border-color: var(--accent);
-  background: radial-gradient(circle, var(--accent) 0 45%, transparent 48%);
+  background: var(--accent);
 }
 
 /* Editor */
@@ -815,6 +834,32 @@ pre .c-com { color: var(--code-com); }
 }
 
 .compare-row .img-wrap { max-width: 400px; }
+
+.phones-2col {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.phones-2col .phone-wrap { flex: 1 1 280px; justify-content: center; }
+
+.block-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.block-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 600;
+}
 
 .mask--a { top: 30%; left: 7%; width: 86%; height: 19%; }
 .mask--b { top: 52.2%; left: 7%; width: 86%; height: 19%; }
@@ -1133,15 +1178,15 @@ footer .foot-row {
     <div class="grid-3">
       <div class="card">
         <div class="card-kicker">Scope</div>
-        <div class="stat">3 种</div>
-        <h4>制卡类型</h4>
-        <p>基础问答、文字挖空、图片遮挡。基础卡完全保持现状。</p>
+        <div class="stat">可组合</div>
+        <h4>制卡模块</h4>
+        <p>基础问答、文字挖空、图片遮挡——<mark class="key">一张卡可以同时有多种</mark>，自由组合。</p>
       </div>
       <div class="card">
         <div class="card-kicker">Data</div>
-        <div class="stat">2 个</div>
+        <div class="stat">1 个</div>
         <h4>新增字段</h4>
-        <p>card_type 决定用哪套编辑与复习逻辑，content 存结构化答案。</p>
+        <p>只加 <code>content JSON</code>，里面的 blocks 数组自描述每个模块；不额外加 type 字段。</p>
       </div>
       <div class="card">
         <div class="card-kicker">Impact</div>
@@ -1332,30 +1377,59 @@ footer .foot-row {
           <li class="field">tags</li>
           <li class="field">mastery_level</li>
           <li class="field">next_review_date</li>
-          <li class="field is-new">card_type</li>
-          <li class="field is-new">content</li>
+          <li class="field is-new">content (JSON)</li>
+          <li class="field">— blocks[].kind</li>
         </ul>
       </div>
     </div>
 
-    <p><strong>card_type</strong> 只有三个值：<code>basic</code> / <code>cloze</code> / <code>occlusion</code>。老数据默认 <code>basic</code>，因此现有卡片的读取、复习、导出路径完全不变。</p>
+    <p><strong>不额外加 <code>card_type</code></strong>——直接让 <code>content</code> 里的 <code>blocks</code> 数组自描述。基础卡的 <code>content</code> 为空数组、继续用原来的 <code>question</code> / <code>answer</code> 字段，因此<mark class="key">老数据零迁移</mark>。一张卡可以同时包含多个挖空块、多个遮挡块，任意顺序。</p>
 
-    <pre><code><span class="c-com">// 挖空卡：用标记文本，不用字符偏移，编辑后不会错位</span>
+    <pre><code><span class="c-com">// 纯挖空卡：blocks 里只有一个 cloze 模块</span>
 {
-  <span class="c-key">"card_type"</span>: <span class="c-str">"cloze"</span>,
   <span class="c-key">"content"</span>: {
-    <span class="c-key">"template"</span>: <span class="c-str">"客户端先发送 {{c1::SYN}}，服务端回复 {{c2::SYN+ACK}}"</span>,
-    <span class="c-key">"clozes"</span>: [{ <span class="c-key">"id"</span>: 1 }, { <span class="c-key">"id"</span>: 2 }]
+    <span class="c-key">"blocks"</span>: [
+      {
+        <span class="c-key">"kind"</span>: <span class="c-str">"cloze"</span>,
+        <span class="c-key">"template"</span>: <span class="c-str">"客户端先发送 {{c1::SYN}}，服务端回复 {{c2::SYN+ACK}}"</span>,
+        <span class="c-key">"clozes"</span>: [{ <span class="c-key">"id"</span>: 1 }, { <span class="c-key">"id"</span>: 2 }]
+      }
+    ]
   }
 }
 
-<span class="c-com">// 遮挡卡：坐标归一化到 0~1，换屏幕、换尺寸都不变形</span>
+<span class="c-com">// 纯遮挡卡：blocks 里只有一个 occlusion 模块</span>
 {
-  <span class="c-key">"card_type"</span>: <span class="c-str">"occlusion"</span>,
   <span class="c-key">"content"</span>: {
-    <span class="c-key">"image"</span>: <span class="c-str">"/uploads/cards/tcp-ip.png"</span>,
-    <span class="c-key">"masks"</span>: [
-      { <span class="c-key">"id"</span>: 1, <span class="c-key">"x"</span>: 0.07, <span class="c-key">"y"</span>: 0.30, <span class="c-key">"w"</span>: 0.86, <span class="c-key">"h"</span>: 0.19, <span class="c-key">"label"</span>: <span class="c-str">"传输层"</span> }
+    <span class="c-key">"blocks"</span>: [
+      {
+        <span class="c-key">"kind"</span>: <span class="c-str">"occlusion"</span>,
+        <span class="c-key">"image"</span>: <span class="c-str">"/uploads/cards/tcp-ip.png"</span>,
+        <span class="c-key">"masks"</span>: [
+          { <span class="c-key">"id"</span>: 1, <span class="c-key">"x"</span>: 0.07, <span class="c-key">"y"</span>: 0.30, <span class="c-key">"w"</span>: 0.86, <span class="c-key">"h"</span>: 0.19, <span class="c-key">"label"</span>: <span class="c-str">"传输层"</span> }
+        ]
+      }
+    ]
+  }
+}
+
+<span class="c-com">// ★ 组合卡：一张卡里同时有挖空块 + 遮挡块</span>
+{
+  <span class="c-key">"content"</span>: {
+    <span class="c-key">"blocks"</span>: [
+      {
+        <span class="c-key">"kind"</span>: <span class="c-str">"cloze"</span>,
+        <span class="c-key">"template"</span>: <span class="c-str">"三次握手：客户端发 {{c1::SYN}} → 服务端回 {{c2::SYN+ACK}}"</span>,
+        <span class="c-key">"clozes"</span>: [{ <span class="c-key">"id"</span>: 1 }, { <span class="c-key">"id"</span>: 2 }]
+      },
+      {
+        <span class="c-key">"kind"</span>: <span class="c-str">"occlusion"</span>,
+        <span class="c-key">"image"</span>: <span class="c-str">"/uploads/cards/handshake.png"</span>,
+        <span class="c-key">"masks"</span>: [
+          { <span class="c-key">"id"</span>: 1, <span class="c-key">"x"</span>: 0.15, <span class="c-key">"y"</span>: 0.10, <span class="c-key">"w"</span>: 0.70, <span class="c-key">"h"</span>: 0.25, <span class="c-key">"label"</span>: <span class="c-str">SYN 包</span> },
+          { <span class="c-key">"id"</span>: 2, <span class="c-key">"x"</span>: 0.15, <span class="c-key">"y"</span>: 0.45, <span class="c-key">"w"</span>: 0.70, <span class="c-key">"h"</span>: 0.25, <span class="c-key">"label"</span>: <span class="c-str">SYN+ACK 包</span> }
+        ]
+      }
     ]
   }
 }</code></pre>
@@ -1364,18 +1438,18 @@ footer .foot-row {
     <div class="grid-3">
       <div class="card">
         <div class="card-kicker">Change 01</div>
-        <h4>制卡页：先选类型</h4>
-        <p>弹窗顶部加三选一，下面表单随类型切换。默认停在基础卡，老用户无感。</p>
+        <h4>制卡页：勾选模块</h4>
+        <p>弹窗顶部从「三选一」改成<strong>多勾选</strong>，启用哪些模块就展开哪些编辑器面板。基础问答是默认启用的兜底。</p>
       </div>
       <div class="card">
         <div class="card-kicker">Change 02</div>
-        <h4>编辑器：按类型换工具</h4>
-        <p>挖空用「点选正文」，遮挡用「图上拖框」。两者都只产出结构化 JSON。</p>
+        <h4>编辑器：各自独立</h4>
+        <p>挖空块、遮挡块各有自己的编辑面板，顺序可调。保存时合并成 <code>content.blocks[]</code>。</p>
       </div>
       <div class="card">
         <div class="card-kicker">Change 03</div>
-        <h4>复习页：按类型渲染</h4>
-        <p>同一套卡片列表与评分按钮，只在题干区域按 card_type 切换揭示方式。</p>
+        <h4>复习页：按 blocks 渲染</h4>
+        <p>同一套卡片列表与评分按钮，遍历 <code>blocks[i].kind</code>——挖空就渲染下划线、遮挡就渲染遮罩。</p>
       </div>
     </div>
 
@@ -1394,16 +1468,16 @@ footer .foot-row {
     </div>
 
     <!-- 5.1 -->
-    <h3><span class="h3-num">5.1</span>制卡：先选类型</h3>
+    <h3><span class="h3-num">5.1</span>制卡：勾选需要的模块（可组合）</h3>
     <div class="mock-row">
       <div class="phone-wrap">
         <div class="phone">
           <div class="phone-status"><span>9:41</span><span class="bars">···</span></div>
           <div class="phone-head"><span class="ph-title">新建卡片</span><span class="ph-x">×</span></div>
           <div class="phone-body">
-            <span class="p-label">选择卡片类型</span>
-            <div class="type-list" data-type-selector>
-              <div class="type-card" data-type="basic">
+            <span class="p-label">启用哪些模块（可多选）</span>
+            <div class="type-list" data-type-selector data-multi>
+              <div class="type-card is-active" data-type="basic">
                 <span class="type-icon">
                   <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="2" rx="1" fill="currentColor"/><rect x="2" y="7.5" width="8" height="2" rx="1" fill="currentColor"/><rect x="2" y="12" width="10" height="2" rx="1" fill="currentColor" opacity="0.5"/></svg>
                 </span>
@@ -1417,7 +1491,7 @@ footer .foot-row {
                 <span class="type-text"><strong>文字挖空</strong><span>在原文上挖洞，一个空一道题</span></span>
                 <span class="type-check"></span>
               </div>
-              <div class="type-card" data-type="occlusion">
+              <div class="type-card is-active" data-type="occlusion">
                 <span class="type-icon">
                   <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="4.5" y="4.5" width="7" height="4" rx="1" fill="currentColor" opacity="0.55"/></svg>
                 </span>
@@ -1425,19 +1499,20 @@ footer .foot-row {
                 <span class="type-check"></span>
               </div>
             </div>
-            <div style="margin-top:14px"><div class="p-btn" data-type-next>下一步：编辑挖空</div></div>
+            <div style="margin-top:14px"><div class="p-btn">进入编辑器（已选 3 个）</div></div>
           </div>
         </div>
       </div>
       <div class="mock-notes">
-        <h4>类型决定后面的全部流程</h4>
-        <p>选中哪个类型，下面就展开哪套编辑器；保存时一并写入 <code>card_type</code>。</p>
+        <h4>一张卡可以勾选多个模块</h4>
+        <p>改成<strong>多勾选</strong>之后，「组合卡」就是默认支持的场景——比如解剖图 + 部位描述 = 遮挡 + 挖空。</p>
         <ul class="note-list">
-          <li>默认停在基础卡，现有使用习惯不受影响。</li>
-          <li>类型一旦选定，编辑器和复习方式随之确定，避免「半挖空半问答」的脏数据。</li>
-          <li>以后要加选择题，只是再补一张类型卡，不动底层结构。</li>
+          <li>基础问答是兜底勾选；只勾这一项就是原来的纯问答卡。</li>
+          <li>挖空 + 遮挡同时勾选：编辑器里会同时展开两个面板，顺序可调。</li>
+          <li>保存时不写单一的 <code>card_type</code>，而是合并成 <code>content.blocks[]</code>。</li>
+          <li>复习页遍历 blocks，先渲染挖空下划线、再渲染遮挡图，各自独立揭示。</li>
         </ul>
-        <div class="try-badge">可点击：切换类型</div>
+        <div class="try-badge">可点击：勾选 / 取消任意模块</div>
       </div>
     </div>
 
@@ -1613,6 +1688,119 @@ footer .foot-row {
           <li>和挖空卡共用同一套列表、筛选与评分组件。</li>
         </ul>
         <div class="try-badge">可点击：点遮罩 / 全部揭示</div>
+      </div>
+    </div>
+
+    <!-- 5.6 ★ 组合卡：挖空 + 遮挡 同时存在 -->
+    <h3><span class="h3-num">5.6</span>★ 组合卡：一张卡里同时有挖空和遮挡</h3>
+    <p style="font-size:14px;color:var(--muted);margin-top:-6px;">解剖图 + 部位描述、流程图 + 步骤文字——真实材料常常是图文混合的。组合卡就是把两个模块放进同一条 <code>content.blocks[]</code> 里。</p>
+
+    <div class="phones-2col" style="margin-top:22px">
+      <!-- 左：编辑 -->
+      <div class="phone-wrap">
+        <div class="phone" style="width:300px">
+          <div class="phone-status"><span>9:41</span><span class="bars">···</span></div>
+          <div class="phone-head"><span class="ph-title">编辑组合卡</span><span class="ph-meta">2 个模块</span></div>
+          <div class="phone-body" style="min-height:700px">
+
+            <span class="p-label">模块列表</span>
+            <div class="block-strip">
+              <span class="block-chip">① 挖空块 · 2 空</span>
+              <span class="block-chip">② 遮挡块 · 2 遮罩</span>
+            </div>
+
+            <div class="p-block" style="margin-bottom:10px">
+              <span class="p-label" style="margin-bottom:4px">模块 ① · 文字挖空</span>
+              <div class="editor-text editor-on" style="margin-bottom:6px">
+                TCP 三次握手：客户端发 <span class="kw-mark">SYN</span>，服务端回 <span class="kw-mark">SYN+ACK</span>。
+              </div>
+              <div class="tool-row" style="margin:4px 0 0">
+                <button class="tool-btn is-primary" data-mark-cloze>标记挖空</button>
+                <button class="tool-btn">加提示</button>
+              </div>
+            </div>
+
+            <div class="p-block" style="margin-bottom:10px">
+              <span class="p-label" style="margin-bottom:4px">模块 ② · 图片遮挡</span>
+              <div class="img-wrap" data-drawing="true" style="margin-bottom:6px">
+                <svg viewBox="0 0 280 180" role="img" aria-label="TCP/IP 四层模型">
+                  <rect x="20" y="14" width="240" height="34" rx="8" fill="var(--illus-fill)" stroke="var(--illus-line)" stroke-width="1.4"/>
+                  <rect x="20" y="54" width="240" height="34" rx="8" fill="var(--illus-fill)" stroke="var(--illus-line)" stroke-width="1.4"/>
+                  <rect x="20" y="94" width="240" height="34" rx="8" fill="var(--illus-fill)" stroke="var(--illus-line)" stroke-width="1.4"/>
+                  <rect x="20" y="134" width="240" height="34" rx="8" fill="var(--illus-fill)" stroke="var(--illus-line)" stroke-width="1.4"/>
+                  <text x="140" y="36" text-anchor="middle" font-size="12" fill="var(--illus-ink)" font-family="sans-serif">应用层 · HTTP</text>
+                  <text x="140" y="76" text-anchor="middle" font-size="12" fill="var(--illus-ink)" font-family="sans-serif">传输层 · TCP</text>
+                  <text x="140" y="116" text-anchor="middle" font-size="12" fill="var(--illus-ink)" font-family="sans-serif">网络层 · IP</text>
+                  <text x="140" y="156" text-anchor="middle" font-size="12" fill="var(--illus-ink)" font-family="sans-serif">网络接口层 · Ethernet</text>
+                </svg>
+                <div class="mask mask--drawing mask--a" data-mask="a">1</div>
+                <div class="mask mask--drawing mask--b" data-mask="b">2</div>
+              </div>
+              <div class="tool-row" style="margin:4px 0 0">
+                <button class="tool-btn is-primary" data-draw-mask>完成框选</button>
+                <button class="tool-btn">删除</button>
+              </div>
+            </div>
+
+            <div class="p-btn">保存组合卡</div>
+          </div>
+        </div>
+        <div class="mock-notes" style="margin-top:12px">
+          <h4>编辑器里就是两个连续的模块面板</h4>
+          <p>每个模块独立编辑，顺序可调。不新增「组合卡专用编辑器」——只是把已有编辑器串起来。</p>
+        </div>
+      </div>
+
+      <!-- 右：复习 -->
+      <div class="phone-wrap">
+        <div class="phone" style="width:300px">
+          <div class="phone-status"><span>9:41</span><span class="bars">···</span></div>
+          <div class="phone-head"><span class="ph-title">抗遗忘卡片</span><span class="ph-meta">4 / 12</span></div>
+          <div class="phone-body" id="comboReview">
+
+            <span class="review-tag">计算机网络 · 组合卡</span>
+
+            <div class="p-block" style="margin-bottom:10px">
+              <span class="p-label" style="margin-bottom:4px">模块 ① · 文字挖空</span>
+              <div class="review-q" style="margin-bottom:0">
+                TCP 三次握手：客户端发 <span class="blank" data-answer="SYN">SYN</span>，服务端回 <span class="blank" data-answer="SYN+ACK">SYN+ACK</span>。
+              </div>
+            </div>
+
+            <div class="p-block" style="margin-bottom:10px">
+              <span class="p-label" style="margin-bottom:4px">模块 ② · 图片遮挡</span>
+              <div class="img-wrap">
+                <svg viewBox="0 0 280 180" role="img" aria-label="TCP/IP 四层模型">
+                  <rect x="20" y="14" width="240" height="34" rx="8" fill="var(--illus-fill)" stroke="var(--illus-line)" stroke-width="1.4"/>
+                  <rect x="20" y="54" width="240" height="34" rx="8" fill="var(--illus-fill)" stroke="var(--illus-line)" stroke-width="1.4"/>
+                  <rect x="20" y="94" width="240" height="34" rx="8" fill="var(--illus-fill)" stroke="var(--illus-line)" stroke-width="1.4"/>
+                  <rect x="20" y="134" width="240" height="34" rx="8" fill="var(--illus-fill)" stroke="var(--illus-line)" stroke-width="1.4"/>
+                  <text x="140" y="36" text-anchor="middle" font-size="12" fill="var(--illus-ink)" font-family="sans-serif">应用层 · HTTP</text>
+                  <text x="140" y="76" text-anchor="middle" font-size="12" fill="var(--illus-ink)" font-family="sans-serif">传输层 · TCP</text>
+                  <text x="140" y="116" text-anchor="middle" font-size="12" fill="var(--illus-ink)" font-family="sans-serif">网络层 · IP</text>
+                  <text x="140" y="156" text-anchor="middle" font-size="12" fill="var(--illus-ink)" font-family="sans-serif">网络接口层 · Ethernet</text>
+                </svg>
+                <div class="mask mask--solid mask--a" data-mask="a">?</div>
+                <div class="mask mask--solid mask--b" data-mask="b">?</div>
+              </div>
+            </div>
+
+            <div style="text-align:center;margin-bottom:10px">
+              <button class="p-btn p-btn--ghost p-btn--sm" data-reveal-all>全部揭示（挖空 + 遮罩）</button>
+            </div>
+
+            <div class="rating">
+              <div class="r1">未掌握<span>1 天后</span></div>
+              <div class="r2">较熟悉<span>3 天后</span></div>
+              <div class="r3">已掌握<span>7 天后</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="mock-notes" style="margin-top:12px">
+          <h4>复习页按 blocks 顺序渲染，各自独立揭示</h4>
+          <p>先渲染挖空块（下划线），再渲染遮挡块（图片 + 遮罩）。用户可以点任意单个揭示，也可以一键全开。评分按钮仍在底部，<strong>一张组合卡 = 一次复习会话 = 一个掌握度</strong>。</p>
+          <div class="try-badge">可点击：点挖空 / 点遮罩 / 全部揭示</div>
+        </div>
       </div>
     </div>
   </section>
